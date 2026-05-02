@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, Field
-from app.models.base import MongoBaseModel, PyObjectId
+from app.models.base import MongoBaseModel
 
 
 class TaskStatus(str, Enum):
@@ -20,9 +20,9 @@ class TaskPriority(str, Enum):
 
 
 class TaskBase(BaseModel):
-    project_id: PyObjectId
-    client_id: Optional[PyObjectId] = None
-    parent_task_id: Optional[PyObjectId] = None
+    project_id: str
+    client_id: Optional[str] = None
+    parent_task_id: Optional[str] = None
     title: str = Field(..., min_length=1, max_length=300)
     description: Optional[str] = None
     status: TaskStatus = TaskStatus.OPEN
@@ -40,9 +40,9 @@ class TaskCreate(TaskBase):
 
 
 class TaskUpdate(BaseModel):
-    project_id: Optional[PyObjectId] = None
-    client_id: Optional[PyObjectId] = None
-    parent_task_id: Optional[PyObjectId] = None
+    project_id: Optional[str] = None
+    client_id: Optional[str] = None
+    parent_task_id: Optional[str] = None
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[TaskStatus] = None
@@ -55,5 +55,23 @@ class TaskUpdate(BaseModel):
     column_order: Optional[int] = None
 
 
+class TaskStatusUpdate(BaseModel):
+    """עדכון סטטוס בלבד - לגרירה"""
+    status: TaskStatus
+    column_order: int = 0
+
+
+class TaskOrderUpdate(BaseModel):
+    """עדכון סדר בעמודה - לגרירה בתוך עמודה"""
+    column_order: int
+
+
 class Task(MongoBaseModel, TaskBase):
     completed_at: Optional[datetime] = None
+
+
+class TaskWithContext(Task):
+    """משימה עם פרטי פרויקט ולקוח - לתצוגות גלובליות"""
+    project_name: Optional[str] = None
+    client_name: Optional[str] = None
+    client_color: Optional[str] = None

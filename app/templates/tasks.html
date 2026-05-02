@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}משימות - TaskFlow{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="/static/js/kanban.js"></script>
+{% endblock %}
+
+{% block body %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in"
+      x-data="kanbanComponent({ projectId: null, showProjectName: true })" x-init="init()">
+
+    <!-- כותרת -->
+    <div class="flex justify-between items-center mb-6 md:mb-8">
+        <div>
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-900">משימות</h2>
+            <p class="text-slate-600 mt-1 text-sm md:text-base">כל המשימות מכל הפרויקטים</p>
+        </div>
+        <button @click="openCreateModal('open')" class="btn btn-primary">
+            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            משימה חדשה
+        </button>
+    </div>
+
+    <!-- רכיב Kanban -->
+    {% include "_kanban.html" %}
+
+</main>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}

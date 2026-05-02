@@ -1,0 +1,258 @@
+{# רכיב Kanban משותף - נכלל בעמוד פרויקט ובעמוד משימות גלובלי #}
+{# מצפה ל-x-data של kanbanComponent({ ... }) באלמנט עוטף #}
+
+<!-- מצב טעינה -->
+<div x-show="loading" class="text-center py-12">
+    <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <p class="text-slate-500 mt-2">טוען משימות...</p>
+</div>
+
+<!-- Empty state -->
+<div x-show="!loading && tasks.length === 0" class="empty-state bg-white rounded-xl border border-slate-200">
+    <div class="empty-state-icon">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+    </div>
+    <h3 class="text-lg font-semibold text-slate-900 mb-2">אין עדיין משימות</h3>
+    <p class="text-slate-600 mb-4">צור את המשימה הראשונה שלך</p>
+    <button @click="openCreateModal('open')" class="btn btn-primary">
+        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        משימה חדשה
+    </button>
+</div>
+
+<!-- לוח Kanban -->
+<div x-show="!loading && tasks.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <template x-for="col in statusColumns" :key="col.id">
+        <div class="bg-slate-100 rounded-xl p-3 flex flex-col">
+            <!-- כותרת עמודה -->
+            <div class="flex items-center justify-between mb-3 px-1">
+                <h3 class="font-bold text-slate-700 flex items-center">
+                    <span x-text="col.label"></span>
+                    <span class="text-xs text-slate-500 mr-2 bg-white px-2 py-0.5 rounded-full" x-text="tasksByStatus(col.id).length"></span>
+                </h3>
+                <button @click="openCreateModal(col.id)" class="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-white transition-colors" title="הוסף משימה">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- מיכל הכרטיסים (ניתן לגרירה) -->
+            <div
+                :id="`column-${col.id}`"
+                :data-status="col.id"
+                class="kanban-column flex-1 min-h-[100px] space-y-2"
+            >
+                <template x-for="task in tasksByStatus(col.id)" :key="task._id">
+                    <div
+                        :data-task-id="task._id"
+                        @click="openEditModal(task)"
+                        class="kanban-card bg-white rounded-lg p-3 shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-shadow"
+                        :class="task.status === 'completed' ? 'opacity-60' : ''"
+                    >
+                        <!-- כותרת -->
+                        <div class="font-medium text-slate-900 mb-2 leading-snug" x-text="task.title"></div>
+
+                        <!-- מטא-נתונים -->
+                        <div class="flex flex-wrap gap-1.5 text-xs">
+                            <!-- עדיפות -->
+                            <span
+                                class="px-2 py-0.5 rounded-full"
+                                :class="priorityClass(task.priority)"
+                                x-text="priorityLabel(task.priority)"
+                            ></span>
+
+                            <!-- תאריך יעד -->
+                            <span
+                                x-show="task.due_date"
+                                class="px-2 py-0.5 rounded-full inline-flex items-center"
+                                :class="isOverdue(task.due_date, task.status) ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'"
+                            >
+                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span x-text="formatDate(task.due_date)"></span>
+                            </span>
+
+                            <!-- מספר קישורים -->
+                            <span x-show="task.links && task.links.length > 0" class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full inline-flex items-center">
+                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                </svg>
+                                <span x-text="task.links.length"></span>
+                            </span>
+                        </div>
+
+                        <!-- שם פרויקט (רק בתצוגה גלובלית) -->
+                        <div x-show="showProjectName && task.project_name" class="mt-2 text-xs text-slate-500 truncate">
+                            <svg class="w-3 h-3 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2"/>
+                            </svg>
+                            <span x-text="task.project_name"></span>
+                        </div>
+
+                        <!-- שם לקוח עם צבע -->
+                        <div x-show="task.client_name" class="mt-2 text-xs flex items-center">
+                            <span class="w-2 h-2 rounded-full ml-1.5" :style="`background-color: ${task.client_color || '#94A3B8'}`"></span>
+                            <span class="text-slate-600 truncate" x-text="task.client_name"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+</div>
+
+<!-- מודאל יצירה/עריכה של משימה -->
+<div x-show="modalOpen" x-cloak @click.self="closeModal()" class="modal-backdrop" x-transition.opacity>
+    <div class="modal-content slide-up max-w-lg">
+        <div class="flex justify-between items-center p-6 border-b border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900">
+                <span x-show="modalMode === 'create'">משימה חדשה</span>
+                <span x-show="modalMode === 'edit'">עריכת משימה</span>
+            </h3>
+            <button @click="closeModal()" class="text-slate-400 hover:text-slate-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form @submit.prevent="saveTask()" class="p-6 space-y-4">
+            <div>
+                <label class="form-label">כותרת <span class="text-red-500">*</span></label>
+                <input type="text" x-model="formData.title" class="form-input" required maxlength="300" autofocus>
+            </div>
+
+            <div>
+                <label class="form-label">תיאור</label>
+                <textarea x-model="formData.description" class="form-input" rows="3"></textarea>
+            </div>
+
+            <!-- בחירת פרויקט (רק אם לא במצב פרויקט בודד) -->
+            <div x-show="!projectId">
+                <label class="form-label">פרויקט <span class="text-red-500">*</span></label>
+                <select x-model="formData.project_id" class="form-input" required>
+                    <option value="">— בחר פרויקט —</option>
+                    <template x-for="p in projectOptions" :key="p._id">
+                        <option :value="p._id" x-text="p.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label">לקוח</label>
+                <select x-model="formData.client_id" class="form-input">
+                    <option value="">— ללא לקוח (יורש מהפרויקט) —</option>
+                    <template x-for="c in clientOptions" :key="c._id">
+                        <option :value="c._id" x-text="c.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="form-label">סטטוס</label>
+                    <select x-model="formData.status" class="form-input">
+                        <option value="open">פתוח</option>
+                        <option value="in_progress">בתהליך</option>
+                        <option value="completed">הושלם</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">עדיפות</label>
+                    <select x-model="formData.priority" class="form-input">
+                        <option value="low">נמוכה</option>
+                        <option value="normal">רגילה</option>
+                        <option value="high">גבוהה</option>
+                        <option value="urgent">דחוף</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label">תאריך יעד</label>
+                <input type="date" x-model="formData.due_date" class="form-input">
+            </div>
+
+            <!-- קישורים -->
+            <div>
+                <label class="form-label">קישורים</label>
+                <div class="flex gap-2 mb-2">
+                    <input
+                        type="url"
+                        x-model="newLink"
+                        @keydown.enter.prevent="addLink()"
+                        placeholder="https://..."
+                        class="form-input flex-1"
+                    >
+                    <button type="button" @click="addLink()" class="btn btn-secondary">הוסף</button>
+                </div>
+                <div class="space-y-1" x-show="formData.links.length > 0">
+                    <template x-for="(link, idx) in formData.links" :key="idx">
+                        <div class="flex items-center gap-2 text-sm bg-slate-50 px-3 py-2 rounded">
+                            <a :href="link" target="_blank" class="text-primary-600 hover:underline truncate flex-1" x-text="link"></a>
+                            <button type="button" @click="removeLink(idx)" class="text-red-500 hover:text-red-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="button" @click="closeModal()" class="btn btn-secondary flex-1">ביטול</button>
+                <template x-if="modalMode === 'edit'">
+                    <button type="button" @click="confirmDelete({ _id: currentTaskId, title: formData.title })" class="btn btn-danger">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </template>
+                <button type="submit" class="btn btn-primary flex-1" :disabled="saving">
+                    <span x-show="!saving">שמור</span>
+                    <span x-show="saving">שומר...</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- אישור מחיקה -->
+<div x-show="deleteConfirmOpen" x-cloak @click.self="deleteConfirmOpen = false" class="modal-backdrop" x-transition.opacity>
+    <div class="modal-content slide-up max-w-md">
+        <div class="p-6">
+            <div class="flex items-start mb-4">
+                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center ml-3 flex-shrink-0">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">מחיקת משימה</h3>
+                    <p class="text-slate-600 mt-1">
+                        למחוק את המשימה "<span x-text="formData.title" class="font-semibold"></span>"?
+                    </p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="deleteConfirmOpen = false" class="btn btn-secondary flex-1">ביטול</button>
+                <button @click="deleteTask()" class="btn btn-danger flex-1" :disabled="saving">
+                    <span x-show="!saving">מחק</span>
+                    <span x-show="saving">מוחק...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

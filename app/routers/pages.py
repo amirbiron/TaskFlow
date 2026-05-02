@@ -71,6 +71,19 @@ async def project_detail_page(request: Request, project_id: str):
     )
 
 
+@router.get("/tasks", response_class=HTMLResponse)
+async def tasks_page(request: Request):
+    """עמוד כל המשימות (תצוגה גלובלית)"""
+    redirect = _require_auth_or_redirect(request)
+    if redirect:
+        return redirect
+
+    return templates.TemplateResponse(
+        "tasks.html",
+        {"request": request, "current_page": "tasks"}
+    )
+
+
 @router.get("/health")
 async def health_check():
     """בדיקת תקינות לשירות (Render משתמש בזה)"""

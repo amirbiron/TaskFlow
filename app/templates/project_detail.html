@@ -2,28 +2,33 @@
 
 {% block title %}פרטי פרויקט - TaskFlow{% endblock %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="/static/js/kanban.js"></script>
+{% endblock %}
+
 {% block body %}
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in"
-      x-data="projectDetail('{{ project_id }}')" x-init="init()">
+      x-data="projectDetailPage('{{ project_id }}')" x-init="init()">
 
     <!-- מצב טעינה -->
-    <div x-show="loading" class="text-center py-12">
+    <div x-show="projectLoading" class="text-center py-12">
         <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
     </div>
 
-    <!-- אין פרויקט -->
-    <div x-show="!loading && !project" class="text-center py-12">
+    <!-- פרויקט לא נמצא -->
+    <div x-show="!projectLoading && !project" class="text-center py-12">
         <p class="text-slate-500 mb-4">הפרויקט לא נמצא</p>
-        <a href="/projects" class="btn btn-secondary">חזרה לרשימת הפרויקטים</a>
+        <a href="/projects" class="btn btn-secondary">חזרה לפרויקטים</a>
     </div>
 
     <!-- פרויקט קיים -->
-    <div x-show="!loading && project" x-cloak>
+    <div x-show="!projectLoading && project" x-cloak>
 
-        <!-- פירורי לחם וכפתור חזרה -->
+        <!-- חזרה -->
         <div class="mb-4">
             <a href="/projects" class="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center">
                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,116 +38,68 @@
             </a>
         </div>
 
-        <!-- כרטיס ראשי -->
+        <!-- כרטיס ראשי של הפרויקט -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
-            <!-- פס צבע עליון -->
             <div class="h-2" :style="`background-color: ${project.client_color || '#94A3B8'}`"></div>
-
             <div class="p-6">
-                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-2">
                             <h1 class="text-2xl md:text-3xl font-bold text-slate-900" x-text="project.name"></h1>
                             <span
                                 class="text-xs px-2 py-1 rounded-full whitespace-nowrap"
-                                :class="statusBadgeClass(project.status)"
-                                x-text="statusLabel(project.status)"
+                                :class="projectStatusBadgeClass(project.status)"
+                                x-text="projectStatusLabel(project.status)"
                             ></span>
                         </div>
-
-                        <!-- לקוח -->
                         <div class="text-slate-600" x-show="project.client_name">
                             <svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                             </svg>
                             לקוח: <span class="font-medium" x-text="project.client_name"></span>
                         </div>
-                        <div class="text-slate-400 italic text-sm" x-show="!project.client_name">
-                            ללא לקוח משויך
-                        </div>
+                        <div class="text-slate-400 italic text-sm" x-show="!project.client_name">ללא לקוח משויך</div>
+                        <div x-show="project.description" class="mt-3 text-slate-700 whitespace-pre-wrap text-sm" x-text="project.description"></div>
                     </div>
 
-                    <!-- כפתורי פעולה -->
                     <div class="flex gap-2">
-                        <button @click="openEditModal()" class="btn btn-secondary">
+                        <button @click="openProjectEditModal()" class="btn btn-secondary">
                             <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
                             עריכה
                         </button>
-                        <button @click="deleteConfirmOpen = true" class="btn btn-danger">
+                        <button @click="projectDeleteConfirmOpen = true" class="btn btn-danger">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
                         </button>
                     </div>
                 </div>
-
-                <!-- תיאור -->
-                <div x-show="project.description" class="mt-4 pt-4 border-t border-slate-100">
-                    <div class="text-sm text-slate-500 mb-1">תיאור</div>
-                    <p class="text-slate-700 whitespace-pre-wrap" x-text="project.description"></p>
-                </div>
-
-                <!-- סטטיסטיקות -->
-                <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
-                    <div>
-                        <div class="text-sm text-slate-500">משימות פתוחות</div>
-                        <div class="text-2xl font-bold text-amber-600" x-text="project.open_tasks_count || 0"></div>
-                    </div>
-                    <div>
-                        <div class="text-sm text-slate-500">משימות שהושלמו</div>
-                        <div class="text-2xl font-bold text-green-600" x-text="project.completed_tasks_count || 0"></div>
-                    </div>
-                </div>
             </div>
         </div>
 
-        <!-- רשימת משימות (פלייסהולדר) -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-slate-900">משימות</h2>
-                <button class="btn btn-primary" disabled title="זמין בשלב הבא">
-                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    משימה חדשה
-                </button>
-            </div>
-
-            <div class="p-6">
-                <!-- אם יש משימות (יבוא בשלב 4) -->
-                <div x-show="tasks.length > 0" class="space-y-2">
-                    <template x-for="task in tasks" :key="task._id">
-                        <div class="p-3 border border-slate-200 rounded-lg flex items-center justify-between">
-                            <div>
-                                <div class="font-medium" x-text="task.title"></div>
-                                <div class="text-xs text-slate-500" x-text="task.status"></div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- אין משימות -->
-                <div x-show="tasks.length === 0" class="empty-state">
-                    <div class="empty-state-icon">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-semibold text-slate-900 mb-2">אין עדיין משימות</h3>
-                    <p class="text-slate-600">ניהול משימות יהיה זמין בשלב הבא של הפיתוח</p>
-                </div>
-            </div>
+        <!-- כותרת + כפתור הוספת משימה -->
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-slate-900">משימות</h2>
+            <button @click="openCreateModal('open')" class="btn btn-primary">
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                משימה חדשה
+            </button>
         </div>
+
+        <!-- רכיב Kanban -->
+        {% include "_kanban.html" %}
     </div>
 
-    <!-- מודאל עריכה -->
-    <div x-show="modalOpen" x-cloak @click.self="closeModal()" class="modal-backdrop" x-transition.opacity>
+    <!-- מודאל עריכת פרויקט -->
+    <div x-show="projectModalOpen" x-cloak @click.self="projectModalOpen = false" class="modal-backdrop" x-transition.opacity>
         <div class="modal-content slide-up">
             <div class="flex justify-between items-center p-6 border-b border-slate-200">
                 <h3 class="text-xl font-bold text-slate-900">עריכת פרויקט</h3>
-                <button @click="closeModal()" class="text-slate-400 hover:text-slate-600">
+                <button @click="projectModalOpen = false" class="text-slate-400 hover:text-slate-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -152,49 +109,44 @@
             <form @submit.prevent="saveProject()" class="p-6 space-y-4">
                 <div>
                     <label class="form-label">שם הפרויקט <span class="text-red-500">*</span></label>
-                    <input type="text" x-model="formData.name" class="form-input" required maxlength="200">
+                    <input type="text" x-model="projectFormData.name" class="form-input" required maxlength="200">
                 </div>
-
                 <div>
                     <label class="form-label">תיאור</label>
-                    <textarea x-model="formData.description" class="form-input" rows="3"></textarea>
+                    <textarea x-model="projectFormData.description" class="form-input" rows="3"></textarea>
                 </div>
-
                 <div>
                     <label class="form-label">לקוח</label>
-                    <select x-model="formData.client_id" class="form-input">
+                    <select x-model="projectFormData.client_id" class="form-input">
                         <option value="">— ללא לקוח —</option>
-                        <template x-for="client in clientOptions" :key="client._id">
-                            <option :value="client._id" x-text="client.name"></option>
+                        <template x-for="c in clientOptions" :key="c._id">
+                            <option :value="c._id" x-text="c.name"></option>
                         </template>
                     </select>
                 </div>
-
                 <div>
                     <label class="form-label">סטטוס</label>
-                    <select x-model="formData.status" class="form-input">
+                    <select x-model="projectFormData.status" class="form-input">
                         <option value="active">פעיל</option>
                         <option value="pending">בהמתנה</option>
                         <option value="completed">הושלם</option>
                         <option value="archived">בארכיון</option>
                     </select>
                 </div>
-
-                <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
-
+                <div x-show="projectError" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="projectError"></div>
                 <div class="flex gap-2 pt-2">
-                    <button type="button" @click="closeModal()" class="btn btn-secondary flex-1">ביטול</button>
-                    <button type="submit" class="btn btn-primary flex-1" :disabled="saving">
-                        <span x-show="!saving">שמור</span>
-                        <span x-show="saving">שומר...</span>
+                    <button type="button" @click="projectModalOpen = false" class="btn btn-secondary flex-1">ביטול</button>
+                    <button type="submit" class="btn btn-primary flex-1" :disabled="projectSaving">
+                        <span x-show="!projectSaving">שמור</span>
+                        <span x-show="projectSaving">שומר...</span>
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- אישור מחיקה -->
-    <div x-show="deleteConfirmOpen" x-cloak @click.self="deleteConfirmOpen = false" class="modal-backdrop" x-transition.opacity>
+    <!-- אישור מחיקת פרויקט -->
+    <div x-show="projectDeleteConfirmOpen" x-cloak @click.self="projectDeleteConfirmOpen = false" class="modal-backdrop" x-transition.opacity>
         <div class="modal-content slide-up max-w-md">
             <div class="p-6">
                 <div class="flex items-start mb-4">
@@ -212,10 +164,10 @@
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button @click="deleteConfirmOpen = false" class="btn btn-secondary flex-1">ביטול</button>
-                    <button @click="deleteProject()" class="btn btn-danger flex-1" :disabled="saving">
-                        <span x-show="!saving">מחק</span>
-                        <span x-show="saving">מוחק...</span>
+                    <button @click="projectDeleteConfirmOpen = false" class="btn btn-secondary flex-1">ביטול</button>
+                    <button @click="deleteProject()" class="btn btn-danger flex-1" :disabled="projectSaving">
+                        <span x-show="!projectSaving">מחק</span>
+                        <span x-show="projectSaving">מוחק...</span>
                     </button>
                 </div>
             </div>
@@ -225,18 +177,24 @@
 </main>
 
 <script>
-function projectDetail(projectId) {
+function projectDetailPage(projectId) {
+    // יורש מ-kanbanComponent ומוסיף ניהול של פרויקט עצמו
+    const base = kanbanComponent({
+        projectId: projectId,
+        showProjectName: false,
+    });
+
     return {
-        projectId,
+        ...base,
+
+        // נתוני פרויקט
         project: null,
-        tasks: [],
-        clientOptions: [],
-        loading: true,
-        modalOpen: false,
-        deleteConfirmOpen: false,
-        saving: false,
-        error: null,
-        formData: {
+        projectLoading: true,
+        projectModalOpen: false,
+        projectDeleteConfirmOpen: false,
+        projectSaving: false,
+        projectError: null,
+        projectFormData: {
             name: '',
             description: '',
             client_id: '',
@@ -248,19 +206,31 @@ function projectDetail(projectId) {
                 this.loadProject(),
                 this.loadTasks(),
                 this.loadClients(),
+                this.loadProjects(),
             ]);
+            this.$nextTick(() => this.initSortable());
         },
 
-        statusLabel(s) {
-            return {
-                active: 'פעיל',
-                pending: 'בהמתנה',
-                completed: 'הושלם',
-                archived: 'בארכיון',
-            }[s] || s;
+        async loadProject() {
+            this.projectLoading = true;
+            try {
+                const res = await fetch(`/api/projects/${projectId}`);
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (res.ok) {
+                    this.project = await res.json();
+                }
+            } catch (e) {
+                console.error('שגיאה בטעינת פרויקט:', e);
+            } finally {
+                this.projectLoading = false;
+            }
         },
 
-        statusBadgeClass(s) {
+        projectStatusLabel(s) {
+            return { active: 'פעיל', pending: 'בהמתנה', completed: 'הושלם', archived: 'בארכיון' }[s] || s;
+        },
+
+        projectStatusBadgeClass(s) {
             return {
                 active: 'bg-green-50 text-green-700',
                 pending: 'bg-amber-50 text-amber-700',
@@ -269,68 +239,26 @@ function projectDetail(projectId) {
             }[s] || 'bg-slate-100 text-slate-600';
         },
 
-        async loadProject() {
-            this.loading = true;
-            try {
-                const res = await fetch(`/api/projects/${this.projectId}`);
-                if (res.status === 401) { window.location = '/login'; return; }
-                if (res.ok) {
-                    this.project = await res.json();
-                }
-            } catch (e) {
-                console.error('שגיאה בטעינת הפרויקט:', e);
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async loadTasks() {
-            try {
-                const res = await fetch(`/api/projects/${this.projectId}/tasks`);
-                if (res.ok) {
-                    this.tasks = await res.json();
-                }
-            } catch (e) {
-                console.error('שגיאה בטעינת משימות:', e);
-            }
-        },
-
-        async loadClients() {
-            try {
-                const res = await fetch('/api/clients/select-options');
-                if (res.ok) {
-                    this.clientOptions = await res.json();
-                }
-            } catch (e) {
-                console.error('שגיאה בטעינת לקוחות:', e);
-            }
-        },
-
-        openEditModal() {
-            this.formData = {
+        openProjectEditModal() {
+            this.projectFormData = {
                 name: this.project.name || '',
                 description: this.project.description || '',
                 client_id: this.project.client_id || '',
                 status: this.project.status || 'active',
             };
-            this.modalOpen = true;
-        },
-
-        closeModal() {
-            this.modalOpen = false;
-            this.error = null;
+            this.projectError = null;
+            this.projectModalOpen = true;
         },
 
         async saveProject() {
-            this.saving = true;
-            this.error = null;
-
+            this.projectSaving = true;
+            this.projectError = null;
             try {
-                const payload = { ...this.formData };
+                const payload = { ...this.projectFormData };
                 if (!payload.client_id) payload.client_id = null;
                 if (!payload.description || !payload.description.trim()) payload.description = null;
 
-                const res = await fetch(`/api/projects/${this.projectId}`, {
+                const res = await fetch(`/api/projects/${projectId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
@@ -338,26 +266,23 @@ function projectDetail(projectId) {
 
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    this.error = err.detail || 'שגיאה בשמירה';
+                    this.projectError = err.detail || 'שגיאה בשמירה';
                     return;
                 }
 
                 await this.loadProject();
-                this.closeModal();
+                this.projectModalOpen = false;
             } catch (e) {
-                this.error = 'שגיאת רשת';
-                console.error(e);
+                this.projectError = 'שגיאת רשת';
             } finally {
-                this.saving = false;
+                this.projectSaving = false;
             }
         },
 
         async deleteProject() {
-            this.saving = true;
+            this.projectSaving = true;
             try {
-                const res = await fetch(`/api/projects/${this.projectId}`, {
-                    method: 'DELETE',
-                });
+                const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
                 if (!res.ok && res.status !== 204) {
                     const err = await res.json().catch(() => ({}));
                     alert(err.detail || 'שגיאה במחיקה');
@@ -366,9 +291,8 @@ function projectDetail(projectId) {
                 window.location = '/projects';
             } catch (e) {
                 alert('שגיאת רשת');
-                console.error(e);
             } finally {
-                this.saving = false;
+                this.projectSaving = false;
             }
         },
     };

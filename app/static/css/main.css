@@ -240,3 +240,35 @@ html {
     border-radius: 50%;
     margin-bottom: 1rem;
 }
+
+/* =========== Kanban =========== */
+.kanban-column {
+    min-height: 200px;
+}
+
+.kanban-card {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+/* SortableJS classes */
+.task-ghost {
+    opacity: 0.4;
+    background: #dbeafe !important;
+}
+
+.task-chosen {
+    cursor: grabbing !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+.task-drag {
+    transform: rotate(2deg);
+    cursor: grabbing !important;
+}
+
+/* תיקון לגרירה במגע (נייד/טאבלט) */
+.kanban-card {
+    -webkit-touch-callout: none;
+}
