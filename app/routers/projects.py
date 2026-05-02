@@ -4,8 +4,11 @@ from datetime import datetime
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status, Query
+from fastapi.responses import PlainTextResponse, Response
+from pydantic import BaseModel, Field
 from app.core.database import get_database
 from app.core.auth import require_api_auth
+from app.core.markdown_renderer import markdown_to_html
 from app.models.project import (
     Project,
     ProjectCreate,
@@ -15,6 +18,11 @@ from app.models.project import (
 )
 
 router = APIRouter()
+
+
+class MarkdownRenderRequest(BaseModel):
+    """גוף בקשה לרינדור Markdown לתצוגה מקדימה."""
+    text: str = Field(default="", max_length=1_000_000)
 
 
 def _validate_object_id(id_str: str) -> ObjectId:
@@ -35,8 +43,11 @@ def _serialize(doc: dict) -> dict:
     return doc
 
 
-async def _enrich_project(project: dict, db) -> dict:
-    """מעשיר פרויקט בנתוני לקוח, סטטיסטיקות ותגיות"""
+async def _enrich_project(project: dict, db, render_notes: bool = False) -> dict:
+    """מעשיר פרויקט בנתוני לקוח, סטטיסטיקות ותגיות.
+
+    render_notes=True גם מרנדר את notes_md ל-HTML (לתצוגת פרויקט בודד).
+    """
     project = _serialize(project)
     project_id_str = project["_id"]
 
@@ -83,6 +94,13 @@ async def _enrich_project(project: dict, db) -> dict:
         except (InvalidId, TypeError):
             pass
 
+    # רינדור מסמך Markdown של הפרויקט (רק לתצוגת פרויקט בודד)
+    if render_notes and project.get("notes_md"):
+        html, _ = markdown_to_html(project["notes_md"])
+        project["notes_html"] = html
+    else:
+        project["notes_html"] = None
+
     return project
 
 
@@ -100,7 +118,8 @@ async def list_projects(
     if not include_inactive:
         query["status"] = {"$in": ["active", "pending"]}
 
-    cursor = db.projects.find(query).sort([("status", 1), ("name", 1)])
+    # ברשימה לא מחזירים את גוף ה-Markdown כדי לחסוך פס רוחב
+    cursor = db.projects.find(query, {"notes_md": 0}).sort([("status", 1), ("name", 1)])
     projects = await cursor.to_list(length=1000)
 
     result = []
@@ -143,6 +162,14 @@ async def create_project(request: Request, project_data: ProjectCreate):
     return doc
 
 
+@router.post("/_render")
+async def render_markdown_preview(request: Request, body: MarkdownRenderRequest):
+    """רינדור Markdown ל-HTML לתצוגה מקדימה חיה בעורך."""
+    require_api_auth(request)
+    html, _ = markdown_to_html(body.text)
+    return {"html": html}
+
+
 @router.get("/{project_id}", response_model=ProjectWithStats)
 async def get_project(request: Request, project_id: str):
     """החזרת פרויקט לפי ID עם פרטים מלאים"""
@@ -158,7 +185,7 @@ async def get_project(request: Request, project_id: str):
             detail="פרויקט לא נמצא"
         )
 
-    return await _enrich_project(project, db)
+    return await _enrich_project(project, db, render_notes=True)
 
 
 @router.put("/{project_id}", response_model=Project)
@@ -251,3 +278,36 @@ async def list_project_tasks(request: Request, project_id: str):
     cursor = db.tasks.find({"project_id": str(obj_id)}).sort([("status", 1), ("column_order", 1)])
     tasks = await cursor.to_list(length=1000)
     return [_serialize(t) for t in tasks]
+
+
+@router.get("/{project_id}/notes/download")
+async def download_project_notes(request: Request, project_id: str):
+    """הורדת מסמך ה-Markdown של הפרויקט כקובץ .md"""
+    require_api_auth(request)
+    db = get_database()
+
+    obj_id = _validate_object_id(project_id)
+    project = await db.projects.find_one(
+        {"_id": obj_id},
+        {"name": 1, "notes_md": 1}
+    )
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="פרויקט לא נמצא"
+        )
+
+    content = project.get("notes_md") or ""
+    # שם קובץ בטוח: רק תווים נפוצים, השאר מוחלפים בקו תחתון
+    safe_name = "".join(
+        c if c.isalnum() or c in ("-", "_", " ") else "_"
+        for c in (project.get("name") or "project")
+    ).strip() or "project"
+
+    return Response(
+        content=content,
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_name}.md"'
+        },
+    )

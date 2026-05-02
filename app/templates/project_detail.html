@@ -5,6 +5,7 @@
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="/static/js/kanban.js"></script>
+<style>{{ pygments_css|safe }}</style>
 {% endblock %}
 
 {% block body %}
@@ -82,6 +83,110 @@
                             </svg>
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- מסמך פרויקט (Markdown) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <h2 class="text-lg font-bold text-slate-900">מסמך פרויקט</h2>
+                </div>
+                <div class="flex items-center gap-2" x-show="!notesEditing">
+                    <a
+                        x-show="project && project.notes_html"
+                        :href="`/api/projects/${projectId}/notes/download`"
+                        class="btn btn-secondary text-sm"
+                        title="הורדה כקובץ .md"
+                    >
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                        הורדה
+                    </a>
+                    <button @click="openNotesEditor()" class="btn btn-secondary text-sm">
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        <span x-text="project && project.notes_html ? 'עריכה' : 'הוספה'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- מצב תצוגה -->
+            <div x-show="!notesEditing" class="p-6">
+                <div
+                    x-show="project && project.notes_html"
+                    class="markdown-body"
+                    x-html="project ? project.notes_html : ''"
+                ></div>
+                <div x-show="project && !project.notes_html" class="text-center text-slate-500 py-6">
+                    <p class="mb-3">אין עדיין מסמך לפרויקט הזה</p>
+                    <button @click="openNotesEditor()" class="btn btn-primary text-sm">הוסף מסמך</button>
+                </div>
+            </div>
+
+            <!-- מצב עריכה -->
+            <div x-show="notesEditing" x-cloak class="p-6 space-y-3">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="$refs.notesFileInput.click()" class="btn btn-secondary text-sm">
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 14l5-5 5 5M12 9v12"/>
+                            </svg>
+                            העלה קובץ .md
+                        </button>
+                        <input
+                            type="file"
+                            x-ref="notesFileInput"
+                            accept=".md,.markdown,text/markdown,text/plain"
+                            class="hidden"
+                            @change="onNotesFileSelected($event)"
+                        >
+                        <label class="flex items-center cursor-pointer select-none text-sm text-slate-700">
+                            <input type="checkbox" x-model="notesPreviewMode" @change="refreshNotesPreview()" class="w-4 h-4 ml-2">
+                            תצוגה מקדימה
+                        </label>
+                    </div>
+                    <button
+                        type="button"
+                        @click="deleteNotes()"
+                        x-show="project && project.notes_html"
+                        class="text-sm text-red-600 hover:text-red-700"
+                    >
+                        מחק מסמך
+                    </button>
+                </div>
+
+                <div :class="notesPreviewMode ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : ''">
+                    <textarea
+                        x-model="notesDraft"
+                        @input.debounce.300ms="refreshNotesPreview()"
+                        class="form-input font-mono text-sm leading-6"
+                        rows="16"
+                        placeholder="כתוב כאן Markdown... תומך ב-# כותרות, **bold**, רשימות, טבלאות, ```code``` ובלוקי ::: warning :::"
+                        dir="ltr"
+                    ></textarea>
+                    <div
+                        x-show="notesPreviewMode"
+                        class="markdown-body border border-slate-200 rounded-lg p-4 bg-slate-50 overflow-auto"
+                        style="max-height: 28rem;"
+                        x-html="notesPreviewHtml || '<p class=\'text-slate-400\'>אין תצוגה מקדימה</p>'"
+                    ></div>
+                </div>
+
+                <div x-show="notesError" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="notesError"></div>
+
+                <div class="flex gap-2 justify-end">
+                    <button type="button" @click="cancelNotesEdit()" class="btn btn-secondary">ביטול</button>
+                    <button type="button" @click="saveNotes()" class="btn btn-primary" :disabled="notesSaving">
+                        <span x-show="!notesSaving">שמור</span>
+                        <span x-show="notesSaving">שומר...</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -267,6 +372,15 @@ function projectDetailPage(projectId) {
         projectTagPickerOpen: false,
         projectCreatingTag: false,
 
+        // === מסמך Markdown של הפרויקט ===
+        notesEditing: false,
+        notesDraft: '',
+        notesPreviewMode: false,
+        notesPreviewHtml: '',
+        notesSaving: false,
+        notesError: null,
+        _notesPreviewSeq: 0,
+
         async init() {
             await Promise.all([
                 this.loadProject(),
@@ -421,6 +535,89 @@ function projectDetailPage(projectId) {
             } finally {
                 this.projectSaving = false;
             }
+        },
+
+        // === מסמך Markdown של הפרויקט ===
+        openNotesEditor() {
+            this.notesDraft = (this.project && this.project.notes_md) || '';
+            this.notesError = null;
+            this.notesEditing = true;
+            this.refreshNotesPreview();
+        },
+
+        cancelNotesEdit() {
+            this.notesEditing = false;
+            this.notesError = null;
+            this.notesDraft = '';
+            this.notesPreviewHtml = '';
+        },
+
+        async refreshNotesPreview() {
+            if (!this.notesPreviewMode) return;
+            const seq = ++this._notesPreviewSeq;
+            try {
+                const res = await fetch('/api/projects/_render', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: this.notesDraft || '' }),
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (seq !== this._notesPreviewSeq) return; // התעלם מתשובות מיושנות
+                this.notesPreviewHtml = data.html || '';
+            } catch (e) {
+                // התצוגה המקדימה לא קריטית
+            }
+        },
+
+        onNotesFileSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            if (file.size > 1_000_000) {
+                this.notesError = 'הקובץ גדול מדי (עד 1MB)';
+                event.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                this.notesDraft = String(reader.result || '');
+                this.refreshNotesPreview();
+            };
+            reader.onerror = () => { this.notesError = 'שגיאה בקריאת הקובץ'; };
+            reader.readAsText(file);
+            event.target.value = '';
+        },
+
+        async saveNotes() {
+            this.notesSaving = true;
+            this.notesError = null;
+            try {
+                const payload = { notes_md: this.notesDraft && this.notesDraft.length ? this.notesDraft : null };
+                const res = await fetch(`/api/projects/${projectId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.notesError = err.detail || 'שגיאה בשמירה';
+                    return;
+                }
+                await this.loadProject();
+                this.notesEditing = false;
+                this.notesDraft = '';
+                this.notesPreviewHtml = '';
+            } catch (e) {
+                this.notesError = 'שגיאת רשת';
+            } finally {
+                this.notesSaving = false;
+            }
+        },
+
+        async deleteNotes() {
+            if (!confirm('למחוק את המסמך של הפרויקט?')) return;
+            this.notesDraft = '';
+            await this.saveNotes();
         },
     };
 }
