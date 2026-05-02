@@ -192,10 +192,14 @@ function kanbanComponent(config = {}) {
                 // בגרירה בתוך אותה עמודה, אם זזנו לאחור (oldIndex > newIndex),
                 // האיבר ב-oldIndex כבר זז מקום לאחר הוצאת evt.item מהעץ.
                 // לכן צריך לכוון לאיבר הבא כדי להחזיר בדיוק למיקום המקורי.
+                // חשוב: Sortable מחשב אינדקסים רק עבור פריטי גרירה, ולכן
+                // אנחנו מסתמכים על רשימת כרטיסים (data-task-id) ולא על children.
                 const isSameColumn = evt.from === evt.to;
                 const movedBackwardInSameColumn = isSameColumn && evt.oldIndex > evt.newIndex;
                 const referenceIndex = movedBackwardInSameColumn ? evt.oldIndex + 1 : evt.oldIndex;
-                const reference = evt.from.children[referenceIndex] || null;
+                const taskElements = Array.from(evt.from.children)
+                    .filter(el => el.dataset && el.dataset.taskId);
+                const reference = taskElements[referenceIndex] || null;
                 evt.from.insertBefore(evt.item, reference);
             }
 
