@@ -87,8 +87,22 @@
             </div>
         </div>
 
-        <!-- מסמכי פרויקט (Markdown) -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+        <!-- כותרת + כפתור משימה חדשה -->
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-slate-900">משימות</h2>
+            <button @click="openCreateModal('open')" class="btn btn-primary">
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                משימה חדשה
+            </button>
+        </div>
+
+        <!-- רכיב Kanban -->
+        {% include "_kanban.html" %}
+
+        <!-- מסמכי פרויקט (Markdown) - מתחת ללוח המשימות -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mt-6 mb-6 overflow-hidden">
             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-wrap gap-2">
                 <div class="flex items-center gap-2">
                     <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,8 +145,12 @@
                 <button @click="newDocument()" class="btn btn-primary text-sm">צור מסמך ראשון</button>
             </div>
 
-            <!-- רשימת מסמכים + תצוגת מסמך נבחר (גם כאשר יוצרים מסמך ראשון) -->
-            <div x-show="documentsList.length > 0 || documentEditing" class="grid grid-cols-1 md:grid-cols-[260px_1fr] divide-slate-200 md:divide-x md:divide-x-reverse">
+            <!--
+                רשימת מסמכים + תצוגת מסמך נבחר.
+                minmax(0,1fr) במקום 1fr פותר את הבאג שבו המסמך הראשון
+                מוצג בעמודה צרה כשהתוכן הפנימי מאלץ min-content רחב.
+            -->
+            <div x-show="documentsList.length > 0 || documentEditing" class="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] divide-slate-200 md:divide-x md:divide-x-reverse">
                 <!-- סייד-בר רשימה (מסתתר כשהרשימה ריקה) -->
                 <aside x-show="documentsList.length > 0" class="border-b md:border-b-0 border-slate-200 max-h-96 md:max-h-[40rem] overflow-y-auto">
                     <ul class="divide-y divide-slate-100">
@@ -153,7 +171,7 @@
                 </aside>
 
                 <!-- אזור תצוגה/עריכה -->
-                <section class="p-6 min-w-0">
+                <section class="p-6 min-w-0 w-full">
                     <div x-show="documentLoading" class="text-center py-8">
                         <svg class="w-6 h-6 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -213,18 +231,19 @@
                             </label>
                         </div>
 
-                        <div :class="documentPreviewMode ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : ''">
+                        <!-- minmax(0,1fr) פעם נוספת ב-grid הפנימי, וכן min-w-0 על הילדים, כדי שהקלט/תצוגה לא יקרסו לרוחב min-content -->
+                        <div :class="documentPreviewMode ? 'grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3' : ''">
                             <textarea
                                 x-model="documentDraft.content_md"
                                 @input.debounce.300ms="refreshDocPreview()"
-                                class="form-input font-mono text-sm leading-6"
+                                class="form-input font-mono text-sm leading-6 min-w-0 w-full"
                                 rows="18"
                                 placeholder="כתוב כאן Markdown... תומך ב-# כותרות, **bold**, רשימות, טבלאות, ```code``` ובלוקי ::: warning :::"
                                 dir="ltr"
                             ></textarea>
                             <div
                                 x-show="documentPreviewMode"
-                                class="markdown-body border border-slate-200 rounded-lg p-4 bg-slate-50 overflow-auto"
+                                class="markdown-body border border-slate-200 rounded-lg p-4 bg-slate-50 overflow-auto min-w-0 w-full"
                                 style="max-height: 32rem;"
                                 x-html="documentPreviewHtml || '<p class=\'text-slate-400\'>אין תצוגה מקדימה</p>'"
                             ></div>
@@ -243,20 +262,6 @@
                 </section>
             </div>
         </div>
-
-        <!-- כותרת + כפתור משימה חדשה -->
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-slate-900">משימות</h2>
-            <button @click="openCreateModal('open')" class="btn btn-primary">
-                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                משימה חדשה
-            </button>
-        </div>
-
-        <!-- רכיב Kanban -->
-        {% include "_kanban.html" %}
     </div>
 
     <!-- מודאל עריכת פרויקט -->
