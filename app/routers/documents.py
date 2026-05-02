@@ -1,5 +1,6 @@
 """ראוטר לניהול מסמכי-Markdown של פרויקט."""
 from datetime import datetime
+from urllib.parse import quote
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import Response
@@ -231,15 +232,23 @@ async def download_document(request: Request, project_id: str, doc_id: str):
         )
 
     content = doc.get("content_md") or ""
-    safe_name = "".join(
-        c if c.isalnum() or c in ("-", "_", " ") else "_"
-        for c in (doc.get("title") or "document")
-    ).strip() or "document"
+    title = (doc.get("title") or "document").strip() or "document"
+
+    # RFC 6266 / RFC 5987: filename ב-ASCII בלבד כ-fallback, ו-filename*
+    # ב-UTF-8 percent-encoded לתמיכה בעברית ושפות אחרות.
+    ascii_fallback = "".join(
+        c if (c.isascii() and (c.isalnum() or c in ("-", "_", " "))) else "_"
+        for c in title
+    ).strip("_ ") or "document"
+    utf8_encoded = quote(f"{title}.md", safe="")
 
     return Response(
         content=content,
         media_type="text/markdown; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="{safe_name}.md"'
+            "Content-Disposition": (
+                f'attachment; filename="{ascii_fallback}.md"; '
+                f"filename*=UTF-8''{utf8_encoded}"
+            )
         },
     )

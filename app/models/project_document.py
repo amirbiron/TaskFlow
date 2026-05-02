@@ -42,20 +42,3 @@ class ProjectDocumentUpdate(BaseModel):
 class ProjectDocument(MongoBaseModel, ProjectDocumentBase):
     """מסמך פרויקט מלא, כולל התוכן."""
     pass
-
-
-class ProjectDocumentSummary(BaseModel):
-    """סיכום לרשימה - בלי תוכן, כדי לחסוך פס רוחב."""
-    id: str = Field(alias="_id")
-    project_id: str
-    title: str
-    created_at: str
-    updated_at: str
-
-    class Config:
-        populate_by_name = True
-
-
-class ProjectDocumentWithHtml(ProjectDocument):
-    """מסמך מלא עם HTML מרונדר."""
-    content_html: Optional[str] = None

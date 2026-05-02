@@ -3,7 +3,6 @@ from app.models.client import Client, ClientCreate, ClientUpdate, ClientWithStat
 from app.models.project import Project, ProjectCreate, ProjectUpdate, ProjectStatus, ProjectWithStats
 from app.models.project_document import (
     ProjectDocument, ProjectDocumentCreate, ProjectDocumentUpdate,
-    ProjectDocumentSummary, ProjectDocumentWithHtml,
 )
 from app.models.task import Task, TaskCreate, TaskUpdate, TaskStatus, TaskPriority, TaskStatusUpdate, TaskOrderUpdate, TaskWithContext
 from app.models.attachment import Attachment, AttachmentCreate
@@ -15,7 +14,6 @@ __all__ = [
     "Client", "ClientCreate", "ClientUpdate", "ClientWithStats",
     "Project", "ProjectCreate", "ProjectUpdate", "ProjectStatus", "ProjectWithStats",
     "ProjectDocument", "ProjectDocumentCreate", "ProjectDocumentUpdate",
-    "ProjectDocumentSummary", "ProjectDocumentWithHtml",
     "Task", "TaskCreate", "TaskUpdate", "TaskStatus", "TaskPriority",
     "TaskStatusUpdate", "TaskOrderUpdate", "TaskWithContext",
     "Attachment", "AttachmentCreate",
