@@ -5,7 +5,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from app.core.database import get_database
-from app.core.auth import is_authenticated
+from app.core.auth import require_api_auth
 from app.models.client import (
     Client,
     ClientCreate,
@@ -14,15 +14,6 @@ from app.models.client import (
 )
 
 router = APIRouter()
-
-
-def _check_auth(request: Request):
-    """בדיקת הזדהות פנימית"""
-    if not is_authenticated(request):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="לא מחובר"
-        )
 
 
 def _validate_object_id(id_str: str) -> ObjectId:
@@ -46,7 +37,7 @@ def _serialize(doc: dict) -> dict:
 @router.get("", response_model=List[ClientWithStats])
 async def list_clients(request: Request):
     """החזרת כל הלקוחות עם סטטיסטיקות"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     clients_cursor = db.clients.find().sort("name", 1)
@@ -77,7 +68,7 @@ async def list_clients(request: Request):
 @router.get("/select-options")
 async def list_clients_for_select(request: Request):
     """רשימה מצומצמת של לקוחות (id, name, color) לשימוש בטפסים"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     cursor = db.clients.find(
@@ -99,7 +90,7 @@ async def list_clients_for_select(request: Request):
 @router.post("", response_model=Client, status_code=status.HTTP_201_CREATED)
 async def create_client(request: Request, client_data: ClientCreate):
     """יצירת לקוח חדש"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     now = datetime.utcnow()
@@ -116,7 +107,7 @@ async def create_client(request: Request, client_data: ClientCreate):
 @router.get("/{client_id}", response_model=Client)
 async def get_client(request: Request, client_id: str):
     """החזרת לקוח לפי ID"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(client_id)
@@ -138,7 +129,7 @@ async def update_client(
     update_data: ClientUpdate
 ):
     """עדכון לקוח"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(client_id)
@@ -167,7 +158,7 @@ async def delete_client(request: Request, client_id: str):
     מחיקת לקוח.
     הפרויקטים והמשימות שלו לא נמחקים - רק מנותקים (client_id הופך ל-null)
     """
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(client_id)

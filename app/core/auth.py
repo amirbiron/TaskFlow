@@ -46,6 +46,15 @@ def is_authenticated(request: Request) -> bool:
     return verify_session_token(token) if token else False
 
 
+def require_api_auth(request: Request) -> None:
+    """דורש הזדהות עבור endpoints של ה-API; זורק 401 אם לא מחובר"""
+    if not is_authenticated(request):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="לא מחובר",
+        )
+
+
 async def require_auth(request: Request):
     """
     Dependency של FastAPI - דורש שהמשתמש יהיה מחובר.

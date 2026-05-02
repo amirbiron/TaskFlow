@@ -1,24 +1,15 @@
 """ראוטר לסטטיסטיקות הדשבורד - API"""
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request
 from app.core.database import get_database
-from app.core.auth import is_authenticated
+from app.core.auth import require_api_auth
 
 router = APIRouter()
-
-
-def _check_auth(request: Request):
-    """בדיקת הזדהות פנימית"""
-    if not is_authenticated(request):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="לא מחובר"
-        )
 
 
 @router.get("/stats")
 async def dashboard_stats(request: Request):
     """החזרת סטטיסטיקות מצרפיות לדשבורד"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     open_tasks = await db.tasks.count_documents({

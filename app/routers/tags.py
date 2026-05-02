@@ -5,18 +5,10 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from app.core.database import get_database
-from app.core.auth import is_authenticated
+from app.core.auth import require_api_auth
 from app.models.tag import Tag, TagCreate, TagUpdate, TagWithUsage
 
 router = APIRouter()
-
-
-def _check_auth(request: Request):
-    if not is_authenticated(request):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="לא מחובר"
-        )
 
 
 def _validate_object_id(id_str: str) -> ObjectId:
@@ -38,7 +30,7 @@ def _serialize(doc: dict) -> dict:
 @router.get("", response_model=List[TagWithUsage])
 async def list_tags(request: Request):
     """החזרת כל התגיות עם מידע על שימוש"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     cursor = db.tags.find().sort("name", 1)
@@ -63,7 +55,7 @@ async def list_tags(request: Request):
 @router.post("", response_model=Tag, status_code=status.HTTP_201_CREATED)
 async def create_tag(request: Request, tag_data: TagCreate):
     """יצירת תגית חדשה"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     # בדיקה שאין כבר תגית עם אותו שם
@@ -89,7 +81,7 @@ async def create_tag(request: Request, tag_data: TagCreate):
 @router.get("/{tag_id}", response_model=Tag)
 async def get_tag(request: Request, tag_id: str):
     """החזרת תגית לפי ID"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(tag_id)
@@ -107,7 +99,7 @@ async def get_tag(request: Request, tag_id: str):
 @router.put("/{tag_id}", response_model=Tag)
 async def update_tag(request: Request, tag_id: str, update_data: TagUpdate):
     """עדכון תגית"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(tag_id)
@@ -149,7 +141,7 @@ async def delete_tag(request: Request, tag_id: str):
     מחיקת תגית.
     התגית מוסרת מכל המשימות והפרויקטים שמשויכים אליה.
     """
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(tag_id)

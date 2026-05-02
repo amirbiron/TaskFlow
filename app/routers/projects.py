@@ -5,7 +5,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from app.core.database import get_database
-from app.core.auth import is_authenticated
+from app.core.auth import require_api_auth
 from app.models.project import (
     Project,
     ProjectCreate,
@@ -15,15 +15,6 @@ from app.models.project import (
 )
 
 router = APIRouter()
-
-
-def _check_auth(request: Request):
-    """בדיקת הזדהות פנימית"""
-    if not is_authenticated(request):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="לא מחובר"
-        )
 
 
 def _validate_object_id(id_str: str) -> ObjectId:
@@ -101,7 +92,7 @@ async def list_projects(
     include_inactive: bool = Query(False, description="האם לכלול פרויקטים שהושלמו או בארכיון"),
 ):
     """החזרת פרויקטים עם סטטיסטיקות ופרטי לקוח"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     # ברירת מחדל: רק פעילים + בהמתנה
@@ -123,7 +114,7 @@ async def list_projects(
 @router.post("", response_model=Project, status_code=status.HTTP_201_CREATED)
 async def create_project(request: Request, project_data: ProjectCreate):
     """יצירת פרויקט חדש"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     # אם יש client_id - לוודא שהוא תקין
@@ -155,7 +146,7 @@ async def create_project(request: Request, project_data: ProjectCreate):
 @router.get("/{project_id}", response_model=ProjectWithStats)
 async def get_project(request: Request, project_id: str):
     """החזרת פרויקט לפי ID עם פרטים מלאים"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(project_id)
@@ -177,7 +168,7 @@ async def update_project(
     update_data: ProjectUpdate
 ):
     """עדכון פרויקט"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(project_id)
@@ -222,7 +213,7 @@ async def delete_project(request: Request, project_id: str):
     מחיקת פרויקט.
     המשימות של הפרויקט נמחקות גם הן.
     """
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(project_id)
@@ -246,7 +237,7 @@ async def delete_project(request: Request, project_id: str):
 @router.get("/{project_id}/tasks")
 async def list_project_tasks(request: Request, project_id: str):
     """החזרת המשימות של פרויקט (פלייסהולדר עד שלב 4)"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(project_id)
