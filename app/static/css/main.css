@@ -249,11 +249,20 @@ html {
 .kanban-card {
     user-select: none;
     -webkit-user-select: none;
-    /* none במקום manipulation: הדפדפן לא חוטף את אירועי המגע
-       על הכרטיס, כך ש-SortableJS (ב-forceFallback) יכול לטפל
-       בלחיצה ארוכה + גרירה גם בנייד. הגלילה של הדף/עמודה
-       עדיין עובדת כי היא נעשית מאזורים אחרים. */
+    /* גוף הכרטיס: מאפשרים מגע רגיל לגלילה ולחיצה.
+       רק ידית הגרירה (.drag-handle) חוטפת את אירועי המגע. */
+    touch-action: manipulation;
+}
+
+/* ידית הגרירה: מהווה את המקום היחיד שממנו Sortable מתחיל גרירה */
+.drag-handle {
+    cursor: grab;
+    /* none מבטיח ש-SortableJS מקבל את אירועי המגע מבלי שהדפדפן
+       יחטוף אותם לגלילה/זום. */
     touch-action: none;
+}
+.drag-handle:active {
+    cursor: grabbing;
 }
 
 /* SortableJS classes */
