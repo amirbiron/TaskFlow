@@ -9,7 +9,7 @@
 
 {% block body %}
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in"
-      x-data="projectDetailPage('{{ project_id }}')" x-init="init()">
+      x-data="projectDetailPage('{{ project_id }}')">
 
     <div x-show="projectLoading" class="text-center py-12">
         <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
@@ -298,7 +298,7 @@ function projectDetailPage(projectId) {
         projectStatusBadgeClass(s) {
             return {
                 active: 'bg-green-50 text-green-700',
-                pending: 'bg-amber-50 text-amber-700',
+                pending: 'bg-orange-50 text-orange-700',
                 completed: 'bg-blue-50 text-blue-700',
                 archived: 'bg-slate-100 text-slate-600',
             }[s] || 'bg-slate-100 text-slate-600';

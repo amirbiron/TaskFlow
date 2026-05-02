@@ -5,7 +5,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from app.core.database import get_database
-from app.core.auth import is_authenticated
+from app.core.auth import require_api_auth
 from app.models.task import (
     Task,
     TaskCreate,
@@ -17,14 +17,6 @@ from app.models.task import (
 )
 
 router = APIRouter()
-
-
-def _check_auth(request: Request):
-    if not is_authenticated(request):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="לא מחובר"
-        )
 
 
 def _validate_object_id(id_str: str) -> ObjectId:
@@ -149,7 +141,7 @@ async def list_tasks(
     status_filter: Optional[str] = Query(None, alias="status", description="סינון לפי סטטוס"),
 ):
     """החזרת רשימת משימות עם פרטי פרויקט ולקוח"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     query = {}
@@ -174,7 +166,7 @@ async def list_tasks(
 @router.post("", response_model=Task, status_code=status.HTTP_201_CREATED)
 async def create_task(request: Request, task_data: TaskCreate):
     """יצירת משימה חדשה"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     # ולידציה של פרויקט
@@ -202,7 +194,7 @@ async def create_task(request: Request, task_data: TaskCreate):
 @router.get("/{task_id}", response_model=TaskWithContext)
 async def get_task(request: Request, task_id: str):
     """החזרת משימה לפי ID"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(task_id)
@@ -220,7 +212,7 @@ async def get_task(request: Request, task_id: str):
 @router.put("/{task_id}", response_model=Task)
 async def update_task(request: Request, task_id: str, update_data: TaskUpdate):
     """עדכון משימה"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(task_id)
@@ -269,7 +261,7 @@ async def update_task_status(
     update: TaskStatusUpdate,
 ):
     """עדכון סטטוס בלבד (לגרירה בין עמודות)"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(task_id)
@@ -308,7 +300,7 @@ async def update_task_order(
     update: TaskOrderUpdate,
 ):
     """עדכון סדר בלבד (לגרירה בתוך עמודה)"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(task_id)
@@ -343,7 +335,7 @@ async def reorder_tasks(request: Request, payload: dict):
         ]
     }
     """
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     tasks_to_update = payload.get("tasks", [])
@@ -388,7 +380,7 @@ async def reorder_tasks(request: Request, payload: dict):
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(request: Request, task_id: str):
     """מחיקת משימה"""
-    _check_auth(request)
+    require_api_auth(request)
     db = get_database()
 
     obj_id = _validate_object_id(task_id)

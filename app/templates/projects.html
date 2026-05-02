@@ -3,7 +3,7 @@
 {% block title %}פרויקטים - TaskFlow{% endblock %}
 
 {% block body %}
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in" x-data="projectsManager()" x-init="init()">
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in" x-data="projectsManager()">
 
     <!-- כותרת + כפתור הוספה -->
     <div class="flex justify-between items-center mb-6 md:mb-8">
@@ -272,7 +272,7 @@ function projectsManager() {
         statusBadgeClass(s) {
             return {
                 active: 'bg-green-50 text-green-700',
-                pending: 'bg-amber-50 text-amber-700',
+                pending: 'bg-orange-50 text-orange-700',
                 completed: 'bg-blue-50 text-blue-700',
                 archived: 'bg-slate-100 text-slate-600',
             }[s] || 'bg-slate-100 text-slate-600';
