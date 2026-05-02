@@ -159,41 +159,38 @@ function kanbanComponent(config = {}) {
                     ghostClass: 'task-ghost',
                     chosenClass: 'task-chosen',
                     dragClass: 'task-drag',
-                    // תיקון לגרירה במגע - דורש החזקה לפני גרירה
+                    // תיקון לגרירה במגע - דורש החזקה לפני גרירה (רק במגע)
                     delay: 250,
                     delayOnTouchOnly: true,
                     touchStartThreshold: 5,
-                    // תיקון לסקרול בנייד
-                    forceFallback: true,
-                    fallbackTolerance: 5,
-                    onEnd: (evt) => this.handleDragEnd(evt, col.id),
+                    onEnd: (evt) => this.handleDragEnd(evt),
                 });
             });
         },
 
-        async handleDragEnd(evt, newStatus) {
+        async handleDragEnd(evt) {
+            // קודם קוראים את הסדר/סטטוס החדש מה-DOM (כפי ש-Sortable עדכן אותו)
             const updates = [];
-            const targetTasks = Array.from(evt.to.children).filter(c => c.dataset && c.dataset.taskId);
-            const targetColumn = evt.to.dataset.status;
-
-            targetTasks.forEach((el, index) => {
-                updates.push({
-                    id: el.dataset.taskId,
-                    status: targetColumn,
-                    column_order: index,
-                });
-            });
-
-            if (evt.from !== evt.to) {
-                const sourceTasks = Array.from(evt.from.children).filter(c => c.dataset && c.dataset.taskId);
-                const sourceColumn = evt.from.dataset.status;
-                sourceTasks.forEach((el, index) => {
-                    updates.push({
-                        id: el.dataset.taskId,
-                        status: sourceColumn,
-                        column_order: index,
+            const collectFromColumn = (columnEl) => {
+                const status = columnEl.dataset.status;
+                Array.from(columnEl.children)
+                    .filter(c => c.dataset && c.dataset.taskId)
+                    .forEach((el, index) => {
+                        updates.push({
+                            id: el.dataset.taskId,
+                            status,
+                            column_order: index,
+                        });
                     });
-                });
+            };
+            collectFromColumn(evt.to);
+            if (evt.from !== evt.to) collectFromColumn(evt.from);
+
+            // מחזירים את הצומת למיקום המקורי כדי ש-Alpine יבנה את ה-DOM מחדש
+            // מתוך this.tasks בלי קונפליקט עם המהלך הידני של Sortable.
+            if (evt.from !== evt.to || evt.oldIndex !== evt.newIndex) {
+                const reference = evt.from.children[evt.oldIndex] || null;
+                evt.from.insertBefore(evt.item, reference);
             }
 
             try {
@@ -202,10 +199,12 @@ function kanbanComponent(config = {}) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tasks: updates }),
                 });
-                await this.loadTasks();
             } catch (e) {
                 console.error('שגיאה בעדכון סדר:', e);
+            } finally {
                 await this.loadTasks();
+                // לחבר מחדש את SortableJS לצמתים שנבנו מחדש על-ידי Alpine
+                this.$nextTick(() => this.initSortable());
             }
         },
 
