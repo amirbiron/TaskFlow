@@ -12,6 +12,15 @@ class ProjectStatus(str, Enum):
     ARCHIVED = "archived"  # בארכיון
 
 
+class TagDetail(BaseModel):
+    """פרטי תגית שמוחזרים בתוך פרויקט/משימה לתצוגה ויזואלית"""
+    id: str = Field(alias="_id")
+    name: str
+    color: str = "#3B82F6"
+
+    model_config = {"populate_by_name": True}
+
+
 class ProjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
@@ -42,3 +51,4 @@ class ProjectWithStats(Project):
     completed_tasks_count: int = 0
     client_name: Optional[str] = None
     client_color: Optional[str] = None
+    tag_details: List[TagDetail] = Field(default_factory=list)
