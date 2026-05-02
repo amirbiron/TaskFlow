@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}דשבורד - TaskFlow{% endblock %}
+
+{% block body %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in">
+    <div class="mb-6 md:mb-8">
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900">ברוך הבא 👋</h2>
+        <p class="text-slate-600 mt-2 text-sm md:text-base">סטטיסטיקות ומשימות מרכזיות יוצגו כאן בקרוב.</p>
+    </div>
+
+    <!-- כרטיסי סטטיסטיקה -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-slate-200">
+            <div class="text-xs md:text-sm text-slate-600 mb-1">משימות פתוחות</div>
+            <div class="text-2xl md:text-3xl font-bold text-slate-900">—</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-slate-200">
+            <div class="text-xs md:text-sm text-slate-600 mb-1">משימות דחופות</div>
+            <div class="text-2xl md:text-3xl font-bold text-red-600">—</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-slate-200">
+            <div class="text-xs md:text-sm text-slate-600 mb-1">פרויקטים פעילים</div>
+            <div class="text-2xl md:text-3xl font-bold text-primary-600">—</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-slate-200">
+            <div class="text-xs md:text-sm text-slate-600 mb-1">לקוחות</div>
+            <div class="text-2xl md:text-3xl font-bold text-slate-900">—</div>
+        </div>
+    </div>
+
+    <!-- הודעת שלב -->
+    <div class="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-slate-200 text-center">
+        <div class="empty-state-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-slate-900 mb-2">שלב 2 הושלם — ניהול לקוחות זמין</h3>
+        <p class="text-slate-600 max-w-md mx-auto">
+            עבור לעמוד הלקוחות והוסף את הלקוחות הראשונים שלך.
+            בשלבים הבאים נוסיף ניהול פרויקטים ומשימות.
+        </p>
+        <div class="mt-6">
+            <a href="/clients" class="btn btn-primary">
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                לעמוד הלקוחות
+            </a>
+        </div>
+    </div>
+</main>
+{% endblock %}
