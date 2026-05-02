@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 import re
+import secrets
 from functools import lru_cache
 from typing import Tuple
 
@@ -62,27 +63,41 @@ def _preprocess_markdown(text: str) -> str:
     """ממיר בלוקי `::: type ... :::` ל-<div class='alert alert-*'>.
 
     מדלג על תוכן שבתוך בלוקי קוד עטופים (```/~~~) כדי לא לפגוע בהם.
+    הפלייסהולדרים מקבלים נונס אקראי לכל קריאה כדי שלא ניתן יהיה
+    להזריק אותם דרך קלט משתמש.
     """
     if not text:
         return ""
 
-    # שלב 1: שמור בלוקי קוד מחוץ למקום ובמקומם הנח placeholder ייחודי.
+    # נונס ייחודי לכל קריאה - מונע התנגשות עם קלט משתמש זדוני
+    nonce = secrets.token_hex(8)
+    placeholder_re = re.compile(rf"\x00FENCE_{nonce}_(\d+)\x00")
+
     fences: list[str] = []
 
     def _stash(match: re.Match) -> str:
         idx = len(fences)
         fences.append(match.group(0))
-        # מחרוזת פלייסהולדר בלי ::: שלא תיתפס ע"י ה-regex של ה-admonitions.
-        return f"\x00FENCE{idx}\x00"
+        return f"\x00FENCE_{nonce}_{idx}\x00"
 
+    def _restore_placeholder(match: re.Match) -> str:
+        idx = int(match.group(1))
+        # אינדקס לא חוקי = להשאיר כמו שהוא (לא ליפול עם IndexError)
+        return fences[idx] if 0 <= idx < len(fences) else match.group(0)
+
+    # שלב 1: שמור בלוקי קוד עטופים מחוץ לטקסט.
     stashed = _FENCED_CODE_RE.sub(_stash, text)
 
-    # שלב 2: עיבוד ה-admonitions על הטקסט "הנקי" מבלוקי הקוד.
+    # שלב 2: עיבוד admonitions על הטקסט הנקי מבלוקי קוד.
     def _replace(match: re.Match) -> str:
         kind = match.group(1).lower()
         body = match.group(2).strip()
+        # אם בגוף ה-admonition יש בלוקי קוד שנשמרו - מחזירים אותם
+        # לפני הרינדור הפנימי, כדי שמנוע ה-Markdown יוכל לעבד אותם.
+        body = placeholder_re.sub(_restore_placeholder, body)
         css_class = _TYPE_MAP.get(kind, "info")
-        inner = markdown.markdown(body, extensions=["nl2br"])
+        # fenced_code + nl2br כדי שגם בלוקי קוד בתוך admonitions יתורגמו
+        inner = markdown.markdown(body, extensions=["nl2br", "fenced_code"])
         clean_inner = bleach.clean(
             inner,
             tags=ALLOWED_TAGS,
@@ -94,11 +109,8 @@ def _preprocess_markdown(text: str) -> str:
 
     processed = _ADMONITION_RE.sub(_replace, stashed)
 
-    # שלב 3: החזרת בלוקי הקוד המקוריים למקומם.
-    def _restore(match: re.Match) -> str:
-        return fences[int(match.group(1))]
-
-    return re.sub(r"\x00FENCE(\d+)\x00", _restore, processed)
+    # שלב 3: החזרת בלוקי קוד שנותרו (כאלה שלא היו בתוך admonition).
+    return placeholder_re.sub(_restore_placeholder, processed)
 
 
 # ---------- אבטחה: rel="noopener noreferrer" על target="_blank" ----------
