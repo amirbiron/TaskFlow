@@ -15,7 +15,7 @@ class ProjectStatus(str, Enum):
 class ProjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
-    client_id: Optional[PyObjectId] = None
+    client_id: Optional[str] = None
     status: ProjectStatus = ProjectStatus.ACTIVE
     tags: List[str] = Field(default_factory=list)
 
@@ -27,10 +27,18 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    client_id: Optional[PyObjectId] = None
+    client_id: Optional[str] = None
     status: Optional[ProjectStatus] = None
     tags: Optional[List[str]] = None
 
 
 class Project(MongoBaseModel, ProjectBase):
     pass
+
+
+class ProjectWithStats(Project):
+    """פרויקט עם נתונים נלווים - לתצוגות רשימה"""
+    open_tasks_count: int = 0
+    completed_tasks_count: int = 0
+    client_name: Optional[str] = None
+    client_color: Optional[str] = None

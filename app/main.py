@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.database import connect_to_mongo, close_mongo_connection
-from app.routers import auth, pages, clients
+from app.routers import auth, pages, clients, projects
 
 
 @asynccontextmanager
@@ -23,7 +23,7 @@ settings = get_settings()
 app = FastAPI(
     title=settings.app_name,
     description="מערכת לניהול פרויקטים, משימות ולקוחות",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -34,6 +34,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(auth.router, tags=["auth"])
 app.include_router(pages.router, tags=["pages"])
 app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
+app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 
 
 if __name__ == "__main__":
