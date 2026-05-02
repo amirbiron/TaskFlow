@@ -237,10 +237,11 @@
 <script src="/static/js/tag-picker.js"></script>
 <script>
 function projectsManager() {
+    // שימוש ב-Object.assign על האובייקט המוחזר מ-tagPicker
+    // כדי לשמר את ה-getters (selectedTagDetails / availableTags / canCreateNewTag)
+    // כ-descriptors. spread היה מעריך אותם כשעדיין אין formData ולכן זורק.
     const tp = tagPicker();
-    return {
-        ...tp,
-
+    return Object.assign(tp, {
         projects: [],
         clientOptions: [],
         loading: true,
@@ -348,7 +349,7 @@ function projectsManager() {
                 this.saving = false;
             }
         },
-    };
+    });
 }
 </script>
 
