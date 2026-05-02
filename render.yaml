@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: taskflow
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: MONGODB_URL
+        sync: false
+      - key: DATABASE_NAME
+        value: taskflow
+      - key: APP_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SESSION_MAX_AGE_DAYS
+        value: 30
+      - key: APP_NAME
+        value: TaskFlow
+      - key: DEBUG
+        value: false
+      - key: PYTHON_VERSION
+        value: 3.11.9
