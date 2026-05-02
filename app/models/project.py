@@ -1,0 +1,36 @@
+"""מודל פרויקט"""
+from typing import Optional, List
+from enum import Enum
+from pydantic import BaseModel, Field
+from app.models.base import MongoBaseModel, PyObjectId
+
+
+class ProjectStatus(str, Enum):
+    ACTIVE = "active"  # פעיל
+    PENDING = "pending"  # בהמתנה
+    COMPLETED = "completed"  # הושלם
+    ARCHIVED = "archived"  # בארכיון
+
+
+class ProjectBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    client_id: Optional[PyObjectId] = None
+    status: ProjectStatus = ProjectStatus.ACTIVE
+    tags: List[str] = Field(default_factory=list)
+
+
+class ProjectCreate(ProjectBase):
+    pass
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    client_id: Optional[PyObjectId] = None
+    status: Optional[ProjectStatus] = None
+    tags: Optional[List[str]] = None
+
+
+class Project(MongoBaseModel, ProjectBase):
+    pass
