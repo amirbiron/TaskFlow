@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, Field
 from app.models.base import MongoBaseModel
+from app.models.project import TagDetail
 
 
 class TaskStatus(str, Enum):
@@ -82,3 +83,4 @@ class TaskWithContext(Task):
     project_name: Optional[str] = None
     client_name: Optional[str] = None
     client_color: Optional[str] = None
+    tag_details: List[TagDetail] = Field(default_factory=list)

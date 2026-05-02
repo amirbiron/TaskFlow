@@ -234,14 +234,13 @@
 
 </main>
 
-<script src="/static/js/tag-picker.js"></script>
 <script>
 function projectsManager() {
-    // שימוש ב-Object.assign על האובייקט המוחזר מ-tagPicker
-    // כדי לשמר את ה-getters (selectedTagDetails / availableTags / canCreateNewTag)
-    // כ-descriptors. spread היה מעריך אותם כשעדיין אין formData ולכן זורק.
-    const tp = tagPicker();
-    return Object.assign(tp, {
+    // הלוגיקה של בורר התגיות מוגדרת כאן ישירות (במקום שימוש ב-tagPicker
+    // השיתופי + Object.assign), כדי שכל ה-getters וה-state יהיו על אותו
+    // אובייקט שמועבר ל-Alpine, בלי תלות בסדר אתחול.
+    return {
+        // === נתוני הפרויקטים ===
         projects: [],
         clientOptions: [],
         loading: true,
@@ -257,6 +256,82 @@ function projectsManager() {
             tags: [],
         },
 
+        // === בורר תגיות (inline) ===
+        allTags: [],
+        tagSearchQuery: '',
+        tagPickerOpen: false,
+        creatingTag: false,
+
+        get selectedTagDetails() {
+            const ids = (this.formData && this.formData.tags) || [];
+            if (!ids.length || !this.allTags.length) return [];
+            return ids
+                .map(tagId => this.allTags.find(t => t._id === tagId))
+                .filter(Boolean);
+        },
+
+        get availableTags() {
+            const selectedIds = new Set((this.formData && this.formData.tags) || []);
+            const query = (this.tagSearchQuery || '').trim().toLowerCase();
+            return this.allTags.filter(t => {
+                if (selectedIds.has(t._id)) return false;
+                if (!query) return true;
+                return t.name.toLowerCase().includes(query);
+            });
+        },
+
+        get canCreateNewTag() {
+            const query = (this.tagSearchQuery || '').trim();
+            if (!query) return false;
+            return !this.allTags.some(t => t.name.toLowerCase() === query.toLowerCase());
+        },
+
+        async loadAllTags() {
+            try {
+                const res = await fetch('/api/tags');
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (res.ok) this.allTags = await res.json();
+            } catch (e) { console.error(e); }
+        },
+
+        addTag(tagId) {
+            if (!this.formData.tags) this.formData.tags = [];
+            if (!this.formData.tags.includes(tagId)) {
+                this.formData.tags.push(tagId);
+            }
+            this.tagSearchQuery = '';
+        },
+
+        removeTag(tagId) {
+            this.formData.tags = (this.formData.tags || []).filter(id => id !== tagId);
+        },
+
+        async createAndAddTag() {
+            const name = (this.tagSearchQuery || '').trim();
+            if (!name || this.creatingTag) return;
+            this.creatingTag = true;
+            try {
+                const res = await fetch('/api/tags', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, color: '#3B82F6' }),
+                });
+                if (res.ok) {
+                    const newTag = await res.json();
+                    this.allTags.push(newTag);
+                    this.addTag(newTag._id);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה ביצירת תגית');
+                }
+            } catch (e) {
+                alert('שגיאת רשת');
+            } finally {
+                this.creatingTag = false;
+            }
+        },
+
+        // === אתחול וסטטוסים ===
         async init() {
             await Promise.all([
                 this.loadProjects(),
@@ -349,7 +424,7 @@ function projectsManager() {
                 this.saving = false;
             }
         },
-    });
+    };
 }
 </script>
 
