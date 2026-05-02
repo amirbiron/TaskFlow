@@ -144,9 +144,15 @@ function kanbanComponent(config = {}) {
 
         // === Sortable / גרירה ===
         initSortable() {
+            // לוג זמני לאבחון: לוודא שהפונקציה רצה ושמוצאת את העמודות.
+            console.log('[kanban] initSortable: looking up columns', this.statusColumns.map(c => c.id));
             this.statusColumns.forEach(col => {
                 const el = document.getElementById(`column-${col.id}`);
-                if (!el) return;
+                if (!el) {
+                    console.warn('[kanban] column not found:', col.id);
+                    return;
+                }
+                console.log('[kanban] attaching Sortable to', col.id, 'with', el.querySelectorAll('[data-task-id]').length, 'cards');
 
                 // הסרת sortable קיים אם יש
                 if (el._sortable) {
@@ -156,6 +162,9 @@ function kanbanComponent(config = {}) {
                 el._sortable = new Sortable(el, {
                     group: 'kanban-tasks',
                     animation: 150,
+                    // הגבלת פריטי הגרירה לכרטיסים בלבד — אחרת ברירת המחדל '>*'
+                    // כוללת גם את אלמנט ה-<template> של Alpine ומבלבלת את Sortable.
+                    draggable: '[data-task-id]',
                     ghostClass: 'task-ghost',
                     chosenClass: 'task-chosen',
                     dragClass: 'task-drag',
