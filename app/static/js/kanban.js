@@ -189,7 +189,13 @@ function kanbanComponent(config = {}) {
             // מחזירים את הצומת למיקום המקורי כדי ש-Alpine יבנה את ה-DOM מחדש
             // מתוך this.tasks בלי קונפליקט עם המהלך הידני של Sortable.
             if (evt.from !== evt.to || evt.oldIndex !== evt.newIndex) {
-                const reference = evt.from.children[evt.oldIndex] || null;
+                // בגרירה בתוך אותה עמודה, אם זזנו לאחור (oldIndex > newIndex),
+                // האיבר ב-oldIndex כבר זז מקום לאחר הוצאת evt.item מהעץ.
+                // לכן צריך לכוון לאיבר הבא כדי להחזיר בדיוק למיקום המקורי.
+                const isSameColumn = evt.from === evt.to;
+                const movedBackwardInSameColumn = isSameColumn && evt.oldIndex > evt.newIndex;
+                const referenceIndex = movedBackwardInSameColumn ? evt.oldIndex + 1 : evt.oldIndex;
+                const reference = evt.from.children[referenceIndex] || null;
                 evt.from.insertBefore(evt.item, reference);
             }
 
