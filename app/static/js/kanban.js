@@ -159,13 +159,12 @@ function kanbanComponent(config = {}) {
                     // הגבלת פריטי הגרירה לכרטיסים בלבד — אחרת ברירת המחדל '>*'
                     // כוללת גם את אלמנט ה-<template> של Alpine ומבלבלת את Sortable.
                     draggable: '[data-task-id]',
+                    // הגרירה מתחילה רק מתוך ידית הגרירה. כך לחיצה רגילה
+                    // על גוף הכרטיס פותחת את המודאל מיד, ללא delay מבלבל.
+                    handle: '.drag-handle',
                     ghostClass: 'task-ghost',
                     chosenClass: 'task-chosen',
                     dragClass: 'task-drag',
-                    // תיקון לגרירה במגע - דורש החזקה לפני גרירה (רק במגע)
-                    delay: 250,
-                    delayOnTouchOnly: true,
-                    touchStartThreshold: 5,
                     // forceFallback מאלץ את מנגנון הגרירה הפנימי של Sortable
                     // (מבוסס touch events) במקום HTML5 drag-and-drop, שלא
                     // נתמך באופן עקבי בנייד (במיוחד iOS Safari).

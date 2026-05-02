@@ -54,8 +54,26 @@
                         class="kanban-card bg-white rounded-lg p-3 shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-shadow"
                         :class="task.status === 'completed' ? 'opacity-60' : ''"
                     >
-                        <!-- כותרת -->
-                        <div class="font-medium text-slate-900 mb-2 leading-snug" x-text="task.title"></div>
+                        <!-- כותרת + ידית גרירה -->
+                        <div class="flex items-start gap-2 mb-2">
+                            <!-- ידית גרירה: רק כאן Sortable תופס את ההצבעה -->
+                            <button
+                                type="button"
+                                class="drag-handle flex-shrink-0 -m-1 p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                @click.stop
+                                aria-label="גרור משימה"
+                            >
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="9" cy="6" r="1.6"/>
+                                    <circle cx="15" cy="6" r="1.6"/>
+                                    <circle cx="9" cy="12" r="1.6"/>
+                                    <circle cx="15" cy="12" r="1.6"/>
+                                    <circle cx="9" cy="18" r="1.6"/>
+                                    <circle cx="15" cy="18" r="1.6"/>
+                                </svg>
+                            </button>
+                            <div class="font-medium text-slate-900 leading-snug flex-1 min-w-0" x-text="task.title"></div>
+                        </div>
 
                         <!-- תגיות (עד 3 + מספר נוספים) -->
                         <div x-show="task.tag_details && task.tag_details.length > 0" class="flex flex-wrap gap-1 mb-2">
