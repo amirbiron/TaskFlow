@@ -231,8 +231,8 @@
                             </label>
                         </div>
 
-                        <!-- minmax(0,1fr) פעם נוספת ב-grid הפנימי, וכן min-w-0 על הילדים, כדי שהקלט/תצוגה לא יקרסו לרוחב min-content -->
-                        <div :class="documentPreviewMode ? 'grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3' : ''">
+                        <!-- min-w-0 על הילדים מבטיח שהעורך/תצוגה לא יקרסו לרוחב min-content. grid-cols-2 של Tailwind כבר משתמש ב-minmax(0,1fr) פנימית -->
+                        <div :class="documentPreviewMode ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : ''">
                             <textarea
                                 x-model="documentDraft.content_md"
                                 @input.debounce.300ms="refreshDocPreview()"
