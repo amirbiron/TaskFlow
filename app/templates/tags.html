@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}תגיות - TaskFlow{% endblock %}
+
+{% block body %}
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in" x-data="tagsManager()" x-init="loadTags()">
+
+    <!-- כותרת -->
+    <div class="flex justify-between items-center mb-6 md:mb-8">
+        <div>
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-900">תגיות</h2>
+            <p class="text-slate-600 mt-1 text-sm md:text-base" x-show="tags.length > 0">
+                <span x-text="tags.length"></span> תגיות סה״כ
+            </p>
+        </div>
+        <button @click="openCreateModal()" class="btn btn-primary">
+            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            תגית חדשה
+        </button>
+    </div>
+
+    <!-- מצב טעינה -->
+    <div x-show="loading" class="text-center py-12">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!loading && tags.length === 0" class="empty-state bg-white rounded-xl border border-slate-200">
+        <div class="empty-state-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">אין עדיין תגיות</h3>
+        <p class="text-slate-600 mb-4">צור תגיות כדי לקטלג משימות ופרויקטים</p>
+        <button @click="openCreateModal()" class="btn btn-primary">
+            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            צור תגית ראשונה
+        </button>
+    </div>
+
+    <!-- רשימת תגיות -->
+    <div x-show="!loading && tags.length > 0" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <template x-for="(tag, index) in tags" :key="tag._id">
+            <div class="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors" :class="index !== 0 ? 'border-t border-slate-100' : ''">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <!-- צ'יפ תצוגה -->
+                    <span
+                        class="px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0"
+                        :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                        x-text="tag.name"
+                    ></span>
+
+                    <!-- שימוש -->
+                    <div class="text-sm text-slate-500 truncate">
+                        <span x-show="tag.usage_count > 0">
+                            בשימוש ב-<span x-text="tag.tasks_count"></span> משימות,
+                            <span x-text="tag.projects_count"></span> פרויקטים
+                        </span>
+                        <span x-show="tag.usage_count === 0" class="italic">לא בשימוש</span>
+                    </div>
+                </div>
+
+                <!-- פעולות -->
+                <div class="flex gap-1">
+                    <button @click="openEditModal(tag)" class="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="עריכה">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <button @click="confirmDelete(tag)" class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="מחיקה">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- מודאל יצירה/עריכה -->
+    <div x-show="modalOpen" x-cloak @click.self="closeModal()" class="modal-backdrop" x-transition.opacity>
+        <div class="modal-content slide-up max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200">
+                <h3 class="text-xl font-bold text-slate-900">
+                    <span x-show="modalMode === 'create'">תגית חדשה</span>
+                    <span x-show="modalMode === 'edit'">עריכת תגית</span>
+                </h3>
+                <button @click="closeModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form @submit.prevent="saveTag()" class="p-6 space-y-4">
+                <div>
+                    <label class="form-label">שם <span class="text-red-500">*</span></label>
+                    <input type="text" x-model="formData.name" class="form-input" required maxlength="50" autofocus>
+                </div>
+
+                <div>
+                    <label class="form-label">צבע</label>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="color in colorOptions" :key="color">
+                            <button
+                                type="button"
+                                @click="formData.color = color"
+                                :class="formData.color === color ? 'ring-2 ring-offset-2 ring-slate-400' : ''"
+                                class="w-9 h-9 rounded-lg border border-slate-200 transition-all"
+                                :style="`background-color: ${color}`"
+                            ></button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- תצוגה מקדימה -->
+                <div class="bg-slate-50 rounded-lg p-3">
+                    <div class="text-xs text-slate-500 mb-2">תצוגה מקדימה:</div>
+                    <span
+                        class="px-3 py-1 rounded-full text-sm font-medium"
+                        :style="`background-color: ${formData.color}20; color: ${formData.color}; border: 1px solid ${formData.color}40`"
+                        x-text="formData.name || 'תגית'"
+                    ></span>
+                </div>
+
+                <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" @click="closeModal()" class="btn btn-secondary flex-1">ביטול</button>
+                    <button type="submit" class="btn btn-primary flex-1" :disabled="saving">
+                        <span x-show="!saving">שמור</span>
+                        <span x-show="saving">שומר...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- אישור מחיקה -->
+    <div x-show="deleteConfirmOpen" x-cloak @click.self="deleteConfirmOpen = false" class="modal-backdrop" x-transition.opacity>
+        <div class="modal-content slide-up max-w-md">
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center ml-3 flex-shrink-0">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">מחיקת תגית</h3>
+                        <p class="text-slate-600 mt-1">
+                            למחוק את התגית "<span x-text="tagToDelete ? tagToDelete.name : ''" class="font-semibold"></span>"?
+                            <span x-show="tagToDelete && tagToDelete.usage_count > 0" class="block mt-2 text-amber-700">
+                                התגית תוסר מכל המשימות והפרויקטים שמשויכים אליה.
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="deleteConfirmOpen = false" class="btn btn-secondary flex-1">ביטול</button>
+                    <button @click="deleteTag()" class="btn btn-danger flex-1" :disabled="saving">
+                        <span x-show="!saving">מחק</span>
+                        <span x-show="saving">מוחק...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+function tagsManager() {
+    return {
+        tags: [],
+        loading: true,
+        modalOpen: false,
+        modalMode: 'create',
+        deleteConfirmOpen: false,
+        saving: false,
+        error: null,
+        currentTagId: null,
+        tagToDelete: null,
+        formData: {
+            name: '',
+            color: '#3B82F6',
+        },
+        colorOptions: [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+            '#EC4899', '#14B8A6', '#6366F1', '#64748B', '#0EA5E9',
+            '#84CC16', '#F97316',
+        ],
+
+        async loadTags() {
+            this.loading = true;
+            try {
+                const res = await fetch('/api/tags');
+                if (res.status === 401) { window.location = '/login'; return; }
+                this.tags = await res.json();
+            } catch (e) {
+                console.error('שגיאה בטעינת תגיות:', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        resetForm() {
+            this.formData = { name: '', color: '#3B82F6' };
+            this.currentTagId = null;
+            this.error = null;
+        },
+
+        openCreateModal() {
+            this.resetForm();
+            this.modalMode = 'create';
+            this.modalOpen = true;
+        },
+
+        openEditModal(tag) {
+            this.currentTagId = tag._id;
+            this.formData = { name: tag.name, color: tag.color };
+            this.modalMode = 'edit';
+            this.error = null;
+            this.modalOpen = true;
+        },
+
+        closeModal() {
+            this.modalOpen = false;
+            this.error = null;
+            setTimeout(() => this.resetForm(), 200);
+        },
+
+        async saveTag() {
+            this.saving = true;
+            this.error = null;
+
+            try {
+                const url = this.modalMode === 'create'
+                    ? '/api/tags'
+                    : `/api/tags/${this.currentTagId}`;
+                const method = this.modalMode === 'create' ? 'POST' : 'PUT';
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.formData),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.error = err.detail || 'שגיאה בשמירה';
+                    return;
+                }
+
+                await this.loadTags();
+                this.closeModal();
+            } catch (e) {
+                this.error = 'שגיאת רשת';
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        confirmDelete(tag) {
+            this.tagToDelete = tag;
+            this.currentTagId = tag._id;
+            this.deleteConfirmOpen = true;
+        },
+
+        async deleteTag() {
+            this.saving = true;
+            try {
+                const res = await fetch(`/api/tags/${this.currentTagId}`, { method: 'DELETE' });
+                if (!res.ok && res.status !== 204) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה במחיקה');
+                    return;
+                }
+                this.deleteConfirmOpen = false;
+                this.tagToDelete = null;
+                await this.loadTags();
+            } catch (e) {
+                alert('שגיאת רשת');
+            } finally {
+                this.saving = false;
+            }
+        },
+    };
+}
+</script>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}

@@ -84,6 +84,19 @@ async def tasks_page(request: Request):
     )
 
 
+@router.get("/tags", response_class=HTMLResponse)
+async def tags_page(request: Request):
+    """עמוד ניהול תגיות"""
+    redirect = _require_auth_or_redirect(request)
+    if redirect:
+        return redirect
+
+    return templates.TemplateResponse(
+        "tags.html",
+        {"request": request, "current_page": "tags"}
+    )
+
+
 @router.get("/health")
 async def health_check():
     """בדיקת תקינות לשירות (Render משתמש בזה)"""

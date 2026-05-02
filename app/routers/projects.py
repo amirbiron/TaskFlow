@@ -45,7 +45,7 @@ def _serialize(doc: dict) -> dict:
 
 
 async def _enrich_project(project: dict, db) -> dict:
-    """מעשיר פרויקט בנתוני לקוח וסטטיסטיקות"""
+    """מעשיר פרויקט בנתוני לקוח, סטטיסטיקות ותגיות"""
     project = _serialize(project)
     project_id_str = project["_id"]
 
@@ -74,6 +74,21 @@ async def _enrich_project(project: dict, db) -> dict:
             if client:
                 project["client_name"] = client.get("name")
                 project["client_color"] = client.get("color")
+        except (InvalidId, TypeError):
+            pass
+
+    # פרטי תגיות
+    project["tag_details"] = []
+    if project.get("tags"):
+        try:
+            tag_ids = [ObjectId(tid) for tid in project["tags"] if ObjectId.is_valid(tid)]
+            if tag_ids:
+                tags_cursor = db.tags.find({"_id": {"$in": tag_ids}})
+                tag_docs = await tags_cursor.to_list(length=100)
+                project["tag_details"] = [
+                    {"_id": str(t["_id"]), "name": t.get("name"), "color": t.get("color", "#3B82F6")}
+                    for t in tag_docs
+                ]
         except (InvalidId, TypeError):
             pass
 

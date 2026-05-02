@@ -11,7 +11,6 @@
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in"
       x-data="projectDetailPage('{{ project_id }}')" x-init="init()">
 
-    <!-- מצב טעינה -->
     <div x-show="projectLoading" class="text-center py-12">
         <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -19,16 +18,12 @@
         </svg>
     </div>
 
-    <!-- פרויקט לא נמצא -->
     <div x-show="!projectLoading && !project" class="text-center py-12">
         <p class="text-slate-500 mb-4">הפרויקט לא נמצא</p>
         <a href="/projects" class="btn btn-secondary">חזרה לפרויקטים</a>
     </div>
 
-    <!-- פרויקט קיים -->
     <div x-show="!projectLoading && project" x-cloak>
-
-        <!-- חזרה -->
         <div class="mb-4">
             <a href="/projects" class="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center">
                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,13 +33,13 @@
             </a>
         </div>
 
-        <!-- כרטיס ראשי של הפרויקט -->
+        <!-- כרטיס ראשי -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
             <div class="h-2" :style="`background-color: ${project.client_color || '#94A3B8'}`"></div>
             <div class="p-6">
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div class="flex-1">
-                        <div class="flex items-center gap-3 mb-2">
+                        <div class="flex items-center gap-3 mb-2 flex-wrap">
                             <h1 class="text-2xl md:text-3xl font-bold text-slate-900" x-text="project.name"></h1>
                             <span
                                 class="text-xs px-2 py-1 rounded-full whitespace-nowrap"
@@ -59,6 +54,18 @@
                             לקוח: <span class="font-medium" x-text="project.client_name"></span>
                         </div>
                         <div class="text-slate-400 italic text-sm" x-show="!project.client_name">ללא לקוח משויך</div>
+
+                        <!-- תגיות הפרויקט -->
+                        <div x-show="project.tag_details && project.tag_details.length > 0" class="flex flex-wrap gap-1.5 mt-3">
+                            <template x-for="tag in (project.tag_details || [])" :key="tag._id">
+                                <span
+                                    class="px-2 py-1 rounded-full text-xs font-medium"
+                                    :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                                    x-text="tag.name"
+                                ></span>
+                            </template>
+                        </div>
+
                         <div x-show="project.description" class="mt-3 text-slate-700 whitespace-pre-wrap text-sm" x-text="project.description"></div>
                     </div>
 
@@ -79,7 +86,7 @@
             </div>
         </div>
 
-        <!-- כותרת + כפתור הוספת משימה -->
+        <!-- כותרת + כפתור משימה חדשה -->
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold text-slate-900">משימות</h2>
             <button @click="openCreateModal('open')" class="btn btn-primary">
@@ -133,7 +140,66 @@
                         <option value="archived">בארכיון</option>
                     </select>
                 </div>
+
+                <!-- תגיות לפרויקט -->
+                <div>
+                    <label class="form-label">תגיות</label>
+                    <div class="space-y-2">
+                        <div class="flex flex-wrap gap-1.5" x-show="projectSelectedTagDetails.length > 0">
+                            <template x-for="tag in projectSelectedTagDetails" :key="tag._id">
+                                <span
+                                    class="px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1"
+                                    :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                                >
+                                    <span x-text="tag.name"></span>
+                                    <button type="button" @click="projectRemoveTag(tag._id)" class="hover:opacity-70">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
+                        <div class="relative">
+                            <input
+                                type="text"
+                                x-model="projectTagSearchQuery"
+                                @focus="projectTagPickerOpen = true"
+                                @keydown.enter.prevent="projectCanCreateNewTag ? projectCreateAndAddTag() : null"
+                                placeholder="חפש או צור תגית..."
+                                class="form-input"
+                            >
+                            <div
+                                x-show="projectTagPickerOpen && (projectAvailableTags.length > 0 || projectCanCreateNewTag)"
+                                x-cloak
+                                @click.outside="projectTagPickerOpen = false"
+                                class="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                            >
+                                <template x-for="tag in projectAvailableTags" :key="tag._id">
+                                    <button type="button" @click="projectAddTag(tag._id)" class="w-full text-right px-3 py-2 hover:bg-slate-50 flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full" :style="`background-color: ${tag.color}`"></span>
+                                        <span x-text="tag.name"></span>
+                                    </button>
+                                </template>
+                                <button
+                                    type="button"
+                                    x-show="projectCanCreateNewTag"
+                                    @click="projectCreateAndAddTag()"
+                                    :disabled="projectCreatingTag"
+                                    class="w-full text-right px-3 py-2 hover:bg-slate-50 border-t border-slate-100 text-primary-600 flex items-center gap-2"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    <span>צור תגית "<span x-text="projectTagSearchQuery"></span>"</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div x-show="projectError" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="projectError"></div>
+
                 <div class="flex gap-2 pt-2">
                     <button type="button" @click="projectModalOpen = false" class="btn btn-secondary flex-1">ביטול</button>
                     <button type="submit" class="btn btn-primary flex-1" :disabled="projectSaving">
@@ -178,11 +244,7 @@
 
 <script>
 function projectDetailPage(projectId) {
-    // יורש מ-kanbanComponent ומוסיף ניהול של פרויקט עצמו
-    const base = kanbanComponent({
-        projectId: projectId,
-        showProjectName: false,
-    });
+    const base = kanbanComponent({ projectId, showProjectName: false });
 
     return {
         ...base,
@@ -199,7 +261,11 @@ function projectDetailPage(projectId) {
             description: '',
             client_id: '',
             status: 'active',
+            tags: [],
         },
+        projectTagSearchQuery: '',
+        projectTagPickerOpen: false,
+        projectCreatingTag: false,
 
         async init() {
             await Promise.all([
@@ -207,6 +273,7 @@ function projectDetailPage(projectId) {
                 this.loadTasks(),
                 this.loadClients(),
                 this.loadProjects(),
+                this.loadAllTags(),
             ]);
             this.$nextTick(() => this.initSortable());
         },
@@ -216,11 +283,9 @@ function projectDetailPage(projectId) {
             try {
                 const res = await fetch(`/api/projects/${projectId}`);
                 if (res.status === 401) { window.location = '/login'; return; }
-                if (res.ok) {
-                    this.project = await res.json();
-                }
+                if (res.ok) this.project = await res.json();
             } catch (e) {
-                console.error('שגיאה בטעינת פרויקט:', e);
+                console.error(e);
             } finally {
                 this.projectLoading = false;
             }
@@ -239,13 +304,77 @@ function projectDetailPage(projectId) {
             }[s] || 'bg-slate-100 text-slate-600';
         },
 
+        // === תגיות לפרויקט (נפרדות מתגיות המשימה) ===
+        get projectSelectedTagDetails() {
+            if (!this.projectFormData.tags || !this.allTags.length) return [];
+            return this.projectFormData.tags
+                .map(tagId => this.allTags.find(t => t._id === tagId))
+                .filter(Boolean);
+        },
+
+        get projectAvailableTags() {
+            const selectedIds = new Set(this.projectFormData.tags || []);
+            const query = (this.projectTagSearchQuery || '').trim().toLowerCase();
+            return this.allTags.filter(t => {
+                if (selectedIds.has(t._id)) return false;
+                if (!query) return true;
+                return t.name.toLowerCase().includes(query);
+            });
+        },
+
+        get projectCanCreateNewTag() {
+            const query = (this.projectTagSearchQuery || '').trim();
+            if (!query) return false;
+            return !this.allTags.some(t => t.name.toLowerCase() === query.toLowerCase());
+        },
+
+        projectAddTag(tagId) {
+            if (!this.projectFormData.tags) this.projectFormData.tags = [];
+            if (!this.projectFormData.tags.includes(tagId)) {
+                this.projectFormData.tags.push(tagId);
+            }
+            this.projectTagSearchQuery = '';
+        },
+
+        projectRemoveTag(tagId) {
+            this.projectFormData.tags = (this.projectFormData.tags || []).filter(id => id !== tagId);
+        },
+
+        async projectCreateAndAddTag() {
+            const name = (this.projectTagSearchQuery || '').trim();
+            if (!name || this.projectCreatingTag) return;
+            this.projectCreatingTag = true;
+            try {
+                const res = await fetch('/api/tags', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, color: '#3B82F6' }),
+                });
+                if (res.ok) {
+                    const newTag = await res.json();
+                    this.allTags.push(newTag);
+                    this.projectAddTag(newTag._id);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה ביצירת תגית');
+                }
+            } catch (e) {
+                alert('שגיאת רשת');
+            } finally {
+                this.projectCreatingTag = false;
+            }
+        },
+
         openProjectEditModal() {
             this.projectFormData = {
                 name: this.project.name || '',
                 description: this.project.description || '',
                 client_id: this.project.client_id || '',
                 status: this.project.status || 'active',
+                tags: [...(this.project.tags || [])],
             };
+            this.projectTagSearchQuery = '';
+            this.projectTagPickerOpen = false;
             this.projectError = null;
             this.projectModalOpen = true;
         },
@@ -263,13 +392,11 @@ function projectDetailPage(projectId) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                 });
-
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     this.projectError = err.detail || 'שגיאה בשמירה';
                     return;
                 }
-
                 await this.loadProject();
                 this.projectModalOpen = false;
             } catch (e) {

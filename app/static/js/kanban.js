@@ -1,12 +1,11 @@
 /**
  * רכיב Kanban משותף.
- * מקבל את המשימות ומעדכן את השרת בעת גרירה.
  *
- * שימוש:
- *   kanbanComponent({
- *       projectId: '...',  // אופציונלי - אם null, תצוגה גלובלית
- *       showProjectName: true/false,  // האם להציג את שם הפרויקט בכרטיסים
- *   })
+ * תכונות:
+ * - גרירה ושחרור (תמיכה במגע)
+ * - תת-משימות
+ * - תגיות
+ * - קישורים
  */
 function kanbanComponent(config = {}) {
     return {
@@ -19,10 +18,15 @@ function kanbanComponent(config = {}) {
         loading: true,
         clientOptions: [],
         projectOptions: [],
+        // תגיות - מיובא מ-tagPicker, אבל מאתחלים פה
+        allTags: [],
+        tagSearchQuery: '',
+        tagPickerOpen: false,
+        creatingTag: false,
 
         // מודאל משימה
         modalOpen: false,
-        modalMode: 'create', // 'create' או 'edit'
+        modalMode: 'create',
         saving: false,
         error: null,
         currentTaskId: null,
@@ -35,17 +39,20 @@ function kanbanComponent(config = {}) {
             status: 'open',
             due_date: '',
             links: [],
+            tags: [],
+            subtasks: [],
         },
         newLink: '',
+        newSubtask: '',
 
         // מודאל מחיקה
         deleteConfirmOpen: false,
 
         // עמודות
         statusColumns: [
-            { id: 'open', label: 'פתוח', color: 'border-slate-300' },
-            { id: 'in_progress', label: 'בתהליך', color: 'border-blue-400' },
-            { id: 'completed', label: 'הושלם', color: 'border-green-400' },
+            { id: 'open', label: 'פתוח' },
+            { id: 'in_progress', label: 'בתהליך' },
+            { id: 'completed', label: 'הושלם' },
         ],
 
         async init() {
@@ -53,6 +60,7 @@ function kanbanComponent(config = {}) {
                 this.loadTasks(),
                 this.loadClients(),
                 this.loadProjects(),
+                this.loadAllTags(),
             ]);
             this.$nextTick(() => this.initSortable());
         },
@@ -84,11 +92,15 @@ function kanbanComponent(config = {}) {
                 const res = await fetch('/api/projects?include_inactive=true');
                 if (res.ok) {
                     const data = await res.json();
-                    this.projectOptions = data.map(p => ({
-                        _id: p._id,
-                        name: p.name,
-                    }));
+                    this.projectOptions = data.map(p => ({ _id: p._id, name: p.name }));
                 }
+            } catch (e) { console.error(e); }
+        },
+
+        async loadAllTags() {
+            try {
+                const res = await fetch('/api/tags');
+                if (res.ok) this.allTags = await res.json();
             } catch (e) { console.error(e); }
         },
 
@@ -99,12 +111,7 @@ function kanbanComponent(config = {}) {
         },
 
         priorityLabel(p) {
-            return {
-                low: 'נמוכה',
-                normal: 'רגילה',
-                high: 'גבוהה',
-                urgent: 'דחוף',
-            }[p] || p;
+            return { low: 'נמוכה', normal: 'רגילה', high: 'גבוהה', urgent: 'דחוף' }[p] || p;
         },
 
         priorityClass(p) {
@@ -124,44 +131,50 @@ function kanbanComponent(config = {}) {
             const dt = new Date(d);
             dt.setHours(0, 0, 0, 0);
             const diff = (dt - today) / (1000 * 60 * 60 * 24);
-
             if (diff === 0) return 'היום';
             if (diff === 1) return 'מחר';
             if (diff === -1) return 'אתמול';
-
             return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
         },
 
         isOverdue(dateStr, status) {
             if (!dateStr || status === 'completed') return false;
-            const d = new Date(dateStr);
-            return d < new Date();
+            return new Date(dateStr) < new Date();
         },
 
-        // אתחול גרירה
+        // === Sortable / גרירה ===
         initSortable() {
             this.statusColumns.forEach(col => {
                 const el = document.getElementById(`column-${col.id}`);
                 if (!el) return;
 
-                new Sortable(el, {
+                // הסרת sortable קיים אם יש
+                if (el._sortable) {
+                    el._sortable.destroy();
+                }
+
+                el._sortable = new Sortable(el, {
                     group: 'kanban-tasks',
                     animation: 150,
                     ghostClass: 'task-ghost',
                     chosenClass: 'task-chosen',
                     dragClass: 'task-drag',
+                    // תיקון לגרירה במגע - דורש החזקה לפני גרירה
+                    delay: 250,
+                    delayOnTouchOnly: true,
+                    touchStartThreshold: 5,
+                    // תיקון לסקרול בנייד
+                    forceFallback: true,
+                    fallbackTolerance: 5,
                     onEnd: (evt) => this.handleDragEnd(evt, col.id),
                 });
             });
         },
 
         async handleDragEnd(evt, newStatus) {
-            const taskId = evt.item.dataset.taskId;
-            const targetColumn = evt.to.dataset.status;
-
-            // נאסוף את כל ה-IDs בעמודת היעד בסדר החדש
             const updates = [];
             const targetTasks = Array.from(evt.to.children).filter(c => c.dataset && c.dataset.taskId);
+            const targetColumn = evt.to.dataset.status;
 
             targetTasks.forEach((el, index) => {
                 updates.push({
@@ -171,7 +184,6 @@ function kanbanComponent(config = {}) {
                 });
             });
 
-            // אם העמודה השתנתה, נעדכן גם את עמודת המקור (סדר התעדכן)
             if (evt.from !== evt.to) {
                 const sourceTasks = Array.from(evt.from.children).filter(c => c.dataset && c.dataset.taskId);
                 const sourceColumn = evt.from.dataset.status;
@@ -190,16 +202,14 @@ function kanbanComponent(config = {}) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tasks: updates }),
                 });
-                // נטען מחדש לקבל completed_at ושאר נתונים
                 await this.loadTasks();
             } catch (e) {
                 console.error('שגיאה בעדכון סדר:', e);
-                // נחזיר את המצב הקודם בטעינה מחדש
                 await this.loadTasks();
             }
         },
 
-        // === ניהול מודאל משימה ===
+        // === ניהול מודאל ===
         resetForm() {
             this.formData = {
                 title: '',
@@ -210,8 +220,13 @@ function kanbanComponent(config = {}) {
                 status: 'open',
                 due_date: '',
                 links: [],
+                tags: [],
+                subtasks: [],
             };
             this.newLink = '';
+            this.newSubtask = '';
+            this.tagSearchQuery = '';
+            this.tagPickerOpen = false;
             this.error = null;
             this.currentTaskId = null;
         },
@@ -234,8 +249,13 @@ function kanbanComponent(config = {}) {
                 status: task.status || 'open',
                 due_date: task.due_date ? task.due_date.substring(0, 10) : '',
                 links: [...(task.links || [])],
+                tags: [...(task.tags || [])],
+                subtasks: (task.subtasks || []).map(st => ({ ...st })),
             };
             this.newLink = '';
+            this.newSubtask = '';
+            this.tagSearchQuery = '';
+            this.tagPickerOpen = false;
             this.modalMode = 'edit';
             this.error = null;
             this.modalOpen = true;
@@ -247,6 +267,7 @@ function kanbanComponent(config = {}) {
             setTimeout(() => this.resetForm(), 200);
         },
 
+        // === קישורים ===
         addLink() {
             const link = this.newLink.trim();
             if (!link) return;
@@ -258,14 +279,111 @@ function kanbanComponent(config = {}) {
             this.formData.links.splice(index, 1);
         },
 
+        // === תת-משימות ===
+        generateId() {
+            return 'st_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        },
+
+        addSubtask() {
+            const title = this.newSubtask.trim();
+            if (!title) return;
+            this.formData.subtasks.push({
+                id: this.generateId(),
+                title: title,
+                completed: false,
+            });
+            this.newSubtask = '';
+        },
+
+        removeSubtask(index) {
+            this.formData.subtasks.splice(index, 1);
+        },
+
+        toggleSubtask(index) {
+            this.formData.subtasks[index].completed = !this.formData.subtasks[index].completed;
+        },
+
+        // === תגיות ===
+        get selectedTagDetails() {
+            if (!this.formData.tags || !this.allTags.length) return [];
+            return this.formData.tags
+                .map(tagId => this.allTags.find(t => t._id === tagId))
+                .filter(Boolean);
+        },
+
+        get availableTags() {
+            const selectedIds = new Set(this.formData.tags || []);
+            const query = (this.tagSearchQuery || '').trim().toLowerCase();
+            return this.allTags.filter(t => {
+                if (selectedIds.has(t._id)) return false;
+                if (!query) return true;
+                return t.name.toLowerCase().includes(query);
+            });
+        },
+
+        get canCreateNewTag() {
+            const query = (this.tagSearchQuery || '').trim();
+            if (!query) return false;
+            return !this.allTags.some(t => t.name.toLowerCase() === query.toLowerCase());
+        },
+
+        addTag(tagId) {
+            if (!this.formData.tags) this.formData.tags = [];
+            if (!this.formData.tags.includes(tagId)) {
+                this.formData.tags.push(tagId);
+            }
+            this.tagSearchQuery = '';
+        },
+
+        removeTag(tagId) {
+            this.formData.tags = (this.formData.tags || []).filter(id => id !== tagId);
+        },
+
+        async createAndAddTag() {
+            const name = (this.tagSearchQuery || '').trim();
+            if (!name || this.creatingTag) return;
+            this.creatingTag = true;
+            try {
+                const res = await fetch('/api/tags', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, color: '#3B82F6' }),
+                });
+                if (res.ok) {
+                    const newTag = await res.json();
+                    this.allTags.push(newTag);
+                    this.addTag(newTag._id);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה ביצירת תגית');
+                }
+            } catch (e) {
+                alert('שגיאת רשת');
+            } finally {
+                this.creatingTag = false;
+            }
+        },
+
+        // עזרי תצוגה לכרטיסים
+        visibleTaskTags(task, max = 3) {
+            return (task.tag_details || []).slice(0, max);
+        },
+
+        hiddenTaskTagsCount(task, max = 3) {
+            return Math.max(0, (task.tag_details || []).length - max);
+        },
+
+        completedSubtasksCount(task) {
+            return (task.subtasks || []).filter(st => st.completed).length;
+        },
+
+        // === שמירה / מחיקה ===
         async saveTask() {
             this.saving = true;
             this.error = null;
 
             try {
                 const payload = { ...this.formData };
-
-                // ניקוי שדות ריקים
                 if (!payload.client_id) payload.client_id = null;
                 if (!payload.description || !payload.description.trim()) payload.description = null;
                 if (!payload.due_date) payload.due_date = null;
@@ -296,7 +414,6 @@ function kanbanComponent(config = {}) {
 
                 await this.loadTasks();
                 this.closeModal();
-                // נחזיר את ה-Sortable על הרשימות החדשות
                 this.$nextTick(() => this.initSortable());
             } catch (e) {
                 this.error = 'שגיאת רשת';
@@ -316,9 +433,7 @@ function kanbanComponent(config = {}) {
         async deleteTask() {
             this.saving = true;
             try {
-                const res = await fetch(`/api/tasks/${this.currentTaskId}`, {
-                    method: 'DELETE',
-                });
+                const res = await fetch(`/api/tasks/${this.currentTaskId}`, { method: 'DELETE' });
                 if (!res.ok && res.status !== 204) {
                     const err = await res.json().catch(() => ({}));
                     alert(err.detail || 'שגיאה במחיקה');

@@ -1,5 +1,4 @@
 {# רכיב Kanban משותף - נכלל בעמוד פרויקט ובעמוד משימות גלובלי #}
-{# מצפה ל-x-data של kanbanComponent({ ... }) באלמנט עוטף #}
 
 <!-- מצב טעינה -->
 <div x-show="loading" class="text-center py-12">
@@ -31,20 +30,18 @@
 <div x-show="!loading && tasks.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <template x-for="col in statusColumns" :key="col.id">
         <div class="bg-slate-100 rounded-xl p-3 flex flex-col">
-            <!-- כותרת עמודה -->
             <div class="flex items-center justify-between mb-3 px-1">
                 <h3 class="font-bold text-slate-700 flex items-center">
                     <span x-text="col.label"></span>
                     <span class="text-xs text-slate-500 mr-2 bg-white px-2 py-0.5 rounded-full" x-text="tasksByStatus(col.id).length"></span>
                 </h3>
-                <button @click="openCreateModal(col.id)" class="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-white transition-colors" title="הוסף משימה">
+                <button @click="openCreateModal(col.id)" class="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-white transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
                 </button>
             </div>
 
-            <!-- מיכל הכרטיסים (ניתן לגרירה) -->
             <div
                 :id="`column-${col.id}`"
                 :data-status="col.id"
@@ -60,14 +57,24 @@
                         <!-- כותרת -->
                         <div class="font-medium text-slate-900 mb-2 leading-snug" x-text="task.title"></div>
 
+                        <!-- תגיות (עד 3 + מספר נוספים) -->
+                        <div x-show="task.tag_details && task.tag_details.length > 0" class="flex flex-wrap gap-1 mb-2">
+                            <template x-for="tag in visibleTaskTags(task)" :key="tag._id">
+                                <span
+                                    class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                    :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                                    x-text="tag.name"
+                                ></span>
+                            </template>
+                            <span x-show="hiddenTaskTagsCount(task) > 0" class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                                +<span x-text="hiddenTaskTagsCount(task)"></span>
+                            </span>
+                        </div>
+
                         <!-- מטא-נתונים -->
                         <div class="flex flex-wrap gap-1.5 text-xs">
                             <!-- עדיפות -->
-                            <span
-                                class="px-2 py-0.5 rounded-full"
-                                :class="priorityClass(task.priority)"
-                                x-text="priorityLabel(task.priority)"
-                            ></span>
+                            <span class="px-2 py-0.5 rounded-full" :class="priorityClass(task.priority)" x-text="priorityLabel(task.priority)"></span>
 
                             <!-- תאריך יעד -->
                             <span
@@ -81,7 +88,15 @@
                                 <span x-text="formatDate(task.due_date)"></span>
                             </span>
 
-                            <!-- מספר קישורים -->
+                            <!-- תת-משימות -->
+                            <span x-show="task.subtasks && task.subtasks.length > 0" class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full inline-flex items-center">
+                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                </svg>
+                                <span x-text="completedSubtasksCount(task)"></span>/<span x-text="task.subtasks.length"></span>
+                            </span>
+
+                            <!-- קישורים -->
                             <span x-show="task.links && task.links.length > 0" class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full inline-flex items-center">
                                 <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -90,7 +105,7 @@
                             </span>
                         </div>
 
-                        <!-- שם פרויקט (רק בתצוגה גלובלית) -->
+                        <!-- שם פרויקט (גלובלי) -->
                         <div x-show="showProjectName && task.project_name" class="mt-2 text-xs text-slate-500 truncate">
                             <svg class="w-3 h-3 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2"/>
@@ -98,7 +113,7 @@
                             <span x-text="task.project_name"></span>
                         </div>
 
-                        <!-- שם לקוח עם צבע -->
+                        <!-- שם לקוח -->
                         <div x-show="task.client_name" class="mt-2 text-xs flex items-center">
                             <span class="w-2 h-2 rounded-full ml-1.5" :style="`background-color: ${task.client_color || '#94A3B8'}`"></span>
                             <span class="text-slate-600 truncate" x-text="task.client_name"></span>
@@ -113,7 +128,7 @@
 <!-- מודאל יצירה/עריכה של משימה -->
 <div x-show="modalOpen" x-cloak @click.self="closeModal()" class="modal-backdrop" x-transition.opacity>
     <div class="modal-content slide-up max-w-lg">
-        <div class="flex justify-between items-center p-6 border-b border-slate-200">
+        <div class="flex justify-between items-center p-6 border-b border-slate-200 sticky top-0 bg-white z-10">
             <h3 class="text-xl font-bold text-slate-900">
                 <span x-show="modalMode === 'create'">משימה חדשה</span>
                 <span x-show="modalMode === 'edit'">עריכת משימה</span>
@@ -136,7 +151,6 @@
                 <textarea x-model="formData.description" class="form-input" rows="3"></textarea>
             </div>
 
-            <!-- בחירת פרויקט (רק אם לא במצב פרויקט בודד) -->
             <div x-show="!projectId">
                 <label class="form-label">פרויקט <span class="text-red-500">*</span></label>
                 <select x-model="formData.project_id" class="form-input" required>
@@ -180,6 +194,110 @@
             <div>
                 <label class="form-label">תאריך יעד</label>
                 <input type="date" x-model="formData.due_date" class="form-input">
+            </div>
+
+            <!-- תגיות -->
+            <div>
+                <label class="form-label">תגיות</label>
+                <div class="space-y-2">
+                    <!-- תגיות שנבחרו -->
+                    <div class="flex flex-wrap gap-1.5" x-show="selectedTagDetails.length > 0">
+                        <template x-for="tag in selectedTagDetails" :key="tag._id">
+                            <span
+                                class="px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1"
+                                :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                            >
+                                <span x-text="tag.name"></span>
+                                <button type="button" @click="removeTag(tag._id)" class="hover:opacity-70">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </span>
+                        </template>
+                    </div>
+
+                    <!-- חיפוש/הוספת תגית -->
+                    <div class="relative">
+                        <input
+                            type="text"
+                            x-model="tagSearchQuery"
+                            @focus="tagPickerOpen = true"
+                            @keydown.enter.prevent="canCreateNewTag ? createAndAddTag() : null"
+                            placeholder="חפש או צור תגית..."
+                            class="form-input"
+                        >
+
+                        <!-- רשימה נפתחת -->
+                        <div
+                            x-show="tagPickerOpen && (availableTags.length > 0 || canCreateNewTag)"
+                            x-cloak
+                            @click.outside="tagPickerOpen = false"
+                            class="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                        >
+                            <!-- תגיות קיימות -->
+                            <template x-for="tag in availableTags" :key="tag._id">
+                                <button
+                                    type="button"
+                                    @click="addTag(tag._id)"
+                                    class="w-full text-right px-3 py-2 hover:bg-slate-50 flex items-center gap-2"
+                                >
+                                    <span class="w-3 h-3 rounded-full" :style="`background-color: ${tag.color}`"></span>
+                                    <span x-text="tag.name"></span>
+                                </button>
+                            </template>
+
+                            <!-- אפשרות יצירה -->
+                            <button
+                                type="button"
+                                x-show="canCreateNewTag"
+                                @click="createAndAddTag()"
+                                :disabled="creatingTag"
+                                class="w-full text-right px-3 py-2 hover:bg-slate-50 border-t border-slate-100 text-primary-600 flex items-center gap-2"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                <span>צור תגית "<span x-text="tagSearchQuery"></span>"</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- תת-משימות -->
+            <div>
+                <label class="form-label">תת-משימות</label>
+                <div class="space-y-2">
+                    <template x-for="(subtask, idx) in formData.subtasks" :key="subtask.id">
+                        <div class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded">
+                            <input
+                                type="checkbox"
+                                :checked="subtask.completed"
+                                @change="toggleSubtask(idx)"
+                                class="w-4 h-4 text-primary-600 rounded"
+                            >
+                            <span class="flex-1 text-sm" :class="subtask.completed ? 'line-through text-slate-400' : ''" x-text="subtask.title"></span>
+                            <button type="button" @click="removeSubtask(idx)" class="text-red-500 hover:text-red-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </template>
+
+                    <div class="flex gap-2">
+                        <input
+                            type="text"
+                            x-model="newSubtask"
+                            @keydown.enter.prevent="addSubtask()"
+                            placeholder="הוסף תת-משימה..."
+                            class="form-input flex-1"
+                            maxlength="300"
+                        >
+                        <button type="button" @click="addSubtask()" class="btn btn-secondary">הוסף</button>
+                    </div>
+                </div>
             </div>
 
             <!-- קישורים -->

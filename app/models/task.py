@@ -7,16 +7,23 @@ from app.models.base import MongoBaseModel
 
 
 class TaskStatus(str, Enum):
-    OPEN = "open"  # פתוח
-    IN_PROGRESS = "in_progress"  # בתהליך
-    COMPLETED = "completed"  # הושלם
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
 
 
 class TaskPriority(str, Enum):
-    LOW = "low"  # נמוכה
-    NORMAL = "normal"  # רגילה
-    HIGH = "high"  # גבוהה
-    URGENT = "urgent"  # דחוף
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class Subtask(BaseModel):
+    """תת-משימה - פשוטה, נשמרת בתוך מסמך המשימה"""
+    id: str  # UUID יוצר ב-frontend
+    title: str = Field(..., min_length=1, max_length=300)
+    completed: bool = False
 
 
 class TaskBase(BaseModel):
@@ -30,8 +37,9 @@ class TaskBase(BaseModel):
     due_date: Optional[datetime] = None
     reminder_date: Optional[datetime] = None
     reminder_sent: bool = False
-    tags: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)  # רשימת tag IDs
     links: List[str] = Field(default_factory=list)
+    subtasks: List[Subtask] = Field(default_factory=list)
     column_order: int = 0
 
 
@@ -52,17 +60,16 @@ class TaskUpdate(BaseModel):
     reminder_sent: Optional[bool] = None
     tags: Optional[List[str]] = None
     links: Optional[List[str]] = None
+    subtasks: Optional[List[Subtask]] = None
     column_order: Optional[int] = None
 
 
 class TaskStatusUpdate(BaseModel):
-    """עדכון סטטוס בלבד - לגרירה"""
     status: TaskStatus
     column_order: int = 0
 
 
 class TaskOrderUpdate(BaseModel):
-    """עדכון סדר בעמודה - לגרירה בתוך עמודה"""
     column_order: int
 
 
@@ -71,7 +78,7 @@ class Task(MongoBaseModel, TaskBase):
 
 
 class TaskWithContext(Task):
-    """משימה עם פרטי פרויקט ולקוח - לתצוגות גלובליות"""
+    """משימה עם פרטי פרויקט ולקוח"""
     project_name: Optional[str] = None
     client_name: Optional[str] = None
     client_color: Optional[str] = None

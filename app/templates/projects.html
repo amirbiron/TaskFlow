@@ -21,7 +21,7 @@
         </button>
     </div>
 
-    <!-- כפתור הצגת פרויקטים לא פעילים -->
+    <!-- כפתור הצגת לא פעילים -->
     <div class="mb-6 flex items-center gap-3">
         <label class="flex items-center cursor-pointer select-none">
             <input
@@ -34,28 +34,12 @@
         </label>
     </div>
 
-    <!-- חיפוש -->
-    <div class="mb-6" x-show="projects.length > 0">
-        <div class="relative">
-            <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <input
-                type="text"
-                x-model="searchQuery"
-                placeholder="חיפוש פרויקט..."
-                class="form-input pr-10"
-            />
-        </div>
-    </div>
-
     <!-- מצב טעינה -->
     <div x-show="loading" class="text-center py-12">
         <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="text-slate-500 mt-2">טוען...</p>
     </div>
 
     <!-- Empty state -->
@@ -66,7 +50,7 @@
             </svg>
         </div>
         <h3 class="text-lg font-semibold text-slate-900 mb-2">אין פרויקטים פעילים</h3>
-        <p class="text-slate-600 mb-4">צור את הפרויקט הראשון שלך כדי להתחיל</p>
+        <p class="text-slate-600 mb-4">צור את הפרויקט הראשון שלך</p>
         <button @click="openCreateModal()" class="btn btn-primary">
             <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -76,14 +60,12 @@
     </div>
 
     <!-- רשימת פרויקטים -->
-    <div x-show="!loading && filteredProjects.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <template x-for="project in filteredProjects" :key="project._id">
+    <div x-show="!loading && projects.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <template x-for="project in projects" :key="project._id">
             <a :href="`/projects/${project._id}`" class="client-card slide-up block no-underline text-inherit">
-                <!-- פס צבע - מהלקוח או ברירת מחדל -->
                 <div class="client-card-color-bar" :style="`background-color: ${project.client_color || '#94A3B8'}`"></div>
 
                 <div class="pr-3">
-                    <!-- שם + סטטוס -->
                     <div class="flex items-start justify-between gap-2 mb-2">
                         <h3 class="text-lg font-bold text-slate-900 truncate" x-text="project.name"></h3>
                         <span
@@ -100,18 +82,26 @@
                         </svg>
                         <span x-text="project.client_name"></span>
                     </div>
-                    <div class="text-sm text-slate-400 italic mb-2" x-show="!project.client_name">
-                        ללא לקוח
+                    <div class="text-sm text-slate-400 italic mb-2" x-show="!project.client_name">ללא לקוח</div>
+
+                    <!-- תגיות -->
+                    <div x-show="project.tag_details && project.tag_details.length > 0" class="flex flex-wrap gap-1 mb-2">
+                        <template x-for="tag in (project.tag_details || []).slice(0, 3)" :key="tag._id">
+                            <span
+                                class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                                x-text="tag.name"
+                            ></span>
+                        </template>
+                        <span x-show="(project.tag_details || []).length > 3" class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                            +<span x-text="project.tag_details.length - 3"></span>
+                        </span>
                     </div>
 
                     <!-- תיאור -->
-                    <p
-                        class="text-sm text-slate-600 mb-3 line-clamp-2"
-                        x-show="project.description"
-                        x-text="project.description"
-                    ></p>
+                    <p class="text-sm text-slate-600 mb-3 line-clamp-2" x-show="project.description" x-text="project.description"></p>
 
-                    <!-- סטטיסטיקות משימות -->
+                    <!-- סטטיסטיקות -->
                     <div class="flex gap-2 text-xs">
                         <span class="bg-amber-50 text-amber-700 px-2 py-1 rounded-full" x-show="project.open_tasks_count > 0">
                             <span x-text="project.open_tasks_count"></span> משימות פתוחות
@@ -126,11 +116,6 @@
                 </div>
             </a>
         </template>
-    </div>
-
-    <!-- הודעה כשאין תוצאות בחיפוש -->
-    <div x-show="!loading && projects.length > 0 && filteredProjects.length === 0" class="text-center py-12 text-slate-500">
-        לא נמצאו פרויקטים התואמים לחיפוש
     </div>
 
     <!-- מודאל יצירה -->
@@ -176,6 +161,64 @@
                     </select>
                 </div>
 
+                <!-- תגיות -->
+                <div>
+                    <label class="form-label">תגיות</label>
+                    <div class="space-y-2">
+                        <div class="flex flex-wrap gap-1.5" x-show="selectedTagDetails.length > 0">
+                            <template x-for="tag in selectedTagDetails" :key="tag._id">
+                                <span
+                                    class="px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1"
+                                    :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                                >
+                                    <span x-text="tag.name"></span>
+                                    <button type="button" @click="removeTag(tag._id)" class="hover:opacity-70">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
+
+                        <div class="relative">
+                            <input
+                                type="text"
+                                x-model="tagSearchQuery"
+                                @focus="tagPickerOpen = true"
+                                @keydown.enter.prevent="canCreateNewTag ? createAndAddTag() : null"
+                                placeholder="חפש או צור תגית..."
+                                class="form-input"
+                            >
+                            <div
+                                x-show="tagPickerOpen && (availableTags.length > 0 || canCreateNewTag)"
+                                x-cloak
+                                @click.outside="tagPickerOpen = false"
+                                class="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                            >
+                                <template x-for="tag in availableTags" :key="tag._id">
+                                    <button type="button" @click="addTag(tag._id)" class="w-full text-right px-3 py-2 hover:bg-slate-50 flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full" :style="`background-color: ${tag.color}`"></span>
+                                        <span x-text="tag.name"></span>
+                                    </button>
+                                </template>
+                                <button
+                                    type="button"
+                                    x-show="canCreateNewTag"
+                                    @click="createAndAddTag()"
+                                    :disabled="creatingTag"
+                                    class="w-full text-right px-3 py-2 hover:bg-slate-50 border-t border-slate-100 text-primary-600 flex items-center gap-2"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    <span>צור תגית "<span x-text="tagSearchQuery"></span>"</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
 
                 <div class="flex gap-2 pt-2">
@@ -191,14 +234,17 @@
 
 </main>
 
+<script src="/static/js/tag-picker.js"></script>
 <script>
 function projectsManager() {
+    const tp = tagPicker();
     return {
+        ...tp,
+
         projects: [],
         clientOptions: [],
         loading: true,
         includeInactive: false,
-        searchQuery: '',
         modalOpen: false,
         saving: false,
         error: null,
@@ -207,29 +253,19 @@ function projectsManager() {
             description: '',
             client_id: '',
             status: 'active',
+            tags: [],
         },
 
         async init() {
-            await Promise.all([this.loadProjects(), this.loadClients()]);
-        },
-
-        get filteredProjects() {
-            if (!this.searchQuery.trim()) return this.projects;
-            const q = this.searchQuery.toLowerCase();
-            return this.projects.filter(p =>
-                (p.name || '').toLowerCase().includes(q) ||
-                (p.description || '').toLowerCase().includes(q) ||
-                (p.client_name || '').toLowerCase().includes(q)
-            );
+            await Promise.all([
+                this.loadProjects(),
+                this.loadClients(),
+                this.loadAllTags(),
+            ]);
         },
 
         statusLabel(s) {
-            return {
-                active: 'פעיל',
-                pending: 'בהמתנה',
-                completed: 'הושלם',
-                archived: 'בארכיון',
-            }[s] || s;
+            return { active: 'פעיל', pending: 'בהמתנה', completed: 'הושלם', archived: 'בארכיון' }[s] || s;
         },
 
         statusBadgeClass(s) {
@@ -248,7 +284,7 @@ function projectsManager() {
                 if (res.status === 401) { window.location = '/login'; return; }
                 this.projects = await res.json();
             } catch (e) {
-                console.error('שגיאה בטעינת פרויקטים:', e);
+                console.error(e);
             } finally {
                 this.loading = false;
             }
@@ -257,12 +293,8 @@ function projectsManager() {
         async loadClients() {
             try {
                 const res = await fetch('/api/clients/select-options');
-                if (res.ok) {
-                    this.clientOptions = await res.json();
-                }
-            } catch (e) {
-                console.error('שגיאה בטעינת לקוחות:', e);
-            }
+                if (res.ok) this.clientOptions = await res.json();
+            } catch (e) { console.error(e); }
         },
 
         resetForm() {
@@ -271,7 +303,10 @@ function projectsManager() {
                 description: '',
                 client_id: '',
                 status: 'active',
+                tags: [],
             };
+            this.tagSearchQuery = '';
+            this.tagPickerOpen = false;
             this.error = null;
         },
 
@@ -289,7 +324,6 @@ function projectsManager() {
         async saveProject() {
             this.saving = true;
             this.error = null;
-
             try {
                 const payload = { ...this.formData };
                 if (!payload.client_id) payload.client_id = null;
@@ -300,20 +334,16 @@ function projectsManager() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                 });
-
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     this.error = err.detail || 'שגיאה בשמירה';
                     return;
                 }
-
                 const newProject = await res.json();
                 this.closeModal();
-                // הפניה לעמוד הפרויקט החדש
                 window.location = `/projects/${newProject._id}`;
             } catch (e) {
                 this.error = 'שגיאת רשת';
-                console.error(e);
             } finally {
                 this.saving = false;
             }
