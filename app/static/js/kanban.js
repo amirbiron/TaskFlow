@@ -247,6 +247,12 @@ function kanbanComponent(config = {}) {
             this.currentTaskId = null;
         },
 
+        navigateToTask(taskId) {
+            // לחיצה על הכרטיס מנווטת לדף המשימה. עריכה מהירה
+            // עדיין זמינה דרך כפתור העיפרון בכרטיס (@click.stop).
+            window.location = `/tasks/${taskId}`;
+        },
+
         openCreateModal(initialStatus = 'open') {
             this.resetForm();
             this.formData.status = initialStatus;
