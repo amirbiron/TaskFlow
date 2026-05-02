@@ -1,31 +1,20 @@
 """ראוטר לניהול פרויקטים - API"""
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from app.core.database import get_database
 from app.core.auth import require_api_auth
+from app.core.db_utils import validate_object_id
 from app.models.project import (
     Project,
     ProjectCreate,
     ProjectUpdate,
-    ProjectStatus,
     ProjectWithStats,
 )
 
 router = APIRouter()
-
-
-def _validate_object_id(id_str: str) -> ObjectId:
-    """ממיר string ל-ObjectId עם טיפול בשגיאות"""
-    try:
-        return ObjectId(id_str)
-    except InvalidId:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="מזהה לא תקין"
-        )
 
 
 def _serialize(doc: dict) -> dict:
@@ -36,7 +25,7 @@ def _serialize(doc: dict) -> dict:
 
 
 async def _enrich_project(project: dict, db) -> dict:
-    """מעשיר פרויקט בנתוני לקוח, סטטיסטיקות ותגיות"""
+    """מעשיר פרויקט בנתוני לקוח, סטטיסטיקות ותגיות."""
     project = _serialize(project)
     project_id_str = project["_id"]
 
@@ -149,7 +138,7 @@ async def get_project(request: Request, project_id: str):
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
     project = await db.projects.find_one({"_id": obj_id})
 
     if not project:
@@ -171,7 +160,7 @@ async def update_project(
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
 
     # אם מעדכנים client_id - לוודא תקינות
     update_doc = {k: v for k, v in update_data.model_dump(exclude_unset=True).items()}
@@ -211,16 +200,17 @@ async def update_project(
 async def delete_project(request: Request, project_id: str):
     """
     מחיקת פרויקט.
-    המשימות של הפרויקט נמחקות גם הן.
+    המשימות והמסמכים של הפרויקט נמחקים גם הם.
     """
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
     project_id_str = str(obj_id)
 
-    # מחיקת המשימות של הפרויקט
+    # מחיקת המשימות והמסמכים של הפרויקט
     await db.tasks.delete_many({"project_id": project_id_str})
+    await db.project_documents.delete_many({"project_id": project_id_str})
 
     # מחיקת הפרויקט
     result = await db.projects.delete_one({"_id": obj_id})
@@ -240,7 +230,7 @@ async def list_project_tasks(request: Request, project_id: str):
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
     project = await db.projects.find_one({"_id": obj_id})
     if not project:
         raise HTTPException(
