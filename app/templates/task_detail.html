@@ -223,14 +223,16 @@ function taskDetailPage(taskId) {
             ]);
         },
 
-        async loadTask() {
-            this.loading = true;
+        async loadTask({ silent = false } = {}) {
+            // silent=true לרענון אחרי שמירה/עדכון, כדי שהעמוד לא יתחלף
+            // לספינר באמצע (loading=true גורם ל-x-show להסתיר את התוכן)
+            if (!silent) this.loading = true;
             try {
                 const res = await fetch(`/api/tasks/${taskId}`);
                 if (res.status === 401) { window.location = '/login'; return; }
                 if (res.ok) this.task = await res.json();
             } catch (e) { console.error(e); }
-            finally { this.loading = false; }
+            finally { if (!silent) this.loading = false; }
         },
 
         async loadProjects() {
@@ -276,7 +278,7 @@ function taskDetailPage(taskId) {
                 low: 'bg-slate-100 text-slate-600',
                 normal: 'bg-blue-50 text-blue-700',
                 high: 'bg-amber-50 text-amber-700',
-                urgent: 'bg-red-50 text-red-700',
+                urgent: 'bg-red-600 text-white',
             }[p] || 'bg-slate-100 text-slate-600';
         },
         formatDate(iso) {
@@ -299,17 +301,35 @@ function taskDetailPage(taskId) {
             return this.task.subtasks.filter(s => s.completed).length;
         },
 
-        // === שינוי סטטוס מהיר ===
+        // === שינוי סטטוס מהיר (אופטימי - בלי להציג ספינר על כל העמוד) ===
         async quickChangeStatus(newStatus) {
             if (!this.task || this.task.status === newStatus) return;
+            const previousStatus = this.task.status;
+            // עדכון מקומי מיידי
+            this.task.status = newStatus;
             try {
                 const res = await fetch(`/api/tasks/${this.task._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: newStatus }),
                 });
-                if (res.ok) await this.loadTask();
-            } catch (e) { alert('שגיאת רשת'); }
+                if (!res.ok) {
+                    // החזרה למצב הקודם אם השרת דחה
+                    this.task.status = previousStatus;
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בעדכון סטטוס');
+                    return;
+                }
+                // רענון שקט של completed_at/updated_at בלי להבליט loading
+                const updated = await res.json();
+                if (updated && updated._id) {
+                    this.task.completed_at = updated.completed_at || null;
+                    this.task.updated_at = updated.updated_at || this.task.updated_at;
+                }
+            } catch (e) {
+                this.task.status = previousStatus;
+                alert('שגיאת רשת');
+            }
         },
 
         // === תת-משימות (toggle inline בעמוד הפרטים) ===
@@ -468,7 +488,7 @@ function taskDetailPage(taskId) {
                     this.error = err.detail || 'שגיאה בשמירה';
                     return;
                 }
-                await this.loadTask();
+                await this.loadTask({ silent: true });
                 this.modalOpen = false;
             } catch (e) {
                 this.error = 'שגיאת רשת';
@@ -481,6 +501,9 @@ function taskDetailPage(taskId) {
         confirmDelete(task) {
             this.currentTaskId = task._id;
             this.formData.title = task.title || '';
+            // אם מודאל העריכה פתוח (בלחיצה על אייקון המחיקה בתוכו) - לסגור
+            // קודם, כדי לא להציג שני modal-backdrop מוערמים
+            this.modalOpen = false;
             this.deleteConfirmOpen = true;
         },
         async deleteTask() {

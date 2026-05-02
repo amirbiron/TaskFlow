@@ -119,7 +119,7 @@ function kanbanComponent(config = {}) {
                 low: 'bg-slate-100 text-slate-600',
                 normal: 'bg-blue-50 text-blue-700',
                 high: 'bg-amber-50 text-amber-700',
-                urgent: 'bg-red-50 text-red-700',
+                urgent: 'bg-red-600 text-white',
             }[p] || 'bg-slate-100 text-slate-600';
         },
 
