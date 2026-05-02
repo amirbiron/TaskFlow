@@ -46,6 +46,12 @@ _ADMONITION_RE = re.compile(
     flags=re.DOTALL | re.MULTILINE,
 )
 
+# בלוקי קוד עטופים בגדר (``` או ~~~). תופסים אותם כדי לא לעבד admonitions בתוכם.
+_FENCED_CODE_RE = re.compile(
+    r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$",
+    flags=re.DOTALL | re.MULTILINE,
+)
+
 _TYPE_MAP = {
     "note": "info", "info": "info", "tip": "success", "success": "success",
     "warning": "warning", "important": "warning", "danger": "danger",
@@ -53,10 +59,25 @@ _TYPE_MAP = {
 
 
 def _preprocess_markdown(text: str) -> str:
-    """ממיר בלוקי `::: type ... :::` ל-<div class='alert alert-*'>."""
+    """ממיר בלוקי `::: type ... :::` ל-<div class='alert alert-*'>.
+
+    מדלג על תוכן שבתוך בלוקי קוד עטופים (```/~~~) כדי לא לפגוע בהם.
+    """
     if not text:
         return ""
 
+    # שלב 1: שמור בלוקי קוד מחוץ למקום ובמקומם הנח placeholder ייחודי.
+    fences: list[str] = []
+
+    def _stash(match: re.Match) -> str:
+        idx = len(fences)
+        fences.append(match.group(0))
+        # מחרוזת פלייסהולדר בלי ::: שלא תיתפס ע"י ה-regex של ה-admonitions.
+        return f"\x00FENCE{idx}\x00"
+
+    stashed = _FENCED_CODE_RE.sub(_stash, text)
+
+    # שלב 2: עיבוד ה-admonitions על הטקסט "הנקי" מבלוקי הקוד.
     def _replace(match: re.Match) -> str:
         kind = match.group(1).lower()
         body = match.group(2).strip()
@@ -71,7 +92,13 @@ def _preprocess_markdown(text: str) -> str:
         )
         return f'<div class="alert alert-{css_class}">{clean_inner}</div>'
 
-    return _ADMONITION_RE.sub(_replace, text)
+    processed = _ADMONITION_RE.sub(_replace, stashed)
+
+    # שלב 3: החזרת בלוקי הקוד המקוריים למקומם.
+    def _restore(match: re.Match) -> str:
+        return fences[int(match.group(1))]
+
+    return re.sub(r"\x00FENCE(\d+)\x00", _restore, processed)
 
 
 # ---------- אבטחה: rel="noopener noreferrer" על target="_blank" ----------

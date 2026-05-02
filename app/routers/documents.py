@@ -91,7 +91,7 @@ async def create_document(request: Request, project_id: str, doc_data: ProjectDo
     now = datetime.utcnow()
     doc = {
         "project_id": project_id,
-        "title": doc_data.title.strip(),
+        "title": doc_data.title,  # ה-validator כבר ניקה רווחים ואימת לא-ריק
         "content_md": doc_data.content_md or "",
         "created_at": now,
         "updated_at": now,
@@ -147,8 +147,7 @@ async def update_document(
     obj_id = _validate_object_id(doc_id)
 
     update_doc = {k: v for k, v in update_data.model_dump(exclude_unset=True).items() if v is not None}
-    if "title" in update_doc:
-        update_doc["title"] = update_doc["title"].strip()
+    # title כבר עבר trim+אימות ב-validator של Pydantic
     if not update_doc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
