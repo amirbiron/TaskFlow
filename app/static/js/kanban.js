@@ -144,15 +144,9 @@ function kanbanComponent(config = {}) {
 
         // === Sortable / גרירה ===
         initSortable() {
-            // לוג זמני לאבחון: לוודא שהפונקציה רצה ושמוצאת את העמודות.
-            console.log('[kanban] initSortable: looking up columns', this.statusColumns.map(c => c.id));
             this.statusColumns.forEach(col => {
                 const el = document.getElementById(`column-${col.id}`);
-                if (!el) {
-                    console.warn('[kanban] column not found:', col.id);
-                    return;
-                }
-                console.log('[kanban] attaching Sortable to', col.id, 'with', el.querySelectorAll('[data-task-id]').length, 'cards');
+                if (!el) return;
 
                 // הסרת sortable קיים אם יש
                 if (el._sortable) {
@@ -172,6 +166,11 @@ function kanbanComponent(config = {}) {
                     delay: 250,
                     delayOnTouchOnly: true,
                     touchStartThreshold: 5,
+                    // forceFallback מאלץ את מנגנון הגרירה הפנימי של Sortable
+                    // (מבוסס touch events) במקום HTML5 drag-and-drop, שלא
+                    // נתמך באופן עקבי בנייד (במיוחד iOS Safari).
+                    forceFallback: true,
+                    fallbackTolerance: 5,
                     onEnd: (evt) => this.handleDragEnd(evt),
                 });
             });
