@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.database import connect_to_mongo, close_mongo_connection
-from app.routers import auth, pages, clients, projects, tasks, tags, dashboard
+from app.routers import auth, pages, clients, projects, tasks, tags, dashboard, documents
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ app.include_router(auth.router, tags=["auth"])
 app.include_router(pages.router, tags=["pages"])
 app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(documents.router, prefix="/api/projects/{project_id}/documents", tags=["documents"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])

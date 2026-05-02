@@ -18,8 +18,6 @@ class ProjectBase(BaseModel):
     client_id: Optional[str] = None
     status: ProjectStatus = ProjectStatus.ACTIVE
     tags: List[str] = Field(default_factory=list)
-    # מסמך Markdown של הפרויקט (אופציונלי). מוגבל ל-1MB טקסט.
-    notes_md: Optional[str] = Field(default=None, max_length=1_000_000)
 
 
 class ProjectCreate(ProjectBase):
@@ -32,7 +30,6 @@ class ProjectUpdate(BaseModel):
     client_id: Optional[str] = None
     status: Optional[ProjectStatus] = None
     tags: Optional[List[str]] = None
-    notes_md: Optional[str] = Field(default=None, max_length=1_000_000)
 
 
 class Project(MongoBaseModel, ProjectBase):
@@ -45,5 +42,3 @@ class ProjectWithStats(Project):
     completed_tasks_count: int = 0
     client_name: Optional[str] = None
     client_color: Optional[str] = None
-    # HTML מרונדר של notes_md (מוחזר רק בתצוגת פרויקט בודד)
-    notes_html: Optional[str] = None
