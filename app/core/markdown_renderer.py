@@ -105,7 +105,9 @@ def _preprocess_markdown(text: str) -> str:
             protocols=ALLOWED_PROTOCOLS,
             strip=True,
         )
-        return f'<div class="alert alert-{css_class}">{clean_inner}</div>'
+        # עוטפים בשורות ריקות מסביב כדי ש-Python-Markdown יזהה את ה-div
+        # כבלוק-HTML עצמאי ולא יבלע פסקאות שמופיעות אחריו ללא שורה ריקה.
+        return f'\n\n<div class="alert alert-{css_class}">{clean_inner}</div>\n\n'
 
     processed = _ADMONITION_RE.sub(_replace, stashed)
 

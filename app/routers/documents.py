@@ -146,13 +146,41 @@ async def update_document(
 
     obj_id = _validate_object_id(doc_id)
 
-    update_doc = {k: v for k, v in update_data.model_dump(exclude_unset=True).items() if v is not None}
-    # title כבר עבר trim+אימות ב-validator של Pydantic
-    if not update_doc:
+    # שדות שנשלחו במפורש (לא משנה אם null) - כך null מובדל מהשמטה
+    submitted = update_data.model_dump(exclude_unset=True)
+    # null על title הוא בקשה לא חוקית (אין משמעות "להסיר כותרת")
+    if "title" in submitted and submitted["title"] is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="אין שדות לעדכון"
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="title לא יכול להיות null"
         )
+    # null על content_md = איפוס לתוכן ריק (במקום להעלים את הבקשה)
+    if "content_md" in submitted and submitted["content_md"] is None:
+        submitted["content_md"] = ""
+    # title כבר עבר trim+אימות ב-validator של Pydantic
+    update_doc = {k: v for k, v in submitted.items() if v is not None}
+
+    if not update_doc:
+        # אין שום שדה לעדכון - מחזירים את המסמך הקיים כפי שהוא (no-op)
+        existing = await db.project_documents.find_one(
+            {"_id": obj_id, "project_id": project_id}
+        )
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="מסמך לא נמצא"
+            )
+        html, _ = markdown_to_html(existing.get("content_md", ""))
+        return {
+            "_id": str(existing["_id"]),
+            "project_id": existing.get("project_id"),
+            "title": existing.get("title", ""),
+            "content_md": existing.get("content_md", ""),
+            "content_html": html,
+            "created_at": existing.get("created_at").isoformat() if existing.get("created_at") else None,
+            "updated_at": existing.get("updated_at").isoformat() if existing.get("updated_at") else None,
+        }
+
     update_doc["updated_at"] = datetime.utcnow()
 
     result = await db.project_documents.find_one_and_update(
