@@ -1,13 +1,12 @@
 """ראוטר לניהול מסמכי-Markdown של פרויקט."""
-from typing import List
 from datetime import datetime
 from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from app.core.database import get_database
 from app.core.auth import require_api_auth
+from app.core.db_utils import validate_object_id
 from app.core.markdown_renderer import markdown_to_html
 from app.models.project_document import (
     ProjectDocumentCreate,
@@ -23,18 +22,8 @@ class MarkdownRenderRequest(BaseModel):
     text: str = Field(default="", max_length=MAX_DOCUMENT_CONTENT)
 
 
-def _validate_object_id(id_str: str) -> ObjectId:
-    try:
-        return ObjectId(id_str)
-    except InvalidId:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="מזהה לא תקין"
-        )
-
-
 async def _ensure_project_exists(db, project_id: str) -> ObjectId:
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
     project = await db.projects.find_one({"_id": obj_id}, {"_id": 1})
     if not project:
         raise HTTPException(
@@ -112,7 +101,7 @@ async def get_document(request: Request, project_id: str, doc_id: str):
     db = get_database()
     await _ensure_project_exists(db, project_id)
 
-    obj_id = _validate_object_id(doc_id)
+    obj_id = validate_object_id(doc_id)
     doc = await db.project_documents.find_one({"_id": obj_id, "project_id": project_id})
     if not doc:
         raise HTTPException(
@@ -144,7 +133,7 @@ async def update_document(
     db = get_database()
     await _ensure_project_exists(db, project_id)
 
-    obj_id = _validate_object_id(doc_id)
+    obj_id = validate_object_id(doc_id)
 
     # שדות שנשלחו במפורש (לא משנה אם null) - כך null מובדל מהשמטה
     submitted = update_data.model_dump(exclude_unset=True)
@@ -213,7 +202,7 @@ async def delete_document(request: Request, project_id: str, doc_id: str):
     db = get_database()
     await _ensure_project_exists(db, project_id)
 
-    obj_id = _validate_object_id(doc_id)
+    obj_id = validate_object_id(doc_id)
     result = await db.project_documents.delete_one({"_id": obj_id, "project_id": project_id})
     if result.deleted_count == 0:
         raise HTTPException(
@@ -230,7 +219,7 @@ async def download_document(request: Request, project_id: str, doc_id: str):
     db = get_database()
     await _ensure_project_exists(db, project_id)
 
-    obj_id = _validate_object_id(doc_id)
+    obj_id = validate_object_id(doc_id)
     doc = await db.project_documents.find_one(
         {"_id": obj_id, "project_id": project_id},
         {"title": 1, "content_md": 1},

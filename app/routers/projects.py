@@ -6,6 +6,7 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from app.core.database import get_database
 from app.core.auth import require_api_auth
+from app.core.db_utils import validate_object_id
 from app.models.project import (
     Project,
     ProjectCreate,
@@ -14,17 +15,6 @@ from app.models.project import (
 )
 
 router = APIRouter()
-
-
-def _validate_object_id(id_str: str) -> ObjectId:
-    """ממיר string ל-ObjectId עם טיפול בשגיאות"""
-    try:
-        return ObjectId(id_str)
-    except InvalidId:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="מזהה לא תקין"
-        )
 
 
 def _serialize(doc: dict) -> dict:
@@ -148,7 +138,7 @@ async def get_project(request: Request, project_id: str):
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
     project = await db.projects.find_one({"_id": obj_id})
 
     if not project:
@@ -170,7 +160,7 @@ async def update_project(
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
 
     # אם מעדכנים client_id - לוודא תקינות
     update_doc = {k: v for k, v in update_data.model_dump(exclude_unset=True).items()}
@@ -215,7 +205,7 @@ async def delete_project(request: Request, project_id: str):
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
     project_id_str = str(obj_id)
 
     # מחיקת המשימות והמסמכים של הפרויקט
@@ -240,7 +230,7 @@ async def list_project_tasks(request: Request, project_id: str):
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(project_id)
+    obj_id = validate_object_id(project_id)
     project = await db.projects.find_one({"_id": obj_id})
     if not project:
         raise HTTPException(

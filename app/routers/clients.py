@@ -1,11 +1,10 @@
 """ראוטר לניהול לקוחות - API"""
 from typing import List
 from datetime import datetime
-from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from app.core.database import get_database
 from app.core.auth import require_api_auth
+from app.core.db_utils import validate_object_id
 from app.models.client import (
     Client,
     ClientCreate,
@@ -14,17 +13,6 @@ from app.models.client import (
 )
 
 router = APIRouter()
-
-
-def _validate_object_id(id_str: str) -> ObjectId:
-    """ממיר string ל-ObjectId עם טיפול בשגיאות"""
-    try:
-        return ObjectId(id_str)
-    except InvalidId:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="מזהה לא תקין"
-        )
 
 
 def _serialize(doc: dict) -> dict:
@@ -110,7 +98,7 @@ async def get_client(request: Request, client_id: str):
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(client_id)
+    obj_id = validate_object_id(client_id)
     client = await db.clients.find_one({"_id": obj_id})
 
     if not client:
@@ -132,7 +120,7 @@ async def update_client(
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(client_id)
+    obj_id = validate_object_id(client_id)
 
     update_doc = {k: v for k, v in update_data.model_dump().items() if v is not None}
     update_doc["updated_at"] = datetime.utcnow()
@@ -161,7 +149,7 @@ async def delete_client(request: Request, client_id: str):
     require_api_auth(request)
     db = get_database()
 
-    obj_id = _validate_object_id(client_id)
+    obj_id = validate_object_id(client_id)
     client_id_str = str(obj_id)
 
     await db.projects.update_many(
