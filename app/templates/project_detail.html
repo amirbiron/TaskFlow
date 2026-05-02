@@ -123,7 +123,7 @@
             </div>
 
             <!-- Empty state -->
-            <div x-show="!documentsLoading && documentsList.length === 0" class="text-center text-slate-500 py-10 px-6">
+            <div x-show="!documentsLoading && documentsList.length === 0 && !documentEditing" class="text-center text-slate-500 py-10 px-6">
                 <svg class="w-10 h-10 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
@@ -131,10 +131,10 @@
                 <button @click="newDocument()" class="btn btn-primary text-sm">צור מסמך ראשון</button>
             </div>
 
-            <!-- רשימת מסמכים + תצוגת מסמך נבחר -->
-            <div x-show="documentsList.length > 0" class="grid grid-cols-1 md:grid-cols-[260px_1fr] divide-slate-200 md:divide-x md:divide-x-reverse">
-                <!-- סייד-בר רשימה -->
-                <aside class="border-b md:border-b-0 border-slate-200 max-h-96 md:max-h-[40rem] overflow-y-auto">
+            <!-- רשימת מסמכים + תצוגת מסמך נבחר (גם כאשר יוצרים מסמך ראשון) -->
+            <div x-show="documentsList.length > 0 || documentEditing" class="grid grid-cols-1 md:grid-cols-[260px_1fr] divide-slate-200 md:divide-x md:divide-x-reverse">
+                <!-- סייד-בר רשימה (מסתתר כשהרשימה ריקה) -->
+                <aside x-show="documentsList.length > 0" class="border-b md:border-b-0 border-slate-200 max-h-96 md:max-h-[40rem] overflow-y-auto">
                     <ul class="divide-y divide-slate-100">
                         <template x-for="d in documentsList" :key="d._id">
                             <li>
@@ -161,7 +161,7 @@
                         </svg>
                     </div>
 
-                    <div x-show="!documentLoading && !selectedDocument" class="text-center text-slate-500 py-8">
+                    <div x-show="!documentLoading && !selectedDocument && !documentEditing" class="text-center text-slate-500 py-8">
                         בחר מסמך מהרשימה
                     </div>
 
