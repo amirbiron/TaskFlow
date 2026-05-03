@@ -18,7 +18,14 @@ async def connect_to_mongo():
     settings = get_settings()
     db.client = AsyncIOMotorClient(settings.mongodb_url)
     db.db = db.client[settings.database_name]
+    await _ensure_indexes(db.db)
     print(f"✅ Connected to MongoDB: {settings.database_name}")
+
+
+async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
+    """אינדקסים חיוניים לביצועים. create_index ב-Mongo idempotent."""
+    await database.task_comments.create_index("task_id")
+    await database.task_comments.create_index([("task_id", 1), ("created_at", 1)])
 
 
 async def close_mongo_connection():

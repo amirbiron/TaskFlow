@@ -168,6 +168,132 @@
                 </template>
             </ul>
         </div>
+
+        <!-- הערות (קומנטים) - תוכן Markdown -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    הערות
+                </h2>
+                <span class="text-xs text-slate-500" x-text="comments.length + ' הערות'"></span>
+            </div>
+
+            <div x-show="commentsLoading" class="text-center py-6">
+                <svg class="w-6 h-6 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </div>
+
+            <div x-show="!commentsLoading && comments.length === 0" class="text-slate-400 italic text-sm mb-4">
+                אין הערות עדיין - הוסף את הראשונה למטה
+            </div>
+
+            <ul x-show="!commentsLoading && comments.length > 0" class="space-y-3 mb-5">
+                <template x-for="c in comments" :key="c._id">
+                    <li class="border border-slate-200 rounded-lg bg-slate-50 p-3">
+                        <template x-if="editingId !== c._id">
+                            <div>
+                                <div class="markdown-body text-sm" x-html="c.body_html"></div>
+                                <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200">
+                                    <div class="text-xs text-slate-500">
+                                        <span x-text="formatDateTime(c.created_at)"></span>
+                                        <span x-show="c.edited_at" class="mr-1 italic">(נערך)</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <button @click="startEditComment(c)" class="text-xs text-slate-500 hover:text-primary-600 px-2 py-1 rounded">
+                                            עריכה
+                                        </button>
+                                        <button @click="confirmDeleteComment(c)" class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded">
+                                            מחיקה
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="editingId === c._id">
+                            <div>
+                                <textarea
+                                    x-model="editingBody"
+                                    rows="4"
+                                    maxlength="10000"
+                                    class="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                ></textarea>
+                                <div class="flex items-center justify-end gap-2 mt-2">
+                                    <button @click="cancelEditComment()" class="btn btn-secondary text-xs">ביטול</button>
+                                    <button @click="saveEditComment()" :disabled="commentSaving || !editingBody.trim()" class="btn btn-primary text-xs">
+                                        <span x-show="!commentSaving">שמור</span>
+                                        <span x-show="commentSaving">שומר...</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </li>
+                </template>
+            </ul>
+
+            <div class="border-t border-slate-200 pt-4">
+                <div class="flex items-center gap-1 mb-2 flex-wrap">
+                    <button
+                        type="button"
+                        @click="commentTab = 'write'"
+                        class="text-xs px-3 py-1 rounded-md transition-colors"
+                        :class="commentTab === 'write' ? 'bg-primary-100 text-primary-700' : 'text-slate-500 hover:bg-slate-100'"
+                    >כתיבה</button>
+                    <button
+                        type="button"
+                        @click="loadPreview()"
+                        class="text-xs px-3 py-1 rounded-md transition-colors"
+                        :class="commentTab === 'preview' ? 'bg-primary-100 text-primary-700' : 'text-slate-500 hover:bg-slate-100'"
+                    >תצוגה מקדימה</button>
+                    <span class="text-xs text-slate-400 mr-auto">תומך ב-Markdown: **bold** *italic* `code` [link](url)</span>
+                </div>
+
+                <textarea
+                    x-show="commentTab === 'write'"
+                    x-model="newCommentBody"
+                    rows="4"
+                    maxlength="10000"
+                    placeholder="כתוב הערה... (Markdown נתמך)"
+                    class="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                ></textarea>
+
+                <div
+                    x-show="commentTab === 'preview'"
+                    class="markdown-body border border-slate-200 rounded-md p-3 bg-slate-50 min-h-[7rem] text-sm"
+                    x-html="previewHtml || '<span class=\'text-slate-400 italic\'>אין מה להציג</span>'"
+                ></div>
+
+                <div class="flex items-center justify-between mt-2">
+                    <span class="text-xs text-slate-400" x-text="(newCommentBody || '').length + ' / 10000'"></span>
+                    <button
+                        @click="addComment()"
+                        :disabled="commentSaving || !newCommentBody.trim()"
+                        class="btn btn-primary text-sm"
+                    >
+                        <span x-show="!commentSaving">הוסף הערה</span>
+                        <span x-show="commentSaving">שולח...</span>
+                    </button>
+                </div>
+            </div>
+
+            <div x-show="commentDeleteId" x-cloak
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                 @click.self="commentDeleteId = null">
+                <div class="bg-white rounded-xl shadow-lg max-w-sm w-full p-5">
+                    <h3 class="text-base font-bold text-slate-900 mb-2">מחיקת הערה</h3>
+                    <p class="text-sm text-slate-600 mb-4">למחוק את ההערה? הפעולה אינה הפיכה.</p>
+                    <div class="flex items-center justify-end gap-2">
+                        <button @click="commentDeleteId = null" class="btn btn-secondary text-sm">ביטול</button>
+                        <button @click="deleteComment()" :disabled="commentSaving" class="btn btn-danger text-sm">מחק</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- מודאל עריכה + מודאל מחיקה (משותפים עם הקנבן) -->
@@ -182,6 +308,17 @@ function taskDetailPage(taskId) {
         task: null,
         loading: true,
         subtaskSaving: false,
+
+        // === הערות ===
+        comments: [],
+        commentsLoading: false,
+        commentSaving: false,
+        newCommentBody: '',
+        commentTab: 'write',          // 'write' | 'preview'
+        previewHtml: '',
+        editingId: null,
+        editingBody: '',
+        commentDeleteId: null,
 
         // === שדות שהמודאל המשותף דורש ===
         projectId: '',  // ריק כדי שמסך הפרויקט יוצג בטופס העריכה
@@ -219,6 +356,7 @@ function taskDetailPage(taskId) {
                 this.loadProjects(),
                 this.loadClients(),
                 this.loadAllTags(),
+                this.loadComments(),
             ]);
         },
 
@@ -530,6 +668,116 @@ function taskDetailPage(taskId) {
                     : '/tasks';
             } catch (e) { alert('שגיאת רשת'); }
             finally { this.saving = false; }
+        },
+
+        // === הערות (Markdown) ===
+        async loadComments() {
+            this.commentsLoading = true;
+            try {
+                const res = await fetch(`/api/tasks/${taskId}/comments`);
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (res.ok) this.comments = await res.json();
+            } catch (e) { console.error(e); }
+            finally { this.commentsLoading = false; }
+        },
+
+        async addComment() {
+            const body = (this.newCommentBody || '').trim();
+            if (!body || this.commentSaving) return;
+            this.commentSaving = true;
+            try {
+                const res = await fetch(`/api/tasks/${taskId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ body }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בשמירת ההערה');
+                    return;
+                }
+                const created = await res.json();
+                this.comments.push(created);
+                this.newCommentBody = '';
+                this.previewHtml = '';
+                this.commentTab = 'write';
+            } catch (e) { alert('שגיאת רשת'); }
+            finally { this.commentSaving = false; }
+        },
+
+        startEditComment(c) {
+            this.editingId = c._id;
+            this.editingBody = c.body || '';
+        },
+        cancelEditComment() {
+            this.editingId = null;
+            this.editingBody = '';
+        },
+        async saveEditComment() {
+            const body = (this.editingBody || '').trim();
+            if (!body || !this.editingId || this.commentSaving) return;
+            this.commentSaving = true;
+            try {
+                const res = await fetch(`/api/comments/${this.editingId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ body }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בעדכון');
+                    return;
+                }
+                const updated = await res.json();
+                const idx = this.comments.findIndex(x => x._id === updated._id);
+                if (idx !== -1) this.comments[idx] = updated;
+                this.editingId = null;
+                this.editingBody = '';
+            } catch (e) { alert('שגיאת רשת'); }
+            finally { this.commentSaving = false; }
+        },
+
+        confirmDeleteComment(c) {
+            this.commentDeleteId = c._id;
+        },
+        async deleteComment() {
+            if (!this.commentDeleteId || this.commentSaving) return;
+            this.commentSaving = true;
+            try {
+                const res = await fetch(`/api/comments/${this.commentDeleteId}`, { method: 'DELETE' });
+                if (!res.ok && res.status !== 204) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה במחיקה');
+                    return;
+                }
+                this.comments = this.comments.filter(x => x._id !== this.commentDeleteId);
+                this.commentDeleteId = null;
+            } catch (e) { alert('שגיאת רשת'); }
+            finally { this.commentSaving = false; }
+        },
+
+        async loadPreview() {
+            this.commentTab = 'preview';
+            const text = (this.newCommentBody || '').trim();
+            if (!text) { this.previewHtml = ''; return; }
+            try {
+                const res = await fetch(`/api/comments/_render`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.previewHtml = data.html || '';
+                } else {
+                    this.previewHtml = this.escapeHtml(text);
+                }
+            } catch (e) { this.previewHtml = this.escapeHtml(text); }
+        },
+        escapeHtml(s) {
+            return (s || '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         },
     };
 }
