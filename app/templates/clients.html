@@ -8,8 +8,8 @@
     <!-- כותרת + כפתור הוספה -->
     <div class="flex justify-between items-center mb-6 md:mb-8">
         <div>
-            <h2 class="text-2xl md:text-3xl font-bold text-slate-900">לקוחות</h2>
-            <p class="text-slate-600 mt-1 text-sm md:text-base" x-show="clients.length > 0">
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100">לקוחות</h2>
+            <p class="text-slate-600 dark:text-slate-400 mt-1 text-sm md:text-base" x-show="clients.length > 0">
                 <span x-text="clients.length"></span> לקוחות סה״כ
             </p>
         </div>
@@ -24,7 +24,7 @@
     <!-- חיפוש -->
     <div class="mb-6" x-show="clients.length > 0">
         <div class="relative">
-            <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
             <input
@@ -38,22 +38,22 @@
 
     <!-- מצב טעינה -->
     <div x-show="loading" class="text-center py-12">
-        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="text-slate-500 mt-2">טוען...</p>
+        <p class="text-slate-500 dark:text-slate-400 mt-2">טוען...</p>
     </div>
 
     <!-- Empty state -->
-    <div x-show="!loading && clients.length === 0" class="empty-state bg-white rounded-xl border border-slate-200">
+    <div x-show="!loading && clients.length === 0" class="empty-state bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
         <div class="empty-state-icon">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
             </svg>
         </div>
-        <h3 class="text-lg font-semibold text-slate-900 mb-2">אין עדיין לקוחות</h3>
-        <p class="text-slate-600 mb-4">לחץ על "לקוח חדש" כדי להוסיף את הלקוח הראשון שלך</p>
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">אין עדיין לקוחות</h3>
+        <p class="text-slate-600 dark:text-slate-400 mb-4">לחץ על "לקוח חדש" כדי להוסיף את הלקוח הראשון שלך</p>
         <button @click="openCreateModal()" class="btn btn-primary">
             <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -71,10 +71,10 @@
 
                 <!-- שם -->
                 <div class="pr-3">
-                    <h3 class="text-lg font-bold text-slate-900 mb-2 truncate" x-text="client.name"></h3>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2 truncate" x-text="client.name"></h3>
 
                     <!-- פרטי קשר -->
-                    <div class="space-y-1 text-sm text-slate-600 mb-3">
+                    <div class="space-y-1 text-sm text-slate-600 dark:text-slate-400 mb-3">
                         <div x-show="client.email" class="flex items-center truncate">
                             <svg class="w-4 h-4 ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -97,13 +97,13 @@
 
                     <!-- סטטיסטיקות -->
                     <div class="flex gap-2 text-xs">
-                        <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-full" x-show="client.active_projects_count > 0">
+                        <span class="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full" x-show="client.active_projects_count > 0">
                             <span x-text="client.active_projects_count"></span> פרויקטים
                         </span>
-                        <span class="bg-amber-50 text-amber-700 px-2 py-1 rounded-full" x-show="client.open_tasks_count > 0">
+                        <span class="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full" x-show="client.open_tasks_count > 0">
                             <span x-text="client.open_tasks_count"></span> משימות
                         </span>
-                        <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full" x-show="client.active_projects_count === 0 && client.open_tasks_count === 0">
+                        <span class="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-full" x-show="client.active_projects_count === 0 && client.open_tasks_count === 0">
                             ללא פעילות
                         </span>
                     </div>
@@ -113,7 +113,7 @@
     </div>
 
     <!-- הודעה כשאין תוצאות בחיפוש -->
-    <div x-show="!loading && clients.length > 0 && filteredClients.length === 0" class="text-center py-12 text-slate-500">
+    <div x-show="!loading && clients.length > 0 && filteredClients.length === 0" class="text-center py-12 text-slate-500 dark:text-slate-400">
         לא נמצאו לקוחות התואמים לחיפוש
     </div>
 
@@ -121,13 +121,13 @@
     <div x-show="modalOpen" x-cloak @click.self="closeModal()" class="modal-backdrop" x-transition.opacity>
         <div class="modal-content slide-up">
             <!-- כותרת -->
-            <div class="flex justify-between items-center p-6 border-b border-slate-200">
-                <h3 class="text-xl font-bold text-slate-900">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">
                     <span x-show="modalMode === 'create'">לקוח חדש</span>
                     <span x-show="modalMode === 'edit'">עריכת לקוח</span>
                     <span x-show="modalMode === 'view'" x-text="formData.name"></span>
                 </h3>
-                <button @click="closeModal()" class="text-slate-400 hover:text-slate-600">
+                <button @click="closeModal()" class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -137,27 +137,27 @@
             <!-- מצב צפייה -->
             <div x-show="modalMode === 'view'" class="p-6 space-y-4">
                 <div x-show="formData.email">
-                    <div class="text-sm text-slate-500 mb-1">מייל</div>
-                    <a :href="`mailto:${formData.email}`" class="text-primary-600 hover:underline" x-text="formData.email"></a>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">מייל</div>
+                    <a :href="`mailto:${formData.email}`" class="text-primary-600 dark:text-primary-400 hover:underline" x-text="formData.email"></a>
                 </div>
                 <div x-show="formData.phone">
-                    <div class="text-sm text-slate-500 mb-1">טלפון</div>
-                    <a :href="`tel:${formData.phone}`" class="text-primary-600 hover:underline" x-text="formData.phone"></a>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">טלפון</div>
+                    <a :href="`tel:${formData.phone}`" class="text-primary-600 dark:text-primary-400 hover:underline" x-text="formData.phone"></a>
                 </div>
                 <div x-show="formData.telegram">
-                    <div class="text-sm text-slate-500 mb-1">טלגרם</div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">טלגרם</div>
                     <div x-text="formData.telegram"></div>
                 </div>
                 <div x-show="formData.notes">
-                    <div class="text-sm text-slate-500 mb-1">הערות</div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">הערות</div>
                     <div class="markdown-body text-sm" x-html="formData.notes_html || ''"></div>
                 </div>
                 <div>
-                    <div class="text-sm text-slate-500 mb-1">צבע</div>
-                    <div class="w-12 h-8 rounded-md border border-slate-200" :style="`background-color: ${formData.color}`"></div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">צבע</div>
+                    <div class="w-12 h-8 rounded-md border border-slate-200 dark:border-slate-700" :style="`background-color: ${formData.color}`"></div>
                 </div>
 
-                <div class="flex gap-2 pt-4 border-t border-slate-200">
+                <div class="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button @click="modalMode = 'edit'" class="btn btn-secondary flex-1">
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -176,7 +176,7 @@
             <!-- מצב יצירה / עריכה -->
             <form x-show="modalMode === 'create' || modalMode === 'edit'" @submit.prevent="saveClient()" class="p-6 space-y-4">
                 <div>
-                    <label class="form-label">שם <span class="text-red-500">*</span></label>
+                    <label class="form-label">שם <span class="text-red-500 dark:text-red-400">*</span></label>
                     <input type="text" x-model="formData.name" class="form-input" required maxlength="200">
                 </div>
                 <div>
@@ -192,7 +192,7 @@
                     <input type="text" x-model="formData.telegram" class="form-input" placeholder="@username">
                 </div>
                 <div>
-                    <label class="form-label">הערות <span class="text-xs text-slate-400 font-normal">(תומך ב-Markdown)</span></label>
+                    <label class="form-label">הערות <span class="text-xs text-slate-400 dark:text-slate-500 font-normal">(תומך ב-Markdown)</span></label>
                     <textarea x-model="formData.notes" class="form-input" rows="4" placeholder="**מודגש**, *נטוי*, `קוד`, [קישור](url)"></textarea>
                 </div>
                 <div>
@@ -203,14 +203,14 @@
                                 type="button"
                                 @click="formData.color = color"
                                 :class="formData.color === color ? 'ring-2 ring-offset-2 ring-slate-400' : ''"
-                                class="w-9 h-9 rounded-lg border border-slate-200 transition-all"
+                                class="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 transition-all"
                                 :style="`background-color: ${color}`"
                             ></button>
                         </template>
                     </div>
                 </div>
 
-                <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
+                <div x-show="error" class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
 
                 <div class="flex gap-2 pt-2">
                     <button type="button" @click="closeModal()" class="btn btn-secondary flex-1">ביטול</button>
@@ -228,14 +228,14 @@
         <div class="modal-content slide-up max-w-md">
             <div class="p-6">
                 <div class="flex items-start mb-4">
-                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center ml-3 flex-shrink-0">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-950/50 rounded-full flex items-center justify-center ml-3 flex-shrink-0">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-slate-900">מחיקת לקוח</h3>
-                        <p class="text-slate-600 mt-1">
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">מחיקת לקוח</h3>
+                        <p class="text-slate-600 dark:text-slate-400 mt-1">
                             למחוק את הלקוח "<span x-text="formData.name" class="font-semibold"></span>"?
                             הפרויקטים והמשימות המשויכים יישארו אבל יאבדו את השיוך ללקוח.
                         </p>

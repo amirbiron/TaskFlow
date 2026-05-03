@@ -116,11 +116,11 @@ function kanbanComponent(config = {}) {
 
         priorityClass(p) {
             return {
-                low: 'bg-slate-100 text-slate-600',
-                normal: 'bg-blue-50 text-blue-700',
-                high: 'bg-amber-50 text-amber-700',
-                urgent: 'bg-red-50 text-red-700',
-            }[p] || 'bg-slate-100 text-slate-600';
+                low: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
+                normal: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
+                high: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+                urgent: 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300',
+            }[p] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
         },
 
         formatDate(dateStr) {
@@ -154,7 +154,7 @@ function kanbanComponent(config = {}) {
         },
 
         dueDateBadgeClass() {
-            return 'bg-slate-100 text-slate-600';
+            return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
         },
 
         // === Sortable / גרירה ===

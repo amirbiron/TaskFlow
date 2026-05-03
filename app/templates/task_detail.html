@@ -7,22 +7,22 @@
       x-data="taskDetailPage('{{ task_id }}')">
 
     <div x-show="loading" class="text-center py-12">
-        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
         </svg>
     </div>
 
     <div x-show="!loading && !task" class="text-center py-12">
-        <p class="text-slate-500 mb-4">המשימה לא נמצאה</p>
+        <p class="text-slate-500 dark:text-slate-400 mb-4">המשימה לא נמצאה</p>
         <a href="/tasks" class="btn btn-secondary">חזרה לרשימה</a>
     </div>
 
     <div x-show="!loading && task" x-cloak>
         <!-- ניווט חזרה -->
         <div class="mb-4 flex items-center justify-between flex-wrap gap-2">
-            <div class="text-sm text-slate-500">
-                <a href="/tasks" class="hover:text-slate-700 inline-flex items-center">
+            <div class="text-sm text-slate-500 dark:text-slate-400">
+                <a href="/tasks" class="hover:text-slate-700 dark:hover:text-slate-300 inline-flex items-center">
                     <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
@@ -31,7 +31,7 @@
                 <template x-if="task && task.project_id">
                     <span>
                         <span class="mx-2">·</span>
-                        <a :href="`/projects/${task.project_id}`" class="hover:text-slate-700" x-text="task.project_name || 'פרויקט'"></a>
+                        <a :href="`/projects/${task.project_id}`" class="hover:text-slate-700 dark:hover:text-slate-300" x-text="task.project_name || 'פרויקט'"></a>
                     </span>
                 </template>
             </div>
@@ -51,12 +51,12 @@
         </div>
 
         <!-- כרטיס ראשי -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 overflow-hidden">
             <div class="h-2" :style="`background-color: ${(task && task.client_color) || '#94A3B8'}`"></div>
             <div class="p-6">
                 <div class="flex items-start justify-between gap-3 mb-3 flex-wrap">
-                    <h1 class="text-2xl md:text-3xl font-bold text-slate-900 break-words"
-                        :class="task.status === 'completed' ? 'line-through text-slate-500' : ''"
+                    <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100 break-words"
+                        :class="task.status === 'completed' ? 'line-through text-slate-500 dark:text-slate-400' : ''"
                         x-text="task.title"></h1>
                     <div class="flex items-center gap-2 flex-shrink-0">
                         <span class="text-xs px-2 py-1 rounded-full" :class="statusBadgeClass(task.status)" x-text="statusLabel(task.status)"></span>
@@ -66,7 +66,7 @@
 
                 <!-- שינוי סטטוס מהיר -->
                 <div class="flex items-center gap-2 flex-wrap mb-4">
-                    <span class="text-xs text-slate-500">שנה סטטוס:</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">שנה סטטוס:</span>
                     <template x-for="opt in statusColumns" :key="opt.id">
                         <button
                             type="button"
@@ -74,7 +74,7 @@
                             class="text-xs px-3 py-1 rounded-full border transition-colors"
                             :class="task.status === opt.id
                                 ? 'bg-primary-600 text-white border-primary-600'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'"
                             x-text="opt.label"
                         ></button>
                     </template>
@@ -93,102 +93,102 @@
 
                 <!-- תיאור -->
                 <div x-show="task.description" class="mb-4">
-                    <h3 class="text-sm font-semibold text-slate-700 mb-1">תיאור</h3>
-                    <p class="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed" x-text="task.description"></p>
+                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">תיאור</h3>
+                    <p class="text-slate-700 dark:text-slate-300 whitespace-pre-wrap text-sm leading-relaxed" x-text="task.description"></p>
                 </div>
-                <p x-show="!task.description" class="text-slate-400 italic text-sm mb-4">אין תיאור</p>
+                <p x-show="!task.description" class="text-slate-400 dark:text-slate-500 italic text-sm mb-4">אין תיאור</p>
 
                 <!-- מטא-נתונים -->
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div x-show="task.client_name">
-                        <dt class="text-xs text-slate-500 mb-0.5">לקוח</dt>
-                        <dd class="text-slate-800 inline-flex items-center">
+                        <dt class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">לקוח</dt>
+                        <dd class="text-slate-800 dark:text-slate-200 inline-flex items-center">
                             <span class="w-2 h-2 rounded-full ml-1.5" :style="`background-color: ${task.client_color || '#94A3B8'}`"></span>
                             <span x-text="task.client_name"></span>
                         </dd>
                     </div>
                     <div x-show="task.due_date">
-                        <dt class="text-xs text-slate-500 mb-0.5">תאריך יעד</dt>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">תאריך יעד</dt>
                         <dd>
-                            <span class="text-slate-800" x-text="formatDate(task.due_date)"></span>
-                            <span x-show="isOverdue(task.due_date, task.status)" class="text-xs text-slate-500 mr-2">(באיחור)</span>
+                            <span class="text-slate-800 dark:text-slate-200" x-text="formatDate(task.due_date)"></span>
+                            <span x-show="isOverdue(task.due_date, task.status)" class="text-xs text-slate-500 dark:text-slate-400 mr-2">(באיחור)</span>
                         </dd>
                     </div>
                     <div x-show="task.created_at">
-                        <dt class="text-xs text-slate-500 mb-0.5">נוצר</dt>
-                        <dd class="text-slate-800" x-text="formatDateTime(task.created_at)"></dd>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">נוצר</dt>
+                        <dd class="text-slate-800 dark:text-slate-200" x-text="formatDateTime(task.created_at)"></dd>
                     </div>
                     <div x-show="task.updated_at">
-                        <dt class="text-xs text-slate-500 mb-0.5">עודכן לאחרונה</dt>
-                        <dd class="text-slate-800" x-text="formatDateTime(task.updated_at)"></dd>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">עודכן לאחרונה</dt>
+                        <dd class="text-slate-800 dark:text-slate-200" x-text="formatDateTime(task.updated_at)"></dd>
                     </div>
                     <div x-show="task.completed_at">
-                        <dt class="text-xs text-slate-500 mb-0.5">הושלם</dt>
-                        <dd class="text-slate-800" x-text="formatDateTime(task.completed_at)"></dd>
+                        <dt class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">הושלם</dt>
+                        <dd class="text-slate-800 dark:text-slate-200" x-text="formatDateTime(task.completed_at)"></dd>
                     </div>
                 </dl>
             </div>
         </div>
 
         <!-- תת-משימות -->
-        <div x-show="task.subtasks && task.subtasks.length > 0" class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
+        <div x-show="task.subtasks && task.subtasks.length > 0" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 p-6">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-bold text-slate-900">תת-משימות</h2>
-                <span class="text-xs text-slate-500">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">תת-משימות</h2>
+                <span class="text-xs text-slate-500 dark:text-slate-400">
                     <span x-text="completedSubtasksCount()"></span>/<span x-text="task.subtasks.length"></span>
                 </span>
             </div>
             <ul class="space-y-2">
                 <template x-for="(sub, idx) in task.subtasks" :key="sub.id">
-                    <li class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded">
+                    <li class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/60 px-3 py-2 rounded">
                         <input
                             type="checkbox"
                             :checked="sub.completed"
                             @change="toggleTaskSubtask(idx)"
                             :disabled="subtaskSaving"
-                            class="w-4 h-4 text-primary-600 rounded"
+                            class="w-4 h-4 text-primary-600 dark:text-primary-400 rounded"
                         >
-                        <span class="text-sm flex-1" :class="sub.completed ? 'line-through text-slate-400' : 'text-slate-800'" x-text="sub.title"></span>
+                        <span class="text-sm flex-1" :class="sub.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'" x-text="sub.title"></span>
                     </li>
                 </template>
             </ul>
         </div>
 
         <!-- קישורים -->
-        <div x-show="task.links && task.links.length > 0" class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
-            <h2 class="text-lg font-bold text-slate-900 mb-3">קישורים</h2>
+        <div x-show="task.links && task.links.length > 0" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 p-6">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">קישורים</h2>
             <ul class="space-y-2">
                 <template x-for="(link, idx) in task.links" :key="idx">
-                    <li class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded text-sm">
-                        <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <li class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/60 px-3 py-2 rounded text-sm">
+                        <svg class="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                         </svg>
-                        <a :href="link" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline truncate flex-1" x-text="link"></a>
+                        <a :href="link" target="_blank" rel="noopener noreferrer" class="text-primary-600 dark:text-primary-400 hover:underline truncate flex-1" x-text="link"></a>
                     </li>
                 </template>
             </ul>
         </div>
 
         <!-- הערות (קומנטים) - תוכן Markdown -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 p-6">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                     </svg>
                     הערות
                 </h2>
-                <span class="text-xs text-slate-500" x-text="comments.length + ' הערות'"></span>
+                <span class="text-xs text-slate-500 dark:text-slate-400" x-text="comments.length + ' הערות'"></span>
             </div>
 
             <div x-show="commentsLoading" class="text-center py-6">
-                <svg class="w-6 h-6 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 mx-auto animate-spin text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                 </svg>
             </div>
 
-            <div x-show="!commentsLoading && comments.length === 0" class="text-slate-400 italic text-sm mb-4">
+            <div x-show="!commentsLoading && comments.length === 0" class="text-slate-400 dark:text-slate-500 italic text-sm mb-4">
                 אין הערות עדיין - הוסף את הראשונה למטה
             </div>
 
@@ -196,20 +196,20 @@
                 class="space-y-3 mb-5"
                 @change="onCommentCheckboxChange($event)">
                 <template x-for="c in comments" :key="c._id">
-                    <li class="border border-slate-200 rounded-lg bg-slate-50 p-3" :data-comment-id="c._id">
+                    <li class="border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/60 p-3" :data-comment-id="c._id">
                         <template x-if="editingId !== c._id">
                             <div>
                                 <div class="markdown-body text-sm" x-html="c.body_html"></div>
-                                <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200">
-                                    <div class="text-xs text-slate-500">
+                                <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">
                                         <span x-text="formatDateTime(c.created_at)"></span>
                                         <span x-show="c.edited_at" class="mr-1 italic">(נערך)</span>
                                     </div>
                                     <div class="flex items-center gap-1">
-                                        <button @click="startEditComment(c)" class="text-xs text-slate-500 hover:text-primary-600 px-2 py-1 rounded">
+                                        <button @click="startEditComment(c)" class="text-xs text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 px-2 py-1 rounded">
                                             עריכה
                                         </button>
-                                        <button @click="confirmDeleteComment(c)" class="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded">
+                                        <button @click="confirmDeleteComment(c)" class="text-xs text-slate-500 dark:text-slate-400 hover:text-red-600 px-2 py-1 rounded">
                                             מחיקה
                                         </button>
                                     </div>
@@ -223,7 +223,7 @@
                                     x-model="editingBody"
                                     rows="4"
                                     maxlength="10000"
-                                    class="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    class="w-full border border-slate-300 dark:border-slate-600 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 ></textarea>
                                 <div class="flex items-center justify-end gap-2 mt-2">
                                     <button @click="cancelEditComment()" class="btn btn-secondary text-xs">ביטול</button>
@@ -238,21 +238,21 @@
                 </template>
             </ul>
 
-            <div class="border-t border-slate-200 pt-4">
+            <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
                 <div class="flex items-center gap-1 mb-2 flex-wrap">
                     <button
                         type="button"
                         @click="commentTab = 'write'"
                         class="text-xs px-3 py-1 rounded-md transition-colors"
-                        :class="commentTab === 'write' ? 'bg-primary-100 text-primary-700' : 'text-slate-500 hover:bg-slate-100'"
+                        :class="commentTab === 'write' ? 'bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'"
                     >כתיבה</button>
                     <button
                         type="button"
                         @click="loadPreview()"
                         class="text-xs px-3 py-1 rounded-md transition-colors"
-                        :class="commentTab === 'preview' ? 'bg-primary-100 text-primary-700' : 'text-slate-500 hover:bg-slate-100'"
+                        :class="commentTab === 'preview' ? 'bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'"
                     >תצוגה מקדימה</button>
-                    <span class="text-xs text-slate-400 mr-auto">תומך ב-Markdown: **bold** *italic* `code` [link](url)</span>
+                    <span class="text-xs text-slate-400 dark:text-slate-500 mr-auto">תומך ב-Markdown: **bold** *italic* `code` [link](url)</span>
                 </div>
 
                 <textarea
@@ -261,17 +261,17 @@
                     rows="4"
                     maxlength="10000"
                     placeholder="כתוב הערה... (Markdown נתמך)"
-                    class="w-full border border-slate-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    class="w-full border border-slate-300 dark:border-slate-600 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 ></textarea>
 
                 <div
                     x-show="commentTab === 'preview'"
-                    class="markdown-body border border-slate-200 rounded-md p-3 bg-slate-50 min-h-[7rem] text-sm"
+                    class="markdown-body border border-slate-200 dark:border-slate-700 rounded-md p-3 bg-slate-50 dark:bg-slate-900/60 min-h-[7rem] text-sm"
                     x-html="previewHtml || '<span class=\'text-slate-400 italic\'>אין מה להציג</span>'"
                 ></div>
 
                 <div class="flex items-center justify-between mt-2">
-                    <span class="text-xs text-slate-400" x-text="(newCommentBody || '').length + ' / 10000'"></span>
+                    <span class="text-xs text-slate-400 dark:text-slate-500" x-text="(newCommentBody || '').length + ' / 10000'"></span>
                     <button
                         @click="addComment()"
                         :disabled="commentSaving || !newCommentBody.trim()"
@@ -286,9 +286,9 @@
             <div x-show="commentDeleteId" x-cloak
                  class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
                  @click.self="commentDeleteId = null">
-                <div class="bg-white rounded-xl shadow-lg max-w-sm w-full p-5">
-                    <h3 class="text-base font-bold text-slate-900 mb-2">מחיקת הערה</h3>
-                    <p class="text-sm text-slate-600 mb-4">למחוק את ההערה? הפעולה אינה הפיכה.</p>
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg max-w-sm w-full p-5">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 mb-2">מחיקת הערה</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">למחוק את ההערה? הפעולה אינה הפיכה.</p>
                     <div class="flex items-center justify-end gap-2">
                         <button @click="commentDeleteId = null" class="btn btn-secondary text-sm">ביטול</button>
                         <button @click="deleteComment()" :disabled="commentSaving" class="btn btn-danger text-sm">מחק</button>
@@ -404,21 +404,21 @@ function taskDetailPage(taskId) {
         },
         statusBadgeClass(s) {
             return {
-                open: 'bg-amber-50 text-amber-700',
-                in_progress: 'bg-blue-50 text-blue-700',
-                completed: 'bg-green-50 text-green-700',
-            }[s] || 'bg-slate-100 text-slate-600';
+                open: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+                in_progress: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
+                completed: 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300',
+            }[s] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
         },
         priorityLabel(p) {
             return { low: 'נמוכה', normal: 'רגילה', high: 'גבוהה', urgent: 'דחוף' }[p] || p;
         },
         priorityClass(p) {
             return {
-                low: 'bg-slate-100 text-slate-600',
-                normal: 'bg-blue-50 text-blue-700',
-                high: 'bg-amber-50 text-amber-700',
-                urgent: 'bg-red-50 text-red-700',
-            }[p] || 'bg-slate-100 text-slate-600';
+                low: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
+                normal: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
+                high: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+                urgent: 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300',
+            }[p] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
         },
         formatDate(iso) {
             if (!iso) return '';
