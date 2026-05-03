@@ -161,6 +161,12 @@ async def toggle_comment_task(request: Request, comment_id: str, payload: TaskTo
         }},
         return_document=True,
     )
+    if not result:
+        # ההערה נמחקה בין ה-find_one ל-find_one_and_update
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="הערה לא נמצאה",
+        )
     return _serialize(result)
 
 

@@ -241,6 +241,12 @@ async def toggle_document_task(
         {"$set": {"content_md": new_md, "updated_at": now}},
         return_document=True,
     )
+    if not result:
+        # המסמך נמחק בין ה-find_one ל-find_one_and_update
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="מסמך לא נמצא",
+        )
     html, _ = markdown_to_html(result.get("content_md", ""))
     return {
         "_id": str(result["_id"]),
