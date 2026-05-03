@@ -176,7 +176,7 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
             },
             "pymdownx.tasklist": {
                 "custom_checkbox": False,    # input רגיל (בלי label/span עוטף)
-                "clickable_checkbox": False, # קריאה בלבד - אין אינטראקציה
+                "clickable_checkbox": True,  # ללא disabled - הקליק נתפס בצד-לקוח ונשלח לשרת
             },
         },
     )
@@ -222,6 +222,35 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
         )
 
     return clean, toc_html
+
+
+# ---------- Task list toggle ----------
+
+# מתאים לתחביר של pymdownx.tasklist:
+# - שורות שמתחילות בתבליט (-, *, +) או רשימה ממוספרת (1. וכו'), עם רווח/טאב,
+#   ואז [ ] או [x]/[X]. תפסים גם הזחה (תת-משימות).
+_TASK_RE = re.compile(
+    r"^(?P<prefix>[ \t]*(?:[-*+]|\d+\.)\s+)\[(?P<state>[ xX])\]",
+    flags=re.MULTILINE,
+)
+
+
+def toggle_task_in_markdown(text: str, index: int, checked: bool) -> str:
+    """מחליף את המצב של ה-checkbox ה-N (0-based) בטקסט Markdown.
+
+    מחזיר את הטקסט החדש. אם האינדקס מחוץ לטווח - זורק IndexError.
+    """
+    if not text:
+        raise IndexError("no tasks in text")
+
+    matches = list(_TASK_RE.finditer(text))
+    if index < 0 or index >= len(matches):
+        raise IndexError(f"task index {index} out of range (found {len(matches)})")
+
+    m = matches[index]
+    new_state = "x" if checked else " "
+    start, end = m.start("state"), m.end("state")
+    return text[:start] + new_state + text[end:]
 
 
 @lru_cache(maxsize=1)

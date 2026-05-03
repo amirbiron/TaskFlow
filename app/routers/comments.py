@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from app.core.database import get_database
 from app.core.auth import require_api_auth
 from app.core.db_utils import validate_object_id
-from app.core.markdown_renderer import markdown_to_html
+from app.core.markdown_renderer import markdown_to_html, toggle_task_in_markdown
 from app.models.comment import CommentCreate, CommentUpdate, MAX_COMMENT_BODY
 from pydantic import BaseModel, Field
 
@@ -15,6 +15,12 @@ router = APIRouter()
 class CommentRenderRequest(BaseModel):
     """תצוגה מקדימה של גוף הערה ב-Markdown."""
     text: str = Field(default="", max_length=MAX_COMMENT_BODY)
+
+
+class TaskToggleRequest(BaseModel):
+    """טוגל של checkbox ב-task list בתוך הערה."""
+    index: int = Field(..., ge=0)
+    checked: bool
 
 
 @router.post("/comments/_render")
@@ -116,6 +122,45 @@ async def update_comment(request: Request, comment_id: str, payload: CommentUpda
             detail="הערה לא נמצאה",
         )
 
+    return _serialize(result)
+
+
+@router.patch("/comments/{comment_id}/toggle-task")
+async def toggle_comment_task(request: Request, comment_id: str, payload: TaskToggleRequest):
+    """הפיכת מצב checkbox ה-N בתוך הערה - שמירה ב-DB ורינדור מחדש."""
+    require_api_auth(request)
+    db = get_database()
+    obj_id = validate_object_id(comment_id)
+
+    existing = await db.task_comments.find_one({"_id": obj_id}, {"body": 1})
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="הערה לא נמצאה",
+        )
+
+    try:
+        new_body = toggle_task_in_markdown(
+            existing.get("body", ""), payload.index, payload.checked
+        )
+    except IndexError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="ההערה השתנתה בינתיים - רענן ונסה שוב",
+        )
+
+    html, _ = markdown_to_html(new_body)
+    now = datetime.utcnow()
+    # toggle של checkbox לא נחשב "עריכה אנושית" של ההערה - לא מעדכנים edited_at
+    result = await db.task_comments.find_one_and_update(
+        {"_id": obj_id},
+        {"$set": {
+            "body": new_body,
+            "body_html": html,
+            "updated_at": now,
+        }},
+        return_document=True,
+    )
     return _serialize(result)
 
 
