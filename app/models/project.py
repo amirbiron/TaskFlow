@@ -21,12 +21,19 @@ class TagDetail(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class ProjectLink(BaseModel):
+    """קישור בעל שם המוטמע בפרויקט"""
+    title: str = Field(..., min_length=1, max_length=200)
+    url: str = Field(..., min_length=1, max_length=2000, pattern=r"^https?://.+")
+
+
 class ProjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     client_id: Optional[str] = None
     status: ProjectStatus = ProjectStatus.ACTIVE
     tags: List[str] = Field(default_factory=list)
+    links: List[ProjectLink] = Field(default_factory=list)
 
 
 class ProjectCreate(ProjectBase):
@@ -39,6 +46,7 @@ class ProjectUpdate(BaseModel):
     client_id: Optional[str] = None
     status: Optional[ProjectStatus] = None
     tags: Optional[List[str]] = None
+    links: Optional[List[ProjectLink]] = None
 
 
 class Project(MongoBaseModel, ProjectBase):
