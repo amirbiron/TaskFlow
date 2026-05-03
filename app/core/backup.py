@@ -157,7 +157,23 @@ async def run_backup() -> BackupResult:
         )
 
     async with _backup_lock:
-        return await _run_backup_locked()
+        # רשת בטיחות: גם אם _run_backup_locked יתפוצץ במקום שלא ציפינו
+        # לו (למשל PermissionError מ-_ensure_backup_dir כשהדיסק מלא או
+        # שאין הרשאות) - מחזירים BackupResult תקין במקום להפיץ חריגה.
+        # זה מקיים את החוזה של run_backup ומבטיח ש-_last_result מתעדכן
+        # כדי שמסך הניהול יציג את הכישלון, לא מידע ישן.
+        try:
+            return await _run_backup_locked()
+        except Exception as exc:  # noqa: BLE001 - safety net, intentional
+            msg = _redact_secrets(f"שגיאה בלתי צפויה בלוגיקת הגיבוי: {exc!r}")
+            logger.exception(msg)
+            result = BackupResult(
+                success=False,
+                error=msg,
+                finished_at=datetime.now(timezone.utc),
+            )
+            _last_result = result
+            return result
 
 
 async def _run_backup_locked() -> BackupResult:
