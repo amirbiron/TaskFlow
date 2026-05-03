@@ -10,8 +10,8 @@
     <!-- כותרת -->
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 md:mb-8 gap-4">
         <div>
-            <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100">גיבויים</h2>
-            <p class="text-slate-600 dark:text-slate-400 mt-1 text-sm md:text-base">
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-900">גיבויים</h2>
+            <p class="text-slate-600 mt-1 text-sm md:text-base">
                 גיבויי מסד הנתונים נשמרים אוטומטית מדי יום ב-{{ "%02d"|format(backup_hour) }}:{{ "%02d"|format(backup_minute) }} UTC
             </p>
         </div>
@@ -35,58 +35,58 @@
     <!-- פסי מידע -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <!-- מצב מערכת -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">סטטוס</div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="text-xs font-medium text-slate-500 uppercase mb-1">סטטוס</div>
             {% if backup_enabled %}
             <div class="flex items-center gap-2">
                 <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span class="text-base font-semibold text-slate-900 dark:text-slate-100">פעיל</span>
+                <span class="text-base font-semibold text-slate-900">פעיל</span>
             </div>
             {% else %}
             <div class="flex items-center gap-2">
                 <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                <span class="text-base font-semibold text-slate-900 dark:text-slate-100">מושבת</span>
+                <span class="text-base font-semibold text-slate-900">מושבת</span>
             </div>
             {% endif %}
-            <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <div class="text-sm text-slate-500 mt-1">
                 שמירה {{ retention_days }} ימים אחורה
             </div>
         </div>
 
         <!-- ריצה אחרונה -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">ריצה אחרונה</div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="text-xs font-medium text-slate-500 uppercase mb-1">ריצה אחרונה</div>
             <template x-if="lastRun">
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full"
                               :class="lastRun.success ? 'bg-green-500' : 'bg-red-500'"></span>
                         <span class="text-base font-semibold"
-                              :class="lastRun.success ? 'text-slate-900 dark:text-slate-100' : 'text-red-700 dark:text-red-300'"
+                              :class="lastRun.success ? 'text-slate-900' : 'text-red-700'"
                               x-text="lastRun.success ? 'הצליחה' : 'נכשלה'"></span>
                     </div>
-                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1" x-text="formatDateTime(lastRun.finished_at)"></div>
+                    <div class="text-sm text-slate-500 mt-1" x-text="formatDateTime(lastRun.finished_at)"></div>
                     <div x-show="!lastRun.success && lastRun.error"
-                         class="text-xs text-red-600 dark:text-red-400 mt-2 break-all"
+                         class="text-xs text-red-600 mt-2 break-all"
                          x-text="lastRun.error"></div>
                 </div>
             </template>
-            <div x-show="!lastRun" class="text-sm text-slate-500 dark:text-slate-400">עוד לא רץ מאז ההפעלה</div>
+            <div x-show="!lastRun" class="text-sm text-slate-500">עוד לא רץ מאז ההפעלה</div>
         </div>
 
         <!-- ריצה הבאה -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <div class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">ריצה הבאה</div>
-            <div class="text-base font-semibold text-slate-900 dark:text-slate-100"
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="text-xs font-medium text-slate-500 uppercase mb-1">ריצה הבאה</div>
+            <div class="text-base font-semibold text-slate-900"
                  x-text="nextRunAt ? formatDateTime(nextRunAt) : '—'"></div>
-            <div class="text-sm text-slate-500 dark:text-slate-400 mt-1"
+            <div class="text-sm text-slate-500 mt-1"
                  x-text="totalSizeBytes > 0 ? `סה״כ: ${formatBytes(totalSizeBytes)}` : ''"></div>
         </div>
     </div>
 
     <!-- מצב טעינה -->
     <div x-show="loading" class="text-center py-12">
-        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
@@ -95,33 +95,33 @@
 
     <!-- Empty state -->
     <div x-show="!loading && backups.length === 0"
-         class="empty-state bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+         class="empty-state bg-white rounded-xl border border-slate-200">
         <div class="empty-state-icon">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
             </svg>
         </div>
-        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">אין עדיין גיבויים</h3>
-        <p class="text-slate-600 dark:text-slate-400 mb-4">לחץ "גיבוי עכשיו" ליצירת הגיבוי הראשון</p>
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">אין עדיין גיבויים</h3>
+        <p class="text-slate-600 mb-4">לחץ "גיבוי עכשיו" ליצירת הגיבוי הראשון</p>
     </div>
 
     <!-- רשימת גיבויים -->
     <div x-show="!loading && backups.length > 0"
-         class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+         class="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <template x-for="(backup, index) in backups" :key="backup.filename">
-            <div class="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors gap-3"
-                 :class="index !== 0 ? 'border-t border-slate-100 dark:border-slate-800' : ''">
+            <div class="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors gap-3"
+                 :class="index !== 0 ? 'border-t border-slate-100' : ''">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-10 h-10 bg-primary-50 dark:bg-primary-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg class="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
                         </svg>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <div class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate" x-text="backup.filename"></div>
-                        <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <div class="text-sm font-medium text-slate-900 truncate" x-text="backup.filename"></div>
+                        <div class="text-xs text-slate-500 mt-0.5">
                             <span x-text="formatDateTime(backup.created_at)"></span>
                             <span class="mx-1">•</span>
                             <span x-text="formatBytes(backup.size_bytes)"></span>
@@ -131,7 +131,7 @@
 
                 <div class="flex gap-1 flex-shrink-0">
                     <a :href="`/api/admin/backups/${backup.filename}/download`"
-                       class="p-2 text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                       class="p-2 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-colors"
                        title="הורדה">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -139,7 +139,7 @@
                         </svg>
                     </a>
                     <button @click="confirmDelete(backup)"
-                            class="p-2 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                            class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                             title="מחיקה">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -152,11 +152,11 @@
     </div>
 
     <!-- הודעת מידע -->
-    <div class="mt-6 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl p-4 text-sm text-blue-900 dark:text-blue-200">
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
         <div class="font-semibold mb-2">איך לפתוח / לשחזר גיבוי?</div>
         <p class="mb-2">הקובץ הוא <strong>zip סטנדרטי</strong> - אפשר לפתוח בקליק כפול ולעיין בתוכן (כל collection בקובץ JSON נפרד).</p>
         <p class="mb-2">לשחזור מלא למסד נתונים:</p>
-        <code class="block bg-white dark:bg-slate-800 px-3 py-2 rounded text-xs overflow-x-auto" dir="ltr">
+        <code class="block bg-white px-3 py-2 rounded text-xs overflow-x-auto" dir="ltr">
 python scripts/restore_backup.py backup_YYYY-MM-DD_HH-MM-SS.zip --uri "$MONGODB_URL"
         </code>
     </div>
