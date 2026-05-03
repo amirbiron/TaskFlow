@@ -376,11 +376,16 @@ html {
     border-collapse: collapse;
     margin: 0.8em 0;
     width: 100%;
-    /* גלילה אופקית לטבלאות רחבות (במיוחד במובייל) */
-    display: block;
-    max-width: 100%;
+}
+/* עטיפת גלילה אופקית לטבלאות רחבות (במיוחד במובייל) - מתווסף ע"י השרת */
+.markdown-body .markdown-table-wrap {
     overflow-x: auto;
+    max-width: 100%;
     -webkit-overflow-scrolling: touch;
+    margin: 0.8em 0;
+}
+.markdown-body .markdown-table-wrap > table {
+    margin: 0;
 }
 .markdown-body th,
 .markdown-body td {
