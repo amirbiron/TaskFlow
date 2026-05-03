@@ -22,7 +22,7 @@
         <!-- ניווט חזרה -->
         <div class="mb-4 flex items-center justify-between flex-wrap gap-2">
             <div class="text-sm text-slate-500 dark:text-sf-text-secondary">
-                <a href="/tasks" class="hover:text-slate-700 dark:text-sf-text-primary inline-flex items-center">
+                <a href="/tasks" class="hover:text-slate-700 dark:hover:text-sf-text-primary inline-flex items-center">
                     <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
@@ -31,7 +31,7 @@
                 <template x-if="task && task.project_id">
                     <span>
                         <span class="mx-2">·</span>
-                        <a :href="`/projects/${task.project_id}`" class="hover:text-slate-700 dark:text-sf-text-primary" x-text="task.project_name || 'פרויקט'"></a>
+                        <a :href="`/projects/${task.project_id}`" class="hover:text-slate-700 dark:hover:text-sf-text-primary" x-text="task.project_name || 'פרויקט'"></a>
                     </span>
                 </template>
             </div>
@@ -74,7 +74,7 @@
                             class="text-xs px-3 py-1 rounded-full border transition-colors"
                             :class="task.status === opt.id
                                 ? 'bg-primary-600 dark:bg-sf-primary text-white border-primary-600'
-                                : 'bg-white dark:bg-sf-bg-card text-slate-600 dark:text-sf-text-secondary border-slate-200 dark:border-sf-border hover:bg-slate-50 dark:bg-sf-bg-deep'"
+                                : 'bg-white dark:bg-sf-bg-card text-slate-600 dark:text-sf-text-secondary border-slate-200 dark:border-sf-border hover:bg-slate-50 dark:hover:bg-sf-bg-hover'"
                             x-text="opt.label"
                         ></button>
                     </template>
@@ -206,10 +206,10 @@
                                         <span x-show="c.edited_at" class="mr-1 italic">(נערך)</span>
                                     </div>
                                     <div class="flex items-center gap-1">
-                                        <button @click="startEditComment(c)" class="text-xs text-slate-500 dark:text-sf-text-secondary hover:text-primary-600 dark:text-sf-primary-light px-2 py-1 rounded">
+                                        <button @click="startEditComment(c)" class="text-xs text-slate-500 dark:text-sf-text-secondary hover:text-primary-600 dark:hover:text-sf-primary-light px-2 py-1 rounded">
                                             עריכה
                                         </button>
-                                        <button @click="confirmDeleteComment(c)" class="text-xs text-slate-500 dark:text-sf-text-secondary hover:text-red-600 dark:text-sf-red px-2 py-1 rounded">
+                                        <button @click="confirmDeleteComment(c)" class="text-xs text-slate-500 dark:text-sf-text-secondary hover:text-red-600 dark:hover:text-sf-red px-2 py-1 rounded">
                                             מחיקה
                                         </button>
                                     </div>
@@ -244,13 +244,13 @@
                         type="button"
                         @click="commentTab = 'write'"
                         class="text-xs px-3 py-1 rounded-md transition-colors"
-                        :class="commentTab === 'write' ? 'bg-primary-100 dark:bg-sf-primary/20 text-primary-700 dark:text-sf-primary-light' : 'text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:bg-sf-bg-muted'"
+                        :class="commentTab === 'write' ? 'bg-primary-100 dark:bg-sf-primary/20 text-primary-700 dark:text-sf-primary-light' : 'text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover'"
                     >כתיבה</button>
                     <button
                         type="button"
                         @click="loadPreview()"
                         class="text-xs px-3 py-1 rounded-md transition-colors"
-                        :class="commentTab === 'preview' ? 'bg-primary-100 dark:bg-sf-primary/20 text-primary-700 dark:text-sf-primary-light' : 'text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:bg-sf-bg-muted'"
+                        :class="commentTab === 'preview' ? 'bg-primary-100 dark:bg-sf-primary/20 text-primary-700 dark:text-sf-primary-light' : 'text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover'"
                     >תצוגה מקדימה</button>
                     <span class="text-xs text-slate-400 dark:text-sf-text-muted mr-auto">תומך ב-Markdown: **bold** *italic* `code` [link](url)</span>
                 </div>
