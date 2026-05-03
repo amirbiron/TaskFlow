@@ -2,10 +2,28 @@ services:
   - type: web
     name: taskflow
     runtime: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
+    plan: starter
+    # מתקין mongodb-database-tools (mongodump/mongorestore) דרך apt
+    # הכלים זמינים בתיקיית /opt/render/project/.render/mongodb-tools/bin
+    buildCommand: |
+      set -e
+      MONGO_TOOLS_DIR="/opt/render/project/.render/mongodb-tools"
+      mkdir -p "$MONGO_TOOLS_DIR"
+      if [ ! -x "$MONGO_TOOLS_DIR/bin/mongodump" ]; then
+        cd /tmp
+        curl -fsSL -o mongo-tools.tgz \
+          https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.10.0.tgz
+        tar -xzf mongo-tools.tgz
+        cp mongodb-database-tools-*/bin/* "$MONGO_TOOLS_DIR/bin/" 2>/dev/null || \
+          (mkdir -p "$MONGO_TOOLS_DIR/bin" && cp mongodb-database-tools-*/bin/* "$MONGO_TOOLS_DIR/bin/")
+      fi
+      pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
+    disk:
+      name: taskflow-backups
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: MONGODB_URL
         sync: false
@@ -23,3 +41,17 @@ services:
         value: false
       - key: PYTHON_VERSION
         value: 3.11.9
+      # נתיב לכלי mongodump שהורדו ב-build (משמש את גיבוי המסד)
+      - key: MONGODUMP_PATH
+        value: /opt/render/project/.render/mongodb-tools/bin/mongodump
+      # תיקיית גיבויים על ה-disk המתמיד
+      - key: BACKUP_DIR
+        value: /var/data/backups
+      - key: BACKUP_ENABLED
+        value: true
+      - key: BACKUP_RETENTION_DAYS
+        value: 7
+      - key: BACKUP_HOUR
+        value: 3
+      - key: BACKUP_MINUTE
+        value: 0
