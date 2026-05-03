@@ -3,7 +3,7 @@
 {% block title %}התחברות - TaskFlow{% endblock %}
 
 {% block body %}
-<div class="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-100 to-blue-100 dark:from-slate-950 dark:to-slate-900">
+<div class="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-100 to-blue-100">
     <div class="max-w-md w-full">
         <!-- לוגו / כותרת -->
         <div class="text-center mb-8">
@@ -13,23 +13,23 @@
                           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">TaskFlow</h1>
-            <p class="text-slate-600 dark:text-slate-400 mt-2">ניהול פרויקטים, משימות ולקוחות</p>
+            <h1 class="text-3xl font-bold text-slate-900">TaskFlow</h1>
+            <p class="text-slate-600 mt-2">ניהול פרויקטים, משימות ולקוחות</p>
         </div>
 
         <!-- טופס -->
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8">
+        <div class="bg-white rounded-2xl shadow-xl p-8">
             <h2 class="text-xl font-semibold mb-6 text-center">התחברות</h2>
 
             {% if error %}
-            <div class="mb-4 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 rounded-lg text-sm text-center">
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm text-center">
                 {{ error }}
             </div>
             {% endif %}
 
             <form method="POST" action="/login" class="space-y-4">
                 <div>
-                    <label for="password" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    <label for="password" class="block text-sm font-medium text-slate-700 mb-2">
                         סיסמה
                     </label>
                     <input
@@ -45,14 +45,14 @@
 
                 <button
                     type="submit"
-                    class="w-full bg-primary-600 hover:bg-primary-700 dark:hover:bg-primary-500 text-white font-medium py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg"
+                    class="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg"
                 >
                     כניסה
                 </button>
             </form>
         </div>
 
-        <p class="text-center text-slate-500 dark:text-slate-400 text-sm mt-6">
+        <p class="text-center text-slate-500 text-sm mt-6">
             מערכת אישית · כל הזכויות שמורות
         </p>
     </div>

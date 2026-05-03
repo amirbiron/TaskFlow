@@ -8,8 +8,8 @@
     <!-- כותרת + כפתור הוספה -->
     <div class="flex justify-between items-center mb-6 md:mb-8">
         <div>
-            <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100">פרויקטים</h2>
-            <p class="text-slate-600 dark:text-slate-400 mt-1 text-sm md:text-base" x-show="projects.length > 0">
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-900">פרויקטים</h2>
+            <p class="text-slate-600 mt-1 text-sm md:text-base" x-show="projects.length > 0">
                 <span x-text="projects.length"></span> פרויקטים מוצגים
             </p>
         </div>
@@ -28,29 +28,29 @@
                 type="checkbox"
                 x-model="includeInactive"
                 @change="loadProjects()"
-                class="w-4 h-4 text-primary-600 dark:text-primary-400 rounded ml-2"
+                class="w-4 h-4 text-primary-600 rounded ml-2"
             />
-            <span class="text-sm text-slate-700 dark:text-slate-300">הצג גם פרויקטים שהושלמו או בארכיון</span>
+            <span class="text-sm text-slate-700">הצג גם פרויקטים שהושלמו או בארכיון</span>
         </label>
     </div>
 
     <!-- מצב טעינה -->
     <div x-show="loading" class="text-center py-12">
-        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
     </div>
 
     <!-- Empty state -->
-    <div x-show="!loading && projects.length === 0" class="empty-state bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div x-show="!loading && projects.length === 0" class="empty-state bg-white rounded-xl border border-slate-200">
         <div class="empty-state-icon">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
             </svg>
         </div>
-        <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">אין פרויקטים פעילים</h3>
-        <p class="text-slate-600 dark:text-slate-400 mb-4">צור את הפרויקט הראשון שלך</p>
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">אין פרויקטים פעילים</h3>
+        <p class="text-slate-600 mb-4">צור את הפרויקט הראשון שלך</p>
         <button @click="openCreateModal()" class="btn btn-primary">
             <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -67,7 +67,7 @@
 
                 <div class="pr-3">
                     <div class="flex items-start justify-between gap-2 mb-2">
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 truncate" x-text="project.name"></h3>
+                        <h3 class="text-lg font-bold text-slate-900 truncate" x-text="project.name"></h3>
                         <span
                             class="text-xs px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0"
                             :class="statusBadgeClass(project.status)"
@@ -76,13 +76,13 @@
                     </div>
 
                     <!-- לקוח -->
-                    <div class="text-sm text-slate-600 dark:text-slate-400 mb-2" x-show="project.client_name">
+                    <div class="text-sm text-slate-600 mb-2" x-show="project.client_name">
                         <svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                         </svg>
                         <span x-text="project.client_name"></span>
                     </div>
-                    <div class="text-sm text-slate-400 dark:text-slate-500 italic mb-2" x-show="!project.client_name">ללא לקוח</div>
+                    <div class="text-sm text-slate-400 italic mb-2" x-show="!project.client_name">ללא לקוח</div>
 
                     <!-- תגיות -->
                     <div x-show="project.tag_details && project.tag_details.length > 0" class="flex flex-wrap gap-1 mb-2">
@@ -93,23 +93,23 @@
                                 x-text="tag.name"
                             ></span>
                         </template>
-                        <span x-show="(project.tag_details || []).length > 3" class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                        <span x-show="(project.tag_details || []).length > 3" class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
                             +<span x-text="project.tag_details.length - 3"></span>
                         </span>
                     </div>
 
                     <!-- תיאור -->
-                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-3 line-clamp-2" x-show="project.description" x-text="project.description"></p>
+                    <p class="text-sm text-slate-600 mb-3 line-clamp-2" x-show="project.description" x-text="project.description"></p>
 
                     <!-- סטטיסטיקות -->
                     <div class="flex gap-2 text-xs">
-                        <span class="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full" x-show="project.open_tasks_count > 0">
+                        <span class="bg-amber-50 text-amber-700 px-2 py-1 rounded-full" x-show="project.open_tasks_count > 0">
                             <span x-text="project.open_tasks_count"></span> משימות פתוחות
                         </span>
-                        <span class="bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 px-2 py-1 rounded-full" x-show="project.completed_tasks_count > 0">
+                        <span class="bg-green-50 text-green-700 px-2 py-1 rounded-full" x-show="project.completed_tasks_count > 0">
                             <span x-text="project.completed_tasks_count"></span> הושלמו
                         </span>
-                        <span class="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-full" x-show="project.open_tasks_count === 0 && project.completed_tasks_count === 0">
+                        <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded-full" x-show="project.open_tasks_count === 0 && project.completed_tasks_count === 0">
                             ללא משימות
                         </span>
                     </div>
@@ -121,9 +121,9 @@
     <!-- מודאל יצירה -->
     <div x-show="modalOpen" x-cloak @click.self="closeModal()" class="modal-backdrop" x-transition.opacity>
         <div class="modal-content slide-up">
-            <div class="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
-                <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">פרויקט חדש</h3>
-                <button @click="closeModal()" class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200">
+                <h3 class="text-xl font-bold text-slate-900">פרויקט חדש</h3>
+                <button @click="closeModal()" class="text-slate-400 hover:text-slate-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -132,7 +132,7 @@
 
             <form @submit.prevent="saveProject()" class="p-6 space-y-4">
                 <div>
-                    <label class="form-label">שם הפרויקט <span class="text-red-500 dark:text-red-400">*</span></label>
+                    <label class="form-label">שם הפרויקט <span class="text-red-500">*</span></label>
                     <input type="text" x-model="formData.name" class="form-input" required maxlength="200" autofocus>
                 </div>
 
@@ -194,10 +194,10 @@
                                 x-show="tagPickerOpen && (availableTags.length > 0 || canCreateNewTag)"
                                 x-cloak
                                 @click.outside="tagPickerOpen = false"
-                                class="absolute z-20 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                                class="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
                             >
                                 <template x-for="tag in availableTags" :key="tag._id">
-                                    <button type="button" @click="addTag(tag._id)" class="w-full text-right px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2">
+                                    <button type="button" @click="addTag(tag._id)" class="w-full text-right px-3 py-2 hover:bg-slate-50 flex items-center gap-2">
                                         <span class="w-3 h-3 rounded-full" :style="`background-color: ${tag.color}`"></span>
                                         <span x-text="tag.name"></span>
                                     </button>
@@ -207,7 +207,7 @@
                                     x-show="canCreateNewTag"
                                     @click="createAndAddTag()"
                                     :disabled="creatingTag"
-                                    class="w-full text-right px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/60 border-t border-slate-100 dark:border-slate-800 text-primary-600 dark:text-primary-400 flex items-center gap-2"
+                                    class="w-full text-right px-3 py-2 hover:bg-slate-50 border-t border-slate-100 text-primary-600 flex items-center gap-2"
                                 >
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -219,7 +219,7 @@
                     </div>
                 </div>
 
-                <div x-show="error" class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
+                <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" x-text="error"></div>
 
                 <div class="flex gap-2 pt-2">
                     <button type="button" @click="closeModal()" class="btn btn-secondary flex-1">ביטול</button>
@@ -346,11 +346,11 @@ function projectsManager() {
 
         statusBadgeClass(s) {
             return {
-                active: 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300',
-                pending: 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300',
-                completed: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
-                archived: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
-            }[s] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
+                active: 'bg-green-50 text-green-700',
+                pending: 'bg-orange-50 text-orange-700',
+                completed: 'bg-blue-50 text-blue-700',
+                archived: 'bg-slate-100 text-slate-600',
+            }[s] || 'bg-slate-100 text-slate-600';
         },
 
         async loadProjects() {
