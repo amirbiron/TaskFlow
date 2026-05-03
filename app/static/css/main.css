@@ -569,3 +569,75 @@ html.dark .markdown-body .alert-success { border-color: #34d399; background: rgb
 
 .markdown-body .alert > :first-child { margin-top: 0; }
 .markdown-body .alert > :last-child  { margin-bottom: 0; }
+
+/* ====== RTL אוטומטי לבלוקי קוד עם רוב עברית (markdown_enhance.js) ====== */
+.markdown-body pre.rtl-code {
+    direction: rtl;
+    text-align: right;
+}
+/* בתוך pre יש לעיתים div.highlight (codehilite) – נכפה גם עליו */
+.markdown-body pre.rtl-code code {
+    direction: rtl;
+    text-align: right;
+    unicode-bidi: plaintext;
+}
+
+/* ====== כפתור העתק (markdown_enhance.js) ====== */
+.markdown-body pre {
+    position: relative;
+}
+.markdown-body .md-copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    /* inset-inline-end ביחס לכיוון של ה-pre עצמו:
+       - בלוק LTR (ברירת מחדל) → right (סוף ה-pre)
+       - בלוק RTL (.rtl-code)    → left  (סוף ה-pre)
+       בשני המקרים הכפתור "אחרי הקוד" ולא מתנגש בתחילתו.
+       חשוב: לא להגדיר direction מפורש על הכפתור – הוא יורש מה-pre. */
+    inset-inline-end: 0.5rem;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, background-color 0.15s, color 0.15s, transform 0.1s;
+    z-index: 2;
+}
+
+.markdown-body pre:hover .md-copy-btn,
+.markdown-body .md-copy-btn:focus-visible {
+    opacity: 1;
+}
+
+.markdown-body .md-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+.markdown-body .md-copy-btn:active {
+    transform: scale(0.95);
+}
+
+.markdown-body .md-copy-btn.copied {
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.4);
+    background: rgba(52, 211, 153, 0.15);
+    opacity: 1;
+}
+
+/* במובייל / מכשירי מגע: תמיד גלוי (אין hover) */
+@media (hover: none), (pointer: coarse) {
+    .markdown-body .md-copy-btn {
+        opacity: 0.7;
+    }
+    .markdown-body .md-copy-btn:active {
+        opacity: 1;
+    }
+}
