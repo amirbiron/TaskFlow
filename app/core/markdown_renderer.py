@@ -175,8 +175,8 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
                 "toc_depth": 3,
             },
             "pymdownx.tasklist": {
-                "custom_checkbox": True,   # מוסיף class="task-list-item-checkbox" לעיצוב
-                "clickable_checkbox": False,  # קריאה בלבד - אין אינטראקציה
+                "custom_checkbox": False,    # input רגיל (בלי label/span עוטף)
+                "clickable_checkbox": False, # קריאה בלבד - אין אינטראקציה
             },
         },
     )
@@ -197,6 +197,16 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
         attributes=ALLOWED_ATTRS,
         protocols=ALLOWED_PROTOCOLS,
         strip=True,
+    )
+
+    # bleach מפעיל את _input_attr_filter רק כשיש attribute. <input> ללא
+    # attributes חומק - וברירת המחדל ב-HTML היא type="text". לכן מסירים
+    # ידנית כל <input> שאין בו type="checkbox".
+    clean = re.sub(
+        r'<input(?![^>]*\btype\s*=\s*["\']?checkbox["\']?)[^>]*/?>',
+        "",
+        clean,
+        flags=re.IGNORECASE,
     )
 
     clean = _force_noopener(clean)

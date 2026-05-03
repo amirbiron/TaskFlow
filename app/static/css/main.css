@@ -320,7 +320,7 @@ html {
 /* Task lists (- [ ] / - [x]) - הסרת תבליט והצמדת ה-checkbox */
 .markdown-body ul.task-list { list-style: none; padding-inline-start: 0.5em; }
 .markdown-body li.task-list-item { display: flex; align-items: flex-start; gap: 0.5em; }
-.markdown-body input.task-list-item-checkbox {
+.markdown-body li.task-list-item input[type="checkbox"] {
     margin-top: 0.35em;
     flex-shrink: 0;
     accent-color: #2563eb;
