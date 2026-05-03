@@ -110,11 +110,8 @@
                     <div x-show="task.due_date">
                         <dt class="text-xs text-slate-500 mb-0.5">תאריך יעד</dt>
                         <dd>
-                            <span
-                                :class="isOverdue(task.due_date, task.status) ? 'text-red-700 font-medium' : 'text-slate-800'"
-                                x-text="formatDate(task.due_date)"
-                            ></span>
-                            <span x-show="isOverdue(task.due_date, task.status)" class="text-xs text-red-600 mr-2">(באיחור)</span>
+                            <span class="text-slate-800" x-text="formatDate(task.due_date)"></span>
+                            <span x-show="isOverdue(task.due_date, task.status)" class="text-xs text-slate-500 mr-2">(באיחור)</span>
                         </dd>
                     </div>
                     <div x-show="task.created_at">
@@ -295,7 +292,7 @@ function taskDetailPage(taskId) {
             } catch (e) { return ''; }
         },
         // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה).
-        // היום ואתמול נחשבים "רגיל" - אדום מיומיים+ באיחור.
+        // אין צבע מיוחד לתאריכים שעברו - רק תווית טקסט "(באיחור)".
         _dueParts(dateStr) {
             const d = new Date(dateStr);
             const today = new Date();
@@ -306,8 +303,7 @@ function taskDetailPage(taskId) {
         isOverdue(due, status) {
             if (!due || status === 'completed') return false;
             const { startOfDue, startOfToday } = this._dueParts(due);
-            const oneDayMs = 86400000;
-            return (startOfToday - startOfDue) > oneDayMs;
+            return startOfDue < startOfToday;
         },
         completedSubtasksCount() {
             if (!this.task || !this.task.subtasks) return 0;

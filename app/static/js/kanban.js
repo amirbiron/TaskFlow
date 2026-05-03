@@ -146,16 +146,14 @@ function kanbanComponent(config = {}) {
             return { startOfDue, startOfToday };
         },
 
-        // היום ואתמול נחשבים "רגיל" (אפור). אדום רק מיומיים+ באיחור.
+        // הוחלט שתאריכי יעד לא יקבלו צבע מיוחד גם אם עברו - תמיד אפור רגיל.
         isOverdue(dateStr, status) {
             if (!dateStr || status === 'completed') return false;
             const { startOfDue, startOfToday } = this._dueParts(dateStr);
-            const oneDayMs = 86400000;
-            return (startOfToday - startOfDue) > oneDayMs;
+            return startOfDue < startOfToday;
         },
 
-        dueDateBadgeClass(dateStr, status) {
-            if (this.isOverdue(dateStr, status)) return 'bg-red-50 text-red-700';
+        dueDateBadgeClass() {
             return 'bg-slate-100 text-slate-600';
         },
 
