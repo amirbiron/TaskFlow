@@ -151,7 +151,7 @@
                                 class="w-4 h-4 text-primary-600 dark:text-sf-primary-light rounded"
                             >
                             <span class="flex-1 text-sm" :class="subtask.completed ? 'line-through text-slate-400 dark:text-sf-text-muted' : ''" x-text="subtask.title"></span>
-                            <button type="button" @click="removeSubtask(idx)" class="text-red-500 dark:text-sf-red hover:text-red-700 dark:hover:text-sf-red">
+                            <button type="button" @click="removeSubtask(idx)" class="text-red-500 dark:text-sf-red hover:text-red-700 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-sf-red/15 transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
@@ -190,7 +190,7 @@
                     <template x-for="(link, idx) in formData.links" :key="idx">
                         <div class="flex items-center gap-2 text-sm bg-slate-50 dark:bg-sf-bg-deep px-3 py-2 rounded">
                             <a :href="link" target="_blank" class="text-primary-600 dark:text-sf-primary-light hover:underline truncate flex-1" x-text="link"></a>
-                            <button type="button" @click="removeLink(idx)" class="text-red-500 dark:text-sf-red hover:text-red-700 dark:hover:text-sf-red">
+                            <button type="button" @click="removeLink(idx)" class="text-red-500 dark:text-sf-red hover:text-red-700 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-sf-red/15 transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
