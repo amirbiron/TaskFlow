@@ -274,6 +274,87 @@
                 </section>
             </div>
         </div>
+
+        <!-- קישורים לפרויקט (קישורים בעלי שם) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                    </svg>
+                    <h2 class="text-lg font-bold text-slate-900">קישורים</h2>
+                    <span class="text-sm text-slate-500" x-show="project && project.links && project.links.length > 0">
+                        (<span x-text="project.links.length"></span>)
+                    </span>
+                </div>
+                <button @click="openNewLink()" class="btn btn-primary text-sm" x-show="linkEditingIdx === null">
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    קישור חדש
+                </button>
+            </div>
+
+            <!-- Empty state -->
+            <div x-show="(!project || !project.links || project.links.length === 0) && linkEditingIdx === null" class="text-center text-slate-500 py-8 px-6">
+                <p class="mb-3">אין עדיין קישורים לפרויקט</p>
+                <button @click="openNewLink()" class="btn btn-primary text-sm">הוסף קישור ראשון</button>
+            </div>
+
+            <!-- רשימת קישורים -->
+            <ul x-show="project && project.links && project.links.length > 0" class="divide-y divide-slate-100">
+                <template x-for="(link, idx) in (project.links || [])" :key="idx + '_' + link.url">
+                    <li class="px-6 py-3">
+                        <!-- מצב תצוגה -->
+                        <div x-show="linkEditingIdx !== idx" class="flex items-center justify-between gap-3 flex-wrap">
+                            <div class="min-w-0 flex-1">
+                                <a :href="link.url" target="_blank" rel="noopener noreferrer" class="text-slate-900 font-medium hover:text-primary-700 break-words" x-text="link.title"></a>
+                                <div class="text-xs text-slate-500 truncate" x-text="link.url"></div>
+                            </div>
+                            <div class="flex items-center gap-1 flex-shrink-0">
+                                <button @click="openEditLink(idx)" class="text-slate-400 hover:text-slate-700 p-1.5 rounded hover:bg-slate-100" title="עריכה">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button @click="deleteLink(idx)" class="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50" title="מחיקה">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- מצב עריכה inline -->
+                        <div x-show="linkEditingIdx === idx" x-cloak class="space-y-2">
+                            <input type="text" x-model="linkDraft.title" placeholder="שם הקישור" class="form-input" maxlength="200">
+                            <input type="url" x-model="linkDraft.url" placeholder="https://..." class="form-input" dir="ltr">
+                            <div x-show="linkError" class="text-red-700 text-sm" x-text="linkError"></div>
+                            <div class="flex gap-2 justify-end">
+                                <button type="button" @click="cancelLinkEdit()" class="btn btn-secondary text-sm">ביטול</button>
+                                <button type="button" @click="saveLink()" :disabled="linkSaving" class="btn btn-primary text-sm">
+                                    <span x-show="!linkSaving">שמור</span>
+                                    <span x-show="linkSaving">שומר...</span>
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+
+            <!-- טופס יצירת קישור חדש (linkEditingIdx === 'new') -->
+            <div x-show="linkEditingIdx === 'new'" x-cloak class="px-6 py-4 border-t border-slate-100 space-y-2">
+                <input type="text" x-model="linkDraft.title" placeholder="שם הקישור" class="form-input" maxlength="200">
+                <input type="url" x-model="linkDraft.url" placeholder="https://..." class="form-input" dir="ltr">
+                <div x-show="linkError" class="text-red-700 text-sm" x-text="linkError"></div>
+                <div class="flex gap-2 justify-end">
+                    <button type="button" @click="cancelLinkEdit()" class="btn btn-secondary text-sm">ביטול</button>
+                    <button type="button" @click="saveLink()" :disabled="linkSaving" class="btn btn-primary text-sm">
+                        <span x-show="!linkSaving">הוסף</span>
+                        <span x-show="linkSaving">שומר...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- מודאל עריכת פרויקט -->
@@ -458,6 +539,13 @@ function projectDetailPage(projectId) {
         documentCopied: false,
         _docPreviewSeq: 0,
         _docCopiedTimer: null,
+
+        // === קישורים בעלי שם (מאוחסנים על מסמך הפרויקט) ===
+        // linkEditingIdx: null = אין עריכה, 'new' = יצירה, מספר = אינדקס בעריכה
+        linkEditingIdx: null,
+        linkDraft: { title: '', url: '' },
+        linkSaving: false,
+        linkError: null,
 
         async init() {
             await Promise.all([
@@ -810,6 +898,94 @@ function projectDetailPage(projectId) {
                 await this.loadDocuments();
             } catch (e) {
                 alert('שגיאת רשת');
+            }
+        },
+
+        // === קישורים בעלי שם ===
+        openNewLink() {
+            this.linkEditingIdx = 'new';
+            this.linkDraft = { title: '', url: '' };
+            this.linkError = null;
+        },
+
+        openEditLink(idx) {
+            const link = (this.project && this.project.links && this.project.links[idx]) || null;
+            if (!link) return;
+            this.linkEditingIdx = idx;
+            this.linkDraft = { title: link.title || '', url: link.url || '' };
+            this.linkError = null;
+        },
+
+        cancelLinkEdit() {
+            this.linkEditingIdx = null;
+            this.linkDraft = { title: '', url: '' };
+            this.linkError = null;
+        },
+
+        _validateLinkDraft() {
+            const title = (this.linkDraft.title || '').trim();
+            const url = (this.linkDraft.url || '').trim();
+            if (!title) return 'חובה לתת שם לקישור';
+            if (!url) return 'חובה להזין כתובת';
+            if (!/^https?:\/\/.+/i.test(url)) return 'הכתובת חייבת להתחיל ב-http:// או https://';
+            return null;
+        },
+
+        async _saveLinks(newLinks) {
+            // שולח את הרשימה המלאה של הקישורים ב-PUT לפרויקט
+            const res = await fetch(`/api/projects/${projectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ links: newLinks }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || 'שגיאה בשמירה');
+            }
+        },
+
+        async saveLink() {
+            const validationError = this._validateLinkDraft();
+            if (validationError) {
+                this.linkError = validationError;
+                return;
+            }
+            const newLink = {
+                title: this.linkDraft.title.trim(),
+                url: this.linkDraft.url.trim(),
+            };
+            const currentLinks = (this.project && this.project.links) ? [...this.project.links] : [];
+            let updatedLinks;
+            if (this.linkEditingIdx === 'new') {
+                updatedLinks = [...currentLinks, newLink];
+            } else {
+                updatedLinks = currentLinks.map((l, i) => i === this.linkEditingIdx ? newLink : l);
+            }
+
+            this.linkSaving = true;
+            this.linkError = null;
+            try {
+                await this._saveLinks(updatedLinks);
+                // עדכון מקומי כדי לחסוך טעינה מחדש של כל הפרויקט
+                if (this.project) this.project.links = updatedLinks;
+                this.cancelLinkEdit();
+            } catch (e) {
+                this.linkError = e.message || 'שגיאת רשת';
+            } finally {
+                this.linkSaving = false;
+            }
+        },
+
+        async deleteLink(idx) {
+            const link = (this.project && this.project.links && this.project.links[idx]) || null;
+            if (!link) return;
+            if (!confirm(`למחוק את הקישור "${link.title}"?`)) return;
+            const updatedLinks = (this.project.links || []).filter((_, i) => i !== idx);
+            try {
+                await this._saveLinks(updatedLinks);
+                if (this.project) this.project.links = updatedLinks;
+            } catch (e) {
+                alert(e.message || 'שגיאת רשת');
             }
         },
     };
