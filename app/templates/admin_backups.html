@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}גיבויים - TaskFlow{% endblock %}
+
+{% block body %}
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in"
+      x-data="backupsManager()"
+      x-init="loadBackups()">
+
+    <!-- כותרת -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 md:mb-8 gap-4">
+        <div>
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-900">גיבויים</h2>
+            <p class="text-slate-600 mt-1 text-sm md:text-base">
+                גיבויי מסד הנתונים נשמרים אוטומטית מדי יום ב-{{ "%02d"|format(backup_hour) }}:{{ "%02d"|format(backup_minute) }} UTC
+            </p>
+        </div>
+        <button @click="runBackup()"
+                :disabled="running"
+                class="btn btn-primary"
+                :class="running ? 'opacity-50 cursor-not-allowed' : ''">
+            <svg x-show="!running" class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <svg x-show="running" class="w-5 h-5 ml-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+            </svg>
+            <span x-text="running ? 'מגבה...' : 'גיבוי עכשיו'"></span>
+        </button>
+    </div>
+
+    <!-- פסי מידע -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- מצב מערכת -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="text-xs font-medium text-slate-500 uppercase mb-1">סטטוס</div>
+            {% if backup_enabled %}
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span class="text-base font-semibold text-slate-900">פעיל</span>
+            </div>
+            {% else %}
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                <span class="text-base font-semibold text-slate-900">מושבת</span>
+            </div>
+            {% endif %}
+            <div class="text-sm text-slate-500 mt-1">
+                שמירה {{ retention_days }} ימים אחורה
+            </div>
+        </div>
+
+        <!-- ריצה אחרונה -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="text-xs font-medium text-slate-500 uppercase mb-1">ריצה אחרונה</div>
+            <template x-if="lastRun">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full"
+                              :class="lastRun.success ? 'bg-green-500' : 'bg-red-500'"></span>
+                        <span class="text-base font-semibold"
+                              :class="lastRun.success ? 'text-slate-900' : 'text-red-700'"
+                              x-text="lastRun.success ? 'הצליחה' : 'נכשלה'"></span>
+                    </div>
+                    <div class="text-sm text-slate-500 mt-1" x-text="formatDateTime(lastRun.finished_at)"></div>
+                    <div x-show="!lastRun.success && lastRun.error"
+                         class="text-xs text-red-600 mt-2 break-all"
+                         x-text="lastRun.error"></div>
+                </div>
+            </template>
+            <div x-show="!lastRun" class="text-sm text-slate-500">עוד לא רץ מאז ההפעלה</div>
+        </div>
+
+        <!-- ריצה הבאה -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="text-xs font-medium text-slate-500 uppercase mb-1">ריצה הבאה</div>
+            <div class="text-base font-semibold text-slate-900"
+                 x-text="nextRunAt ? formatDateTime(nextRunAt) : '—'"></div>
+            <div class="text-sm text-slate-500 mt-1"
+                 x-text="totalSizeBytes > 0 ? `סה״כ: ${formatBytes(totalSizeBytes)}` : ''"></div>
+        </div>
+    </div>
+
+    <!-- מצב טעינה -->
+    <div x-show="loading" class="text-center py-12">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+        </svg>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!loading && backups.length === 0"
+         class="empty-state bg-white rounded-xl border border-slate-200">
+        <div class="empty-state-icon">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">אין עדיין גיבויים</h3>
+        <p class="text-slate-600 mb-4">לחץ "גיבוי עכשיו" ליצירת הגיבוי הראשון</p>
+    </div>
+
+    <!-- רשימת גיבויים -->
+    <div x-show="!loading && backups.length > 0"
+         class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <template x-for="(backup, index) in backups" :key="backup.filename">
+            <div class="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors gap-3"
+                 :class="index !== 0 ? 'border-t border-slate-100' : ''">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-medium text-slate-900 truncate" x-text="backup.filename"></div>
+                        <div class="text-xs text-slate-500 mt-0.5">
+                            <span x-text="formatDateTime(backup.created_at)"></span>
+                            <span class="mx-1">•</span>
+                            <span x-text="formatBytes(backup.size_bytes)"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-1 flex-shrink-0">
+                    <a :href="`/api/admin/backups/${backup.filename}/download`"
+                       class="p-2 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-colors"
+                       title="הורדה">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </a>
+                    <button @click="confirmDelete(backup)"
+                            class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                            title="מחיקה">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- הודעת מידע -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
+        <div class="font-semibold mb-2">איך לשחזר גיבוי?</div>
+        <p class="mb-2">הורד את קובץ הגיבוי הרצוי ולאחר מכן הרץ במחשב מקומי:</p>
+        <code class="block bg-white px-3 py-2 rounded text-xs overflow-x-auto" dir="ltr">
+mongorestore --gzip --archive=backup_YYYY-MM-DD_HH-MM.archive.gz --uri "$MONGODB_URL"
+        </code>
+    </div>
+</main>
+
+<script>
+function backupsManager() {
+    return {
+        backups: [],
+        lastRun: null,
+        nextRunAt: null,
+        totalSizeBytes: 0,
+        loading: true,
+        running: false,
+
+        async loadBackups() {
+            try {
+                const res = await fetch('/api/admin/backups');
+                if (!res.ok) throw new Error('שגיאה בטעינה');
+                const data = await res.json();
+                this.backups = data.backups || [];
+                this.lastRun = data.last_run;
+                this.nextRunAt = data.next_run_at;
+                this.totalSizeBytes = data.total_size_bytes || 0;
+            } catch (e) {
+                console.error(e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async runBackup() {
+            if (this.running) return;
+            this.running = true;
+            try {
+                const res = await fetch('/api/admin/backups/run', { method: 'POST' });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'הגיבוי נכשל');
+                    return;
+                }
+                await this.loadBackups();
+            } catch (e) {
+                alert('שגיאת רשת');
+            } finally {
+                this.running = false;
+            }
+        },
+
+        async confirmDelete(backup) {
+            if (!confirm(`למחוק את הגיבוי "${backup.filename}"?`)) return;
+            try {
+                const res = await fetch(`/api/admin/backups/${encodeURIComponent(backup.filename)}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok && res.status !== 204) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה במחיקה');
+                    return;
+                }
+                await this.loadBackups();
+            } catch (e) {
+                alert('שגיאת רשת');
+            }
+        },
+
+        formatBytes(bytes) {
+            if (!bytes) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let i = 0;
+            let size = bytes;
+            while (size >= 1024 && i < units.length - 1) {
+                size /= 1024;
+                i++;
+            }
+            return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+        },
+
+        formatDateTime(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            return d.toLocaleString('he-IL', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        },
+    };
+}
+</script>
+{% endblock %}

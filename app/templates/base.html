@@ -92,6 +92,12 @@
                         </svg>
                         תגיות
                     </a>
+                    <a href="/admin/backups" class="nav-link {% if current_page == 'backups' %}nav-link-active{% endif %}" title="גיבויים">
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                        </svg>
+                        גיבויים
+                    </a>
                 </div>
 
                 <!-- התנתקות -->
@@ -152,11 +158,20 @@
                 </div>
                 <h1 class="text-lg font-bold text-slate-900">TaskFlow</h1>
             </a>
-            <form method="POST" action="/logout">
-                <button type="submit" class="text-slate-600 px-2 py-1 rounded text-sm">
-                    התנתק
-                </button>
-            </form>
+            <div class="flex items-center gap-1">
+                <a href="/admin/backups"
+                   class="text-slate-600 hover:text-slate-900 p-2 rounded hover:bg-slate-100"
+                   title="גיבויים">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                    </svg>
+                </a>
+                <form method="POST" action="/logout">
+                    <button type="submit" class="text-slate-600 px-2 py-1 rounded text-sm">
+                        התנתק
+                    </button>
+                </form>
+            </div>
         </div>
     </header>
     {% endif %}

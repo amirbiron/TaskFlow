@@ -7,14 +7,17 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.database import connect_to_mongo, close_mongo_connection
-from app.routers import auth, pages, clients, projects, tasks, tags, dashboard, documents, comments
+from app.core.scheduler import start_scheduler, stop_scheduler
+from app.routers import auth, pages, clients, projects, tasks, tags, dashboard, documents, comments, backups
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """ניהול מחזור החיים של האפליקציה"""
     await connect_to_mongo()
+    start_scheduler()
     yield
+    stop_scheduler()
     await close_mongo_connection()
 
 
@@ -40,6 +43,7 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(comments.router, prefix="/api", tags=["comments"])
+app.include_router(backups.router, tags=["backups"])
 
 
 if __name__ == "__main__":
