@@ -589,10 +589,12 @@ html.dark .markdown-body .alert-success { border-color: #34d399; background: rgb
 .markdown-body .md-copy-btn {
     position: absolute;
     top: 0.5rem;
-    inset-inline-start: 0.5rem;
-    /* כפתור inline-start: בקוד RTL זה יופיע מימין; ב-LTR משמאל.
-       בלוקי קוד עצמם תמיד LTR (אלא אם rtl-code), אבל ה-pre יורש כיוון
-       מההורה (ב-TaskFlow זה <html dir="rtl">), כך שב-pre רגיל ימין. */
+    /* inset-inline-end ביחס לכיוון של ה-pre עצמו:
+       - בלוק LTR (ברירת מחדל) → right (סוף ה-pre)
+       - בלוק RTL (.rtl-code)    → left  (סוף ה-pre)
+       בשני המקרים הכפתור "אחרי הקוד" ולא מתנגש בתחילתו.
+       חשוב: לא להגדיר direction מפורש על הכפתור – הוא יורש מה-pre. */
+    inset-inline-end: 0.5rem;
     width: 28px;
     height: 28px;
     display: inline-flex;
@@ -607,7 +609,6 @@ html.dark .markdown-body .alert-success { border-color: #34d399; background: rgb
     opacity: 0;
     transition: opacity 0.15s, background-color 0.15s, color 0.15s, transform 0.1s;
     z-index: 2;
-    direction: ltr; /* האייקון תמיד LTR */
 }
 
 .markdown-body pre:hover .md-copy-btn,
