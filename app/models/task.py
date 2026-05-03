@@ -84,3 +84,4 @@ class TaskWithContext(Task):
     client_name: Optional[str] = None
     client_color: Optional[str] = None
     tag_details: List[TagDetail] = Field(default_factory=list)
+    comments_count: int = 0

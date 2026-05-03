@@ -70,6 +70,14 @@ async def _enrich_task(task: dict, db) -> dict:
         except (InvalidId, TypeError):
             pass
 
+    # ספירת הערות (לתצוגת המונה בכרטיס/בעמוד)
+    try:
+        task["comments_count"] = await db.task_comments.count_documents(
+            {"task_id": str(task["_id"])}
+        )
+    except Exception:
+        task["comments_count"] = 0
+
     # פרטי תגיות
     task["tag_details"] = []
     if task.get("tags"):
@@ -391,5 +399,8 @@ async def delete_task(request: Request, task_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="משימה לא נמצאה"
         )
+
+    # מחיקת ההערות הקשורות (cascade)
+    await db.task_comments.delete_many({"task_id": task_id})
 
     return None
