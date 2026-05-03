@@ -231,6 +231,14 @@ def markdown_to_html(
 
     clean = _force_noopener(clean)
 
+    # עטיפת טבלאות ב-div גלילה אופקית, כדי שטבלאות רחבות לא ייחתכו במובייל
+    clean = re.sub(
+        r"<table\b[^>]*>.*?</table>",
+        lambda m: f'<div class="markdown-table-wrap">{m.group(0)}</div>',
+        clean,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
     toc_html = ""
     if include_toc and getattr(md, "toc", ""):
         toc_html = bleach.clean(
