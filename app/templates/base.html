@@ -245,7 +245,8 @@
     <!-- ניהול מצב כהה: שמירה ב-localStorage + עדכון theme-color + dispatch -->
     <script>
         (function() {
-            function applyTheme(theme) {
+            function applyTheme(theme, opts) {
+                var persist = !(opts && opts.persist === false);
                 var root = document.documentElement;
                 if (theme === 'dark') {
                     root.classList.add('dark');
@@ -256,7 +257,11 @@
                 if (meta) {
                     meta.setAttribute('content', theme === 'dark' ? '#020617' : '#f8fafc');
                 }
-                try { localStorage.setItem('theme', theme); } catch (e) {}
+                // נשמר ב-localStorage רק כשהמשתמש בחר ידנית; שינויי מערכת
+                // לא ייצרו רשומה - אחרת ה-listener למטה ייחסם לאחר ההפעלה הראשונה.
+                if (persist) {
+                    try { localStorage.setItem('theme', theme); } catch (e) {}
+                }
                 window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: theme } }));
             }
 
@@ -275,7 +280,7 @@
                 var mq = window.matchMedia('(prefers-color-scheme: dark)');
                 mq.addEventListener && mq.addEventListener('change', function(e) {
                     if (!localStorage.getItem('theme')) {
-                        applyTheme(e.matches ? 'dark' : 'light');
+                        applyTheme(e.matches ? 'dark' : 'light', { persist: false });
                     }
                 });
             } catch (e) {}
