@@ -19,12 +19,8 @@ async def dashboard_stats(request: Request):
         "status": {"$in": ["open", "in_progress"]},
         "priority": "urgent",
     })
-    active_projects = await db.projects.count_documents({"status": "active"})
-    clients = await db.clients.count_documents({})
 
     return {
         "open_tasks": open_tasks,
         "urgent_tasks": urgent_tasks,
-        "active_projects": active_projects,
-        "clients": clients,
     }
