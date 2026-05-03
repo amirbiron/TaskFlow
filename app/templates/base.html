@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f8fafc" id="meta-theme-color">
     <title>{% block title %}TaskFlow{% endblock %}</title>
 
-    <!-- מצב כהה: החלת ה-class על <html> לפני הצביעה כדי למנוע הבזק (FOUC) -->
+    <!-- מצב כהה: החלת ה-class על <html> ועדכון theme-color לפני הצביעה כדי למנוע הבזק (FOUC) -->
     <script>
         (function() {
             try {
@@ -15,6 +15,12 @@
                 var isDark = stored ? stored === 'dark' : prefersDark;
                 if (isDark) {
                     document.documentElement.classList.add('dark');
+                }
+                // עדכון theme-color מיידית כדי שגם chrome הדפדפן (כתובת/סטטוס במובייל)
+                // לא יבליח בצבע הלא-נכון לפני שהסקריפט בתחתית הדף ירוץ.
+                var meta = document.getElementById('meta-theme-color');
+                if (meta) {
+                    meta.setAttribute('content', isDark ? '#020617' : '#f8fafc');
                 }
             } catch (e) {}
         })();
