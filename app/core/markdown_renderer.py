@@ -108,8 +108,18 @@ def _preprocess_markdown(text: str) -> str:
         # לפני הרינדור הפנימי, כדי שמנוע ה-Markdown יוכל לעבד אותם.
         body = placeholder_re.sub(_restore_placeholder, body)
         css_class = _TYPE_MAP.get(kind, "info")
-        # fenced_code + nl2br כדי שגם בלוקי קוד בתוך admonitions יתורגמו
-        inner = markdown.markdown(body, extensions=["nl2br", "fenced_code"])
+        # אותן יכולות שתומכות ב-task lists גם בתוך admonitions, כדי
+        # שמספר ה-checkboxes ב-HTML יתאים לסדר ההתאמות ב-_TASK_RE על המקור.
+        inner = markdown.markdown(
+            body,
+            extensions=["nl2br", "fenced_code", "pymdownx.tasklist"],
+            extension_configs={
+                "pymdownx.tasklist": {
+                    "custom_checkbox": False,
+                    "clickable_checkbox": True,
+                },
+            },
+        )
         clean_inner = bleach.clean(
             inner,
             tags=ALLOWED_TAGS,
