@@ -996,9 +996,14 @@ function projectDetailPage(projectId) {
             const docId = container.dataset.docId;
             if (!docId || docId !== this.selectedDocument._id) return;
 
-            const allCbs = Array.from(container.querySelectorAll('input[type="checkbox"]'));
+            // סלקטור מוגבל לבדיוק checkboxes שיוצרו ע"י pymdownx.tasklist:
+            // input ישיר תחת <li class="task-list-item">. כך אם המשתמש
+            // הטמיע ידנית <input type="checkbox"> ב-MD הוא לא יספר.
+            const allCbs = Array.from(container.querySelectorAll(
+                'li.task-list-item > input[type="checkbox"]'
+            ));
             const index = allCbs.indexOf(cb);
-            if (index < 0) return;
+            if (index < 0) return;  // לא checkbox של task list - מתעלמים
 
             const newChecked = cb.checked;
             cb.disabled = true;

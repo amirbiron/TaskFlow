@@ -792,7 +792,12 @@ function taskDetailPage(taskId) {
 
             if (this.editingId === commentId) return;
 
-            const allCbs = Array.from(wrapper.querySelectorAll('input[type="checkbox"]'));
+            // סלקטור מוגבל ל-checkboxes שיוצרו ע"י pymdownx.tasklist בלבד -
+            // input ישיר תחת <li class="task-list-item">. checkboxes שמשתמש
+            // הטמיע ידנית ב-MD לא ייספרו ולא ישנו את האינדקס.
+            const allCbs = Array.from(wrapper.querySelectorAll(
+                'li.task-list-item > input[type="checkbox"]'
+            ));
             const index = allCbs.indexOf(cb);
             if (index < 0) return;
 

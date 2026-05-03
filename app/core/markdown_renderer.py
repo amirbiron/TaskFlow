@@ -239,9 +239,11 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
 # מתאים לתחביר של pymdownx.tasklist:
 # - שורות שמתחילות בתבליט (-, *, +) או רשימה ממוספרת (1. וכו'), עם רווח/טאב,
 #   ואז [ ] או [x]/[X]. תופס גם הזחה (תת-משימות) וגם blockquotes (> - [ ] foo).
-# - תוכן בתוך fenced code blocks מסוננים בנפרד למטה.
+# - חשוב: [ \t]+ ולא \s+ אחרי התבליט - אסור שייתפס newline (שיגרום
+#   להתאמה חוצת-שורות שלא מייצרת checkbox ב-HTML).
+# - תוכן בתוך fenced code blocks מסונן בנפרד למטה.
 _TASK_RE = re.compile(
-    r"^(?P<prefix>(?:[ \t]*>[ \t]?)*[ \t]*(?:[-*+]|\d+\.)\s+)\[(?P<state>[ xX])\]",
+    r"^(?P<prefix>(?:[ \t]*>[ \t]?)*[ \t]*(?:[-*+]|\d+\.)[ \t]+)\[(?P<state>[ xX])\]",
     flags=re.MULTILINE,
 )
 
