@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+
+{% block title %}פרטי משימה - TaskFlow{% endblock %}
+
+{% block body %}
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 fade-in"
+      x-data="taskDetailPage('{{ task_id }}')">
+
+    <div x-show="loading" class="text-center py-12">
+        <svg class="w-8 h-8 mx-auto animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+    </div>
+
+    <div x-show="!loading && !task" class="text-center py-12">
+        <p class="text-slate-500 mb-4">המשימה לא נמצאה</p>
+        <a href="/tasks" class="btn btn-secondary">חזרה לרשימה</a>
+    </div>
+
+    <div x-show="!loading && task" x-cloak>
+        <!-- ניווט חזרה -->
+        <div class="mb-4 flex items-center justify-between flex-wrap gap-2">
+            <div class="text-sm text-slate-500">
+                <a href="/tasks" class="hover:text-slate-700 inline-flex items-center">
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    כל המשימות
+                </a>
+                <template x-if="task && task.project_id">
+                    <span>
+                        <span class="mx-2">·</span>
+                        <a :href="`/projects/${task.project_id}`" class="hover:text-slate-700" x-text="task.project_name || 'פרויקט'"></a>
+                    </span>
+                </template>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="openEditModal(task)" class="btn btn-secondary text-sm">
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    עריכה
+                </button>
+                <button @click="confirmDelete({_id: task._id, title: task.title})" class="btn btn-danger text-sm" title="מחק">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- כרטיס ראשי -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+            <div class="h-2" :style="`background-color: ${(task && task.client_color) || '#94A3B8'}`"></div>
+            <div class="p-6">
+                <div class="flex items-start justify-between gap-3 mb-3 flex-wrap">
+                    <h1 class="text-2xl md:text-3xl font-bold text-slate-900 break-words"
+                        :class="task.status === 'completed' ? 'line-through text-slate-500' : ''"
+                        x-text="task.title"></h1>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="text-xs px-2 py-1 rounded-full" :class="statusBadgeClass(task.status)" x-text="statusLabel(task.status)"></span>
+                        <span class="text-xs px-2 py-1 rounded-full" :class="priorityClass(task.priority)" x-text="priorityLabel(task.priority)"></span>
+                    </div>
+                </div>
+
+                <!-- שינוי סטטוס מהיר -->
+                <div class="flex items-center gap-2 flex-wrap mb-4">
+                    <span class="text-xs text-slate-500">שנה סטטוס:</span>
+                    <template x-for="opt in statusColumns" :key="opt.id">
+                        <button
+                            type="button"
+                            @click="quickChangeStatus(opt.id)"
+                            class="text-xs px-3 py-1 rounded-full border transition-colors"
+                            :class="task.status === opt.id
+                                ? 'bg-primary-600 text-white border-primary-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                            x-text="opt.label"
+                        ></button>
+                    </template>
+                </div>
+
+                <!-- תגיות -->
+                <div x-show="task.tag_details && task.tag_details.length > 0" class="flex flex-wrap gap-1.5 mb-4">
+                    <template x-for="tag in (task.tag_details || [])" :key="tag._id">
+                        <span
+                            class="px-2 py-1 rounded-full text-xs font-medium"
+                            :style="`background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}40`"
+                            x-text="tag.name"
+                        ></span>
+                    </template>
+                </div>
+
+                <!-- תיאור -->
+                <div x-show="task.description" class="mb-4">
+                    <h3 class="text-sm font-semibold text-slate-700 mb-1">תיאור</h3>
+                    <p class="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed" x-text="task.description"></p>
+                </div>
+                <p x-show="!task.description" class="text-slate-400 italic text-sm mb-4">אין תיאור</p>
+
+                <!-- מטא-נתונים -->
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div x-show="task.client_name">
+                        <dt class="text-xs text-slate-500 mb-0.5">לקוח</dt>
+                        <dd class="text-slate-800 inline-flex items-center">
+                            <span class="w-2 h-2 rounded-full ml-1.5" :style="`background-color: ${task.client_color || '#94A3B8'}`"></span>
+                            <span x-text="task.client_name"></span>
+                        </dd>
+                    </div>
+                    <div x-show="task.due_date">
+                        <dt class="text-xs text-slate-500 mb-0.5">תאריך יעד</dt>
+                        <dd>
+                            <span
+                                :class="isOverdue(task.due_date, task.status) ? 'text-red-700 font-medium'
+                                      : (isDueToday(task.due_date, task.status) ? 'text-amber-700 font-medium' : 'text-slate-800')"
+                                x-text="formatDate(task.due_date)"
+                            ></span>
+                            <span x-show="isOverdue(task.due_date, task.status)" class="text-xs text-red-600 mr-2">(באיחור)</span>
+                            <span x-show="isDueToday(task.due_date, task.status)" class="text-xs text-amber-600 mr-2">(היום)</span>
+                        </dd>
+                    </div>
+                    <div x-show="task.created_at">
+                        <dt class="text-xs text-slate-500 mb-0.5">נוצר</dt>
+                        <dd class="text-slate-800" x-text="formatDateTime(task.created_at)"></dd>
+                    </div>
+                    <div x-show="task.updated_at">
+                        <dt class="text-xs text-slate-500 mb-0.5">עודכן לאחרונה</dt>
+                        <dd class="text-slate-800" x-text="formatDateTime(task.updated_at)"></dd>
+                    </div>
+                    <div x-show="task.completed_at">
+                        <dt class="text-xs text-slate-500 mb-0.5">הושלם</dt>
+                        <dd class="text-slate-800" x-text="formatDateTime(task.completed_at)"></dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <!-- תת-משימות -->
+        <div x-show="task.subtasks && task.subtasks.length > 0" class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-slate-900">תת-משימות</h2>
+                <span class="text-xs text-slate-500">
+                    <span x-text="completedSubtasksCount()"></span>/<span x-text="task.subtasks.length"></span>
+                </span>
+            </div>
+            <ul class="space-y-2">
+                <template x-for="(sub, idx) in task.subtasks" :key="sub.id">
+                    <li class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded">
+                        <input
+                            type="checkbox"
+                            :checked="sub.completed"
+                            @change="toggleTaskSubtask(idx)"
+                            :disabled="subtaskSaving"
+                            class="w-4 h-4 text-primary-600 rounded"
+                        >
+                        <span class="text-sm flex-1" :class="sub.completed ? 'line-through text-slate-400' : 'text-slate-800'" x-text="sub.title"></span>
+                    </li>
+                </template>
+            </ul>
+        </div>
+
+        <!-- קישורים -->
+        <div x-show="task.links && task.links.length > 0" class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
+            <h2 class="text-lg font-bold text-slate-900 mb-3">קישורים</h2>
+            <ul class="space-y-2">
+                <template x-for="(link, idx) in task.links" :key="idx">
+                    <li class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded text-sm">
+                        <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                        </svg>
+                        <a :href="link" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline truncate flex-1" x-text="link"></a>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </div>
+
+    <!-- מודאל עריכה + מודאל מחיקה (משותפים עם הקנבן) -->
+    {% include "_task_form_modal.html" %}
+
+</main>
+
+<script>
+function taskDetailPage(taskId) {
+    return {
+        // === מצב ===
+        task: null,
+        loading: true,
+        subtaskSaving: false,
+
+        // === שדות שהמודאל המשותף דורש ===
+        projectId: '',  // ריק כדי שמסך הפרויקט יוצג בטופס העריכה
+        projectOptions: [],
+        clientOptions: [],
+        allTags: [],
+        tagSearchQuery: '',
+        tagPickerOpen: false,
+        creatingTag: false,
+
+        modalOpen: false,
+        modalMode: 'edit',
+        saving: false,
+        error: null,
+        currentTaskId: null,
+        deleteConfirmOpen: false,
+        newLink: '',
+        newSubtask: '',
+        formData: {
+            title: '', description: '', project_id: '', client_id: '',
+            priority: 'normal', status: 'open', due_date: '',
+            links: [], tags: [], subtasks: [],
+        },
+
+        statusColumns: [
+            { id: 'open', label: 'פתוח' },
+            { id: 'in_progress', label: 'בתהליך' },
+            { id: 'completed', label: 'הושלם' },
+        ],
+
+        // === אתחול ===
+        async init() {
+            await Promise.all([
+                this.loadTask(),
+                this.loadProjects(),
+                this.loadClients(),
+                this.loadAllTags(),
+            ]);
+        },
+
+        async loadTask({ silent = false } = {}) {
+            // silent=true לרענון אחרי שמירה/עדכון, כדי שהעמוד לא יתחלף
+            // לספינר באמצע (loading=true גורם ל-x-show להסתיר את התוכן)
+            if (!silent) this.loading = true;
+            try {
+                const res = await fetch(`/api/tasks/${taskId}`);
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (res.ok) this.task = await res.json();
+            } catch (e) { console.error(e); }
+            finally { if (!silent) this.loading = false; }
+        },
+
+        async loadProjects() {
+            try {
+                const res = await fetch('/api/projects?include_inactive=true');
+                if (res.ok) {
+                    const data = await res.json();
+                    this.projectOptions = data.map(p => ({ _id: p._id, name: p.name }));
+                }
+            } catch (e) { console.error(e); }
+        },
+
+        async loadClients() {
+            try {
+                const res = await fetch('/api/clients/select-options');
+                if (res.ok) this.clientOptions = await res.json();
+            } catch (e) { console.error(e); }
+        },
+
+        async loadAllTags() {
+            try {
+                const res = await fetch('/api/tags');
+                if (res.ok) this.allTags = await res.json();
+            } catch (e) { console.error(e); }
+        },
+
+        // === תצוגה ===
+        statusLabel(s) {
+            return { open: 'פתוח', in_progress: 'בתהליך', completed: 'הושלם' }[s] || s;
+        },
+        statusBadgeClass(s) {
+            return {
+                open: 'bg-amber-50 text-amber-700',
+                in_progress: 'bg-blue-50 text-blue-700',
+                completed: 'bg-green-50 text-green-700',
+            }[s] || 'bg-slate-100 text-slate-600';
+        },
+        priorityLabel(p) {
+            return { low: 'נמוכה', normal: 'רגילה', high: 'גבוהה', urgent: 'דחוף' }[p] || p;
+        },
+        priorityClass(p) {
+            return {
+                low: 'bg-slate-100 text-slate-600',
+                normal: 'bg-blue-50 text-blue-700',
+                high: 'bg-amber-50 text-amber-700',
+                urgent: 'bg-red-600 text-white',
+            }[p] || 'bg-slate-100 text-slate-600';
+        },
+        formatDate(iso) {
+            if (!iso) return '';
+            try { return new Date(iso).toLocaleDateString('he-IL'); }
+            catch (e) { return ''; }
+        },
+        formatDateTime(iso) {
+            if (!iso) return '';
+            try {
+                return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+            } catch (e) { return ''; }
+        },
+        // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה)
+        _dueParts(dateStr) {
+            const d = new Date(dateStr);
+            const today = new Date();
+            const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const startOfDue = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            return { startOfDue, startOfToday };
+        },
+        isOverdue(due, status) {
+            if (!due || status === 'completed') return false;
+            const { startOfDue, startOfToday } = this._dueParts(due);
+            return startOfDue < startOfToday;
+        },
+        isDueToday(due, status) {
+            if (!due || status === 'completed') return false;
+            const { startOfDue, startOfToday } = this._dueParts(due);
+            return startOfDue.getTime() === startOfToday.getTime();
+        },
+        completedSubtasksCount() {
+            if (!this.task || !this.task.subtasks) return 0;
+            return this.task.subtasks.filter(s => s.completed).length;
+        },
+
+        // === שינוי סטטוס מהיר (אופטימי - בלי להציג ספינר על כל העמוד) ===
+        async quickChangeStatus(newStatus) {
+            if (!this.task || this.task.status === newStatus) return;
+            const previousStatus = this.task.status;
+            // עדכון מקומי מיידי
+            this.task.status = newStatus;
+            try {
+                const res = await fetch(`/api/tasks/${this.task._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus }),
+                });
+                if (!res.ok) {
+                    // החזרה למצב הקודם אם השרת דחה
+                    this.task.status = previousStatus;
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בעדכון סטטוס');
+                    return;
+                }
+                // רענון שקט של completed_at/updated_at בלי להבליט loading
+                const updated = await res.json();
+                if (updated && updated._id) {
+                    this.task.completed_at = updated.completed_at || null;
+                    this.task.updated_at = updated.updated_at || this.task.updated_at;
+                }
+            } catch (e) {
+                this.task.status = previousStatus;
+                alert('שגיאת רשת');
+            }
+        },
+
+        // === תת-משימות (toggle inline בעמוד הפרטים) ===
+        async toggleTaskSubtask(idx) {
+            if (!this.task || this.subtaskSaving) return;
+            const updated = (this.task.subtasks || []).map((s, i) =>
+                i === idx ? { ...s, completed: !s.completed } : s
+            );
+            this.subtaskSaving = true;
+            try {
+                const res = await fetch(`/api/tasks/${this.task._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subtasks: updated }),
+                });
+                if (res.ok) this.task.subtasks = updated;
+                else alert('שגיאה בעדכון');
+            } catch (e) { alert('שגיאת רשת'); }
+            finally { this.subtaskSaving = false; }
+        },
+
+        // === בורר תגיות (inline, כמו בקנבן) ===
+        get selectedTagDetails() {
+            const ids = (this.formData && this.formData.tags) || [];
+            if (!ids.length || !this.allTags.length) return [];
+            return ids.map(id => this.allTags.find(t => t._id === id)).filter(Boolean);
+        },
+        get availableTags() {
+            const sel = new Set((this.formData && this.formData.tags) || []);
+            const q = (this.tagSearchQuery || '').trim().toLowerCase();
+            return this.allTags.filter(t => {
+                if (sel.has(t._id)) return false;
+                if (!q) return true;
+                return t.name.toLowerCase().includes(q);
+            });
+        },
+        get canCreateNewTag() {
+            const q = (this.tagSearchQuery || '').trim();
+            if (!q) return false;
+            return !this.allTags.some(t => t.name.toLowerCase() === q.toLowerCase());
+        },
+        addTag(tagId) {
+            if (!this.formData.tags) this.formData.tags = [];
+            if (!this.formData.tags.includes(tagId)) this.formData.tags.push(tagId);
+            this.tagSearchQuery = '';
+        },
+        removeTag(tagId) {
+            this.formData.tags = (this.formData.tags || []).filter(id => id !== tagId);
+        },
+        async createAndAddTag() {
+            const name = (this.tagSearchQuery || '').trim();
+            if (!name || this.creatingTag) return;
+            this.creatingTag = true;
+            try {
+                const res = await fetch('/api/tags', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, color: '#3B82F6' }),
+                });
+                if (res.ok) {
+                    const newTag = await res.json();
+                    this.allTags.push(newTag);
+                    this.addTag(newTag._id);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה ביצירת תגית');
+                }
+            } catch (e) { alert('שגיאת רשת'); }
+            finally { this.creatingTag = false; }
+        },
+
+        // === מודאל עריכה ===
+        resetForm() {
+            this.formData = {
+                title: '', description: '', project_id: '', client_id: '',
+                priority: 'normal', status: 'open', due_date: '',
+                links: [], tags: [], subtasks: [],
+            };
+            this.tagSearchQuery = '';
+            this.tagPickerOpen = false;
+            this.error = null;
+            this.newLink = '';
+            this.newSubtask = '';
+        },
+        openEditModal(task) {
+            this.currentTaskId = task._id;
+            this.formData = {
+                title: task.title || '',
+                description: task.description || '',
+                project_id: task.project_id || '',
+                client_id: task.client_id || '',
+                priority: task.priority || 'normal',
+                status: task.status || 'open',
+                due_date: task.due_date ? task.due_date.split('T')[0] : '',
+                links: [...(task.links || [])],
+                tags: [...(task.tags || [])],
+                subtasks: (task.subtasks || []).map(s => ({ ...s })),
+            };
+            this.tagSearchQuery = '';
+            this.tagPickerOpen = false;
+            this.error = null;
+            this.modalMode = 'edit';
+            this.modalOpen = true;
+        },
+        closeModal() {
+            this.modalOpen = false;
+            this.error = null;
+            setTimeout(() => this.resetForm(), 200);
+        },
+
+        addSubtask() {
+            const title = (this.newSubtask || '').trim();
+            if (!title) return;
+            this.formData.subtasks.push({
+                id: 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                title, completed: false,
+            });
+            this.newSubtask = '';
+        },
+        toggleSubtask(idx) {
+            this.formData.subtasks[idx].completed = !this.formData.subtasks[idx].completed;
+        },
+        removeSubtask(idx) {
+            this.formData.subtasks.splice(idx, 1);
+        },
+        addLink() {
+            const link = (this.newLink || '').trim();
+            if (!link) return;
+            this.formData.links.push(link);
+            this.newLink = '';
+        },
+        removeLink(idx) {
+            this.formData.links.splice(idx, 1);
+        },
+
+        async saveTask() {
+            this.saving = true;
+            this.error = null;
+            try {
+                const payload = { ...this.formData };
+                if (!payload.client_id) payload.client_id = null;
+                if (!payload.description || !payload.description.trim()) payload.description = null;
+                if (!payload.due_date) payload.due_date = null;
+                else payload.due_date = new Date(payload.due_date).toISOString();
+                if (!payload.project_id) {
+                    this.error = 'יש לבחור פרויקט';
+                    return;
+                }
+                const res = await fetch(`/api/tasks/${this.currentTaskId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.error = err.detail || 'שגיאה בשמירה';
+                    return;
+                }
+                await this.loadTask({ silent: true });
+                this.modalOpen = false;
+            } catch (e) {
+                this.error = 'שגיאת רשת';
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        // === מחיקה ===
+        confirmDelete(task) {
+            this.currentTaskId = task._id;
+            this.formData.title = task.title || '';
+            // אם מודאל העריכה פתוח (בלחיצה על אייקון המחיקה בתוכו) - לסגור
+            // קודם, כדי לא להציג שני modal-backdrop מוערמים
+            this.modalOpen = false;
+            this.deleteConfirmOpen = true;
+        },
+        async deleteTask() {
+            this.saving = true;
+            try {
+                const res = await fetch(`/api/tasks/${this.currentTaskId}`, { method: 'DELETE' });
+                if (!res.ok && res.status !== 204) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה במחיקה');
+                    return;
+                }
+                // אחרי מחיקה - חזרה לפרויקט אם יש, אחרת לרשימת המשימות
+                window.location = this.task && this.task.project_id
+                    ? `/projects/${this.task.project_id}`
+                    : '/tasks';
+            } catch (e) { alert('שגיאת רשת'); }
+            finally { this.saving = false; }
+        },
+    };
+}
+</script>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}

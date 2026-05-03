@@ -119,7 +119,7 @@ function kanbanComponent(config = {}) {
                 low: 'bg-slate-100 text-slate-600',
                 normal: 'bg-blue-50 text-blue-700',
                 high: 'bg-amber-50 text-amber-700',
-                urgent: 'bg-red-50 text-red-700',
+                urgent: 'bg-red-600 text-white',
             }[p] || 'bg-slate-100 text-slate-600';
         },
 
@@ -137,9 +137,31 @@ function kanbanComponent(config = {}) {
             return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
         },
 
+        // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה)
+        _dueParts(dateStr) {
+            const d = new Date(dateStr);
+            const today = new Date();
+            const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const startOfDue = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            return { startOfDue, startOfToday };
+        },
+
         isOverdue(dateStr, status) {
             if (!dateStr || status === 'completed') return false;
-            return new Date(dateStr) < new Date();
+            const { startOfDue, startOfToday } = this._dueParts(dateStr);
+            return startOfDue < startOfToday;
+        },
+
+        isDueToday(dateStr, status) {
+            if (!dateStr || status === 'completed') return false;
+            const { startOfDue, startOfToday } = this._dueParts(dateStr);
+            return startOfDue.getTime() === startOfToday.getTime();
+        },
+
+        dueDateBadgeClass(dateStr, status) {
+            if (this.isOverdue(dateStr, status)) return 'bg-red-50 text-red-700';
+            if (this.isDueToday(dateStr, status)) return 'bg-amber-50 text-amber-700';
+            return 'bg-slate-100 text-slate-600';
         },
 
         // === Sortable / גרירה ===
@@ -245,6 +267,12 @@ function kanbanComponent(config = {}) {
             this.tagPickerOpen = false;
             this.error = null;
             this.currentTaskId = null;
+        },
+
+        navigateToTask(taskId) {
+            // לחיצה על הכרטיס מנווטת לדף המשימה. עריכה מהירה
+            // עדיין זמינה דרך כפתור העיפרון בכרטיס (@click.stop).
+            window.location = `/tasks/${taskId}`;
         },
 
         openCreateModal(initialStatus = 'open') {
