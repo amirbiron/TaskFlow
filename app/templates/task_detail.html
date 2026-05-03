@@ -110,9 +110,13 @@
                     <div x-show="task.due_date">
                         <dt class="text-xs text-slate-500 mb-0.5">תאריך יעד</dt>
                         <dd>
-                            <span :class="isOverdue(task.due_date, task.status) ? 'text-red-700 font-medium' : 'text-slate-800'"
-                                  x-text="formatDate(task.due_date)"></span>
+                            <span
+                                :class="isOverdue(task.due_date, task.status) ? 'text-red-700 font-medium'
+                                      : (isDueToday(task.due_date, task.status) ? 'text-amber-700 font-medium' : 'text-slate-800')"
+                                x-text="formatDate(task.due_date)"
+                            ></span>
                             <span x-show="isOverdue(task.due_date, task.status)" class="text-xs text-red-600 mr-2">(באיחור)</span>
+                            <span x-show="isDueToday(task.due_date, task.status)" class="text-xs text-amber-600 mr-2">(היום)</span>
                         </dd>
                     </div>
                     <div x-show="task.created_at">
@@ -292,9 +296,23 @@ function taskDetailPage(taskId) {
                 return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
             } catch (e) { return ''; }
         },
+        // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה)
+        _dueParts(dateStr) {
+            const d = new Date(dateStr);
+            const today = new Date();
+            const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const startOfDue = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            return { startOfDue, startOfToday };
+        },
         isOverdue(due, status) {
             if (!due || status === 'completed') return false;
-            return new Date(due) < new Date(new Date().toDateString());
+            const { startOfDue, startOfToday } = this._dueParts(due);
+            return startOfDue < startOfToday;
+        },
+        isDueToday(due, status) {
+            if (!due || status === 'completed') return false;
+            const { startOfDue, startOfToday } = this._dueParts(due);
+            return startOfDue.getTime() === startOfToday.getTime();
         },
         completedSubtasksCount() {
             if (!this.task || !this.task.subtasks) return 0;
