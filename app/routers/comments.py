@@ -62,6 +62,11 @@ async def create_comment(request: Request, task_id: str, payload: CommentCreate)
     await _ensure_task_exists(db, task_id)
 
     body = payload.body.strip()
+    if not body:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="גוף ההערה לא יכול להיות ריק",
+        )
     html, _ = markdown_to_html(body)
 
     now = datetime.utcnow()
@@ -86,6 +91,11 @@ async def update_comment(request: Request, comment_id: str, payload: CommentUpda
     obj_id = validate_object_id(comment_id)
 
     body = payload.body.strip()
+    if not body:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="גוף ההערה לא יכול להיות ריק",
+        )
     html, _ = markdown_to_html(body)
     now = datetime.utcnow()
 
