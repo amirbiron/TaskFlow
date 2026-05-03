@@ -982,7 +982,11 @@ function projectDetailPage(projectId) {
         },
 
         // === task-list checkboxes במסמך ===
-        async onDocCheckboxChange(ev) {
+        // promise queue: כל קליק מחכה לקודם לפני שולח. מונע מירוץ TOCTOU
+        // כשמשתמש לוחץ מהר על שני checkboxes שונים.
+        _docTaskQueue: Promise.resolve(),
+
+        onDocCheckboxChange(ev) {
             const cb = ev.target;
             if (!(cb instanceof HTMLInputElement) || cb.type !== 'checkbox') return;
             if (!this.selectedDocument) return;
@@ -997,8 +1001,14 @@ function projectDetailPage(projectId) {
             if (index < 0) return;
 
             const newChecked = cb.checked;
-            // נעילת ה-checkbox עד שהשרת יחזיר תשובה (מונע מירוץ)
             cb.disabled = true;
+
+            this._docTaskQueue = this._docTaskQueue
+                .catch(() => {})
+                .then(() => this._sendDocToggle(docId, index, newChecked, cb));
+        },
+
+        async _sendDocToggle(docId, index, newChecked, cb) {
             try {
                 const res = await fetch(
                     `/api/projects/${projectId}/documents/${docId}/toggle-task`,
@@ -1009,15 +1019,17 @@ function projectDetailPage(projectId) {
                     }
                 );
                 if (!res.ok) {
-                    cb.checked = !newChecked; // revert
+                    cb.checked = !newChecked;
                     const err = await res.json().catch(() => ({}));
                     alert(err.detail || 'שגיאה בעדכון הסימון');
                     return;
                 }
                 const data = await res.json();
-                this.selectedDocument.content_md = data.content_md;
-                this.selectedDocument.content_html = data.content_html;
-                this.selectedDocument.updated_at = data.updated_at;
+                if (this.selectedDocument && this.selectedDocument._id === docId) {
+                    this.selectedDocument.content_md = data.content_md;
+                    this.selectedDocument.content_html = data.content_html;
+                    this.selectedDocument.updated_at = data.updated_at;
+                }
             } catch (e) {
                 cb.checked = !newChecked;
                 alert('שגיאת רשת');

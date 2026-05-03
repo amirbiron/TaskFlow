@@ -228,11 +228,29 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
 
 # מתאים לתחביר של pymdownx.tasklist:
 # - שורות שמתחילות בתבליט (-, *, +) או רשימה ממוספרת (1. וכו'), עם רווח/טאב,
-#   ואז [ ] או [x]/[X]. תפסים גם הזחה (תת-משימות).
+#   ואז [ ] או [x]/[X]. תופס גם הזחה (תת-משימות) וגם blockquotes (> - [ ] foo).
+# - תוכן בתוך fenced code blocks מסוננים בנפרד למטה.
 _TASK_RE = re.compile(
-    r"^(?P<prefix>[ \t]*(?:[-*+]|\d+\.)\s+)\[(?P<state>[ xX])\]",
+    r"^(?P<prefix>(?:[ \t]*>[ \t]?)*[ \t]*(?:[-*+]|\d+\.)\s+)\[(?P<state>[ xX])\]",
     flags=re.MULTILINE,
 )
+
+
+def _task_match_positions(text: str) -> list[re.Match]:
+    """כל ההתאמות של task list שייצרו checkbox ב-HTML.
+
+    מסנן התאמות שנמצאות בתוך fenced code blocks (``` או ~~~), כי שם
+    pymdownx.tasklist לא מייצר checkbox - ויש להבטיח שהאינדקס המחושב
+    בצד הלקוח (לפי DOM) יתאים לזה שבצד השרת.
+    """
+    blocked: list[tuple[int, int]] = [
+        (m.start(), m.end()) for m in _FENCED_CODE_RE.finditer(text)
+    ]
+
+    def _inside_code(pos: int) -> bool:
+        return any(s <= pos < e for s, e in blocked)
+
+    return [m for m in _TASK_RE.finditer(text) if not _inside_code(m.start())]
 
 
 def toggle_task_in_markdown(text: str, index: int, checked: bool) -> str:
@@ -243,7 +261,7 @@ def toggle_task_in_markdown(text: str, index: int, checked: bool) -> str:
     if not text:
         raise IndexError("no tasks in text")
 
-    matches = list(_TASK_RE.finditer(text))
+    matches = _task_match_positions(text)
     if index < 0 or index >= len(matches):
         raise IndexError(f"task index {index} out of range (found {len(matches)})")
 

@@ -777,7 +777,11 @@ function taskDetailPage(taskId) {
             } catch (e) { this.previewHtml = this.escapeHtml(text); }
         },
         // === task-list checkboxes בהערה ===
-        async onCommentCheckboxChange(ev) {
+        // promise queue פר-הערה: לחיצות על אותה הערה מסודרות בטור.
+        // לחיצות על הערות שונות יכולות לרוץ במקביל (אין conflict בין-הערות ב-DB).
+        _commentTaskQueues: {},
+
+        onCommentCheckboxChange(ev) {
             const cb = ev.target;
             if (!(cb instanceof HTMLInputElement) || cb.type !== 'checkbox') return;
 
@@ -786,7 +790,6 @@ function taskDetailPage(taskId) {
             const commentId = wrapper.dataset.commentId;
             if (!commentId) return;
 
-            // אם בעריכה - מתעלמים (אין checkboxes שם, אבל ליתר ביטחון)
             if (this.editingId === commentId) return;
 
             const allCbs = Array.from(wrapper.querySelectorAll('input[type="checkbox"]'));
@@ -795,6 +798,14 @@ function taskDetailPage(taskId) {
 
             const newChecked = cb.checked;
             cb.disabled = true;
+
+            const prev = this._commentTaskQueues[commentId] || Promise.resolve();
+            this._commentTaskQueues[commentId] = prev
+                .catch(() => {})
+                .then(() => this._sendCommentToggle(commentId, index, newChecked, cb));
+        },
+
+        async _sendCommentToggle(commentId, index, newChecked, cb) {
             try {
                 const res = await fetch(`/api/comments/${commentId}/toggle-task`, {
                     method: 'PATCH',
