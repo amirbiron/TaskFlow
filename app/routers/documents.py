@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_database
 from app.core.auth import require_api_auth
 from app.core.db_utils import validate_object_id
-from app.core.markdown_renderer import markdown_to_html
+from app.core.markdown_renderer import markdown_to_html, toggle_task_in_markdown
 from app.models.project_document import (
     ProjectDocumentCreate,
     ProjectDocumentUpdate,
@@ -192,6 +192,66 @@ async def update_document(
         "content_md": result.get("content_md", ""),
         "content_html": html,
         "created_at": result.get("created_at").isoformat() if result.get("created_at") else None,
+        "updated_at": result.get("updated_at").isoformat() if result.get("updated_at") else None,
+    }
+
+
+class TaskToggleRequest(BaseModel):
+    """טוגל של checkbox ב-task list בתוך מסמך."""
+    index: int = Field(..., ge=0)
+    checked: bool
+
+
+@router.patch("/{doc_id}/toggle-task")
+async def toggle_document_task(
+    request: Request,
+    project_id: str,
+    doc_id: str,
+    payload: TaskToggleRequest,
+):
+    """הפיכת מצב של checkbox ה-N במסמך - שמירה ל-DB ורינדור מחדש."""
+    require_api_auth(request)
+    db = get_database()
+    await _ensure_project_exists(db, project_id)
+
+    obj_id = validate_object_id(doc_id)
+    existing = await db.project_documents.find_one(
+        {"_id": obj_id, "project_id": project_id},
+        {"content_md": 1},
+    )
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="מסמך לא נמצא",
+        )
+
+    try:
+        new_md = toggle_task_in_markdown(
+            existing.get("content_md", ""), payload.index, payload.checked
+        )
+    except IndexError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="המסמך השתנה בינתיים - רענן ונסה שוב",
+        )
+
+    now = datetime.utcnow()
+    result = await db.project_documents.find_one_and_update(
+        {"_id": obj_id, "project_id": project_id},
+        {"$set": {"content_md": new_md, "updated_at": now}},
+        return_document=True,
+    )
+    if not result:
+        # המסמך נמחק בין ה-find_one ל-find_one_and_update
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="מסמך לא נמצא",
+        )
+    html, _ = markdown_to_html(result.get("content_md", ""))
+    return {
+        "_id": str(result["_id"]),
+        "content_md": result.get("content_md", ""),
+        "content_html": html,
         "updated_at": result.get("updated_at").isoformat() if result.get("updated_at") else None,
     }
 

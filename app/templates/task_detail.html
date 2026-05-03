@@ -192,9 +192,11 @@
                 אין הערות עדיין - הוסף את הראשונה למטה
             </div>
 
-            <ul x-show="!commentsLoading && comments.length > 0" class="space-y-3 mb-5">
+            <ul x-show="!commentsLoading && comments.length > 0"
+                class="space-y-3 mb-5"
+                @change="onCommentCheckboxChange($event)">
                 <template x-for="c in comments" :key="c._id">
-                    <li class="border border-slate-200 rounded-lg bg-slate-50 p-3">
+                    <li class="border border-slate-200 rounded-lg bg-slate-50 p-3" :data-comment-id="c._id">
                         <template x-if="editingId !== c._id">
                             <div>
                                 <div class="markdown-body text-sm" x-html="c.body_html"></div>
@@ -774,6 +776,64 @@ function taskDetailPage(taskId) {
                 }
             } catch (e) { this.previewHtml = this.escapeHtml(text); }
         },
+        // === task-list checkboxes בהערה ===
+        // promise queue פר-הערה: לחיצות על אותה הערה מסודרות בטור.
+        // לחיצות על הערות שונות יכולות לרוץ במקביל (אין conflict בין-הערות ב-DB).
+        _commentTaskQueues: {},
+
+        onCommentCheckboxChange(ev) {
+            const cb = ev.target;
+            if (!(cb instanceof HTMLInputElement) || cb.type !== 'checkbox') return;
+
+            const wrapper = cb.closest('[data-comment-id]');
+            if (!wrapper) return;
+            const commentId = wrapper.dataset.commentId;
+            if (!commentId) return;
+
+            if (this.editingId === commentId) return;
+
+            // סלקטור מוגבל ל-checkboxes שיוצרו ע"י pymdownx.tasklist בלבד -
+            // input ישיר תחת <li class="task-list-item">. checkboxes שמשתמש
+            // הטמיע ידנית ב-MD לא ייספרו ולא ישנו את האינדקס.
+            const allCbs = Array.from(wrapper.querySelectorAll(
+                'li.task-list-item > input[type="checkbox"]'
+            ));
+            const index = allCbs.indexOf(cb);
+            if (index < 0) return;
+
+            const newChecked = cb.checked;
+            cb.disabled = true;
+
+            const prev = this._commentTaskQueues[commentId] || Promise.resolve();
+            this._commentTaskQueues[commentId] = prev
+                .catch(() => {})
+                .then(() => this._sendCommentToggle(commentId, index, newChecked, cb));
+        },
+
+        async _sendCommentToggle(commentId, index, newChecked, cb) {
+            try {
+                const res = await fetch(`/api/comments/${commentId}/toggle-task`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ index, checked: newChecked }),
+                });
+                if (!res.ok) {
+                    cb.checked = !newChecked;
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בעדכון הסימון');
+                    return;
+                }
+                const updated = await res.json();
+                const idx = this.comments.findIndex(x => x._id === updated._id);
+                if (idx !== -1) this.comments[idx] = updated;
+            } catch (e) {
+                cb.checked = !newChecked;
+                alert('שגיאת רשת');
+            } finally {
+                cb.disabled = false;
+            }
+        },
+
         escapeHtml(s) {
             return (s || '')
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;')

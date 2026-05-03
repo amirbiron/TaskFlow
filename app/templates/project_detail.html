@@ -223,7 +223,12 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="markdown-body" x-html="selectedDocument ? selectedDocument.content_html : ''"></div>
+                        <div
+                            class="markdown-body"
+                            :data-doc-id="selectedDocument ? selectedDocument._id : ''"
+                            @change="onDocCheckboxChange($event)"
+                            x-html="selectedDocument ? selectedDocument.content_html : ''"
+                        ></div>
                     </div>
 
                     <!-- מצב עריכה -->
@@ -973,6 +978,68 @@ function projectDetailPage(projectId) {
                 this.linkError = e.message || 'שגיאת רשת';
             } finally {
                 this.linkSaving = false;
+            }
+        },
+
+        // === task-list checkboxes במסמך ===
+        // promise queue: כל קליק מחכה לקודם לפני שולח. מונע מירוץ TOCTOU
+        // כשמשתמש לוחץ מהר על שני checkboxes שונים.
+        _docTaskQueue: Promise.resolve(),
+
+        onDocCheckboxChange(ev) {
+            const cb = ev.target;
+            if (!(cb instanceof HTMLInputElement) || cb.type !== 'checkbox') return;
+            if (!this.selectedDocument) return;
+
+            const container = cb.closest('[data-doc-id]');
+            if (!container) return;
+            const docId = container.dataset.docId;
+            if (!docId || docId !== this.selectedDocument._id) return;
+
+            // סלקטור מוגבל לבדיוק checkboxes שיוצרו ע"י pymdownx.tasklist:
+            // input ישיר תחת <li class="task-list-item">. כך אם המשתמש
+            // הטמיע ידנית <input type="checkbox"> ב-MD הוא לא יספר.
+            const allCbs = Array.from(container.querySelectorAll(
+                'li.task-list-item > input[type="checkbox"]'
+            ));
+            const index = allCbs.indexOf(cb);
+            if (index < 0) return;  // לא checkbox של task list - מתעלמים
+
+            const newChecked = cb.checked;
+            cb.disabled = true;
+
+            this._docTaskQueue = this._docTaskQueue
+                .catch(() => {})
+                .then(() => this._sendDocToggle(docId, index, newChecked, cb));
+        },
+
+        async _sendDocToggle(docId, index, newChecked, cb) {
+            try {
+                const res = await fetch(
+                    `/api/projects/${projectId}/documents/${docId}/toggle-task`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ index, checked: newChecked }),
+                    }
+                );
+                if (!res.ok) {
+                    cb.checked = !newChecked;
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בעדכון הסימון');
+                    return;
+                }
+                const data = await res.json();
+                if (this.selectedDocument && this.selectedDocument._id === docId) {
+                    this.selectedDocument.content_md = data.content_md;
+                    this.selectedDocument.content_html = data.content_html;
+                    this.selectedDocument.updated_at = data.updated_at;
+                }
+            } catch (e) {
+                cb.checked = !newChecked;
+                alert('שגיאת רשת');
+            } finally {
+                cb.disabled = false;
             }
         },
 
