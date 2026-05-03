@@ -40,11 +40,6 @@ _backup_lock = asyncio.Lock()
 # הודעת שגיאה כשגיבוי כבר רץ - מזוהה ע"י ה-router כדי להחזיר 409 במקום 500.
 BACKUP_ALREADY_RUNNING_ERROR = "גיבוי כבר רץ - נסה שוב מאוחר יותר"
 
-# הנתיב הסטנדרטי שבו ה-build script של Render מתקין את mongodb-database-tools.
-# משמש כ-fallback אוטומטי אם MONGODUMP_PATH לא הוגדר ב-env (למשל ב-Web Service
-# שלא נוצר מ-Blueprint, ולכן env vars החדשים מ-render.yaml לא נטענו אוטומטית).
-_RENDER_MONGODUMP_PATH = "/opt/render/project/.render/mongodb-tools/bin/mongodump"
-
 # regex לסילוק credentials מ-URIs של MongoDB. mongodump (ובמיוחד שגיאות
 # parsing/auth) עלול להחזיר את ה-URI ב-stderr - אסור לתת לו להגיע ללוגים,
 # ל-API או ל-UI כי המסד מוגן בסיסמה ב-URI עצמו.
@@ -59,24 +54,6 @@ def _redact_secrets(text: str) -> str:
     if not text:
         return text
     return _MONGO_URI_CREDS_RE.sub(r"\1***:***@", text)
-
-
-def _resolve_mongodump_path() -> str:
-    """
-    מחזיר את הנתיב הסופי ל-mongodump:
-    1. אם המשתמש הגדיר MONGODUMP_PATH לערך לא-ברירת-מחדל - מכבדים אותו.
-    2. אחרת - אם הקובץ הסטנדרטי של Render install קיים, משתמשים בו.
-    3. אחרת - נופלים על "mongodump" ב-PATH (לפיתוח מקומי).
-
-    הכלל הזה מאפשר ל-deploy ב-Render לעבוד גם אם ה-env var לא הוגדר
-    בלוח (למשל בשירותים שנוצרו לפני הוספת המשתנה ל-render.yaml).
-    """
-    settings = get_settings()
-    if settings.mongodump_path != "mongodump":
-        return settings.mongodump_path
-    if Path(_RENDER_MONGODUMP_PATH).is_file():
-        return _RENDER_MONGODUMP_PATH
-    return settings.mongodump_path
 
 
 @dataclass
@@ -212,15 +189,14 @@ async def _run_backup_locked() -> BackupResult:
     target_path = backup_dir / filename
 
     dump_uri = _build_dump_uri(settings.mongodb_url, settings.database_name)
-    mongodump_path = _resolve_mongodump_path()
     cmd = [
-        mongodump_path,
+        settings.mongodump_path,
         f"--uri={dump_uri}",
         "--gzip",
         f"--archive={target_path}",
     ]
 
-    logger.info("מתחיל גיבוי MongoDB → %s (כלי: %s)", target_path, mongodump_path)
+    logger.info("מתחיל גיבוי MongoDB → %s", target_path)
 
     try:
         process = await asyncio.create_subprocess_exec(
@@ -234,7 +210,7 @@ async def _run_backup_locked() -> BackupResult:
 
     except FileNotFoundError:
         # mongodump לא מותקן - הודעה ברורה למסך הניהול
-        msg = f"mongodump לא נמצא בנתיב '{mongodump_path}'. ודא שהותקן ב-build."
+        msg = f"mongodump לא נמצא בנתיב '{settings.mongodump_path}'. ודא שהותקן ב-build."
         logger.error(msg)
         result = BackupResult(success=False, error=msg, finished_at=datetime.now(timezone.utc))
         _last_result = result
