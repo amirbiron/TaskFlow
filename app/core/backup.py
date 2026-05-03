@@ -120,17 +120,19 @@ def _build_filename(now: Optional[datetime] = None) -> str:
 
 def _build_dump_uri(uri: str, database_name: str) -> str:
     """
-    משלב database_name ל-path של ה-URI אם לא קיים שם כבר.
+    מחליף את ה-path של ה-URI ב-database_name.
 
     נדרש כי mongodump 100.x דוחה את השילוב --uri + --db
     ("illegal argument combination"). חייבים להעביר את שם ה-DB
     דרך ה-URI עצמו.
+
+    תמיד **דורסים** את ה-path הקיים (למשל '/test' שמגיע בברירת
+    מחדל מ-Atlas) - מקור האמת הוא settings.database_name, וזה מה
+    שהאפליקציה מתחברת אליו ב-database.py דרך client[database_name].
+    אם נכבד את ה-path הקיים, הגיבוי יכול לטרגט מסד שונה מהאפליקציה
+    בלי שהמשתמש ירגיש בכך - באג שקט וחמור.
     """
     parsed = urlparse(uri)
-    current_db = parsed.path.lstrip("/")
-    if current_db:
-        # יש כבר DB ב-URI - מכבדים את הבחירה של המשתמש
-        return uri
     return urlunparse(parsed._replace(path=f"/{database_name}"))
 
 
