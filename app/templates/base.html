@@ -3,8 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1e293b">
+    <meta name="theme-color" content="#f8fafc" id="meta-theme-color">
     <title>{% block title %}TaskFlow{% endblock %}</title>
+
+    <!-- מצב כהה: החלת ה-class על <html> ועדכון theme-color לפני הצביעה כדי למנוע הבזק (FOUC) -->
+    <script>
+        (function() {
+            try {
+                var stored = localStorage.getItem('theme');
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var isDark = stored ? stored === 'dark' : prefersDark;
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                }
+                // עדכון theme-color מיידית כדי שגם chrome הדפדפן (כתובת/סטטוס במובייל)
+                // לא יבליח בצבע הלא-נכון לפני שהסקריפט בתחתית הדף ירוץ.
+                var meta = document.getElementById('meta-theme-color');
+                if (meta) {
+                    meta.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+                }
+            } catch (e) {}
+        })();
+    </script>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,6 +42,7 @@
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -31,6 +52,7 @@
                         primary: {
                             50: '#eff6ff',
                             100: '#dbeafe',
+                            400: '#60a5fa',
                             500: '#3b82f6',
                             600: '#2563eb',
                             700: '#1d4ed8',
@@ -43,21 +65,21 @@
 
     {% block head %}{% endblock %}
 </head>
-<body class="font-sans bg-slate-50 text-slate-900 min-h-screen pb-20 md:pb-0">
+<body class="font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-20 md:pb-0 transition-colors duration-200">
     {% if request.url.path != '/login' %}
     <!-- ניווט עליון - טאבלט/דסקטופ -->
-    <nav class="hidden md:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-20">
+    <nav class="hidden md:block bg-white dark:bg-slate-900 shadow-sm border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 transition-colors duration-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <!-- לוגו -->
                 <a href="/" class="flex items-center">
-                    <div class="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center ml-3">
+                    <div class="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center ml-3 shadow-sm dark:shadow-[0_0_18px_-4px_rgba(59,130,246,0.55)]">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                         </svg>
                     </div>
-                    <h1 class="text-xl font-bold text-slate-900">TaskFlow</h1>
+                    <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">TaskFlow</h1>
                 </a>
 
                 <!-- קישורי ניווט -->
@@ -100,18 +122,36 @@
                     </a>
                 </div>
 
-                <!-- התנתקות -->
-                <form method="POST" action="/logout">
-                    <button type="submit" class="text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors text-sm font-medium">
-                        התנתק
+                <!-- טוגל מצב כהה + התנתקות -->
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                            onclick="window.toggleTheme && window.toggleTheme()"
+                            class="theme-toggle"
+                            aria-label="החלף מצב כהה/בהיר"
+                            title="החלף מצב כהה/בהיר">
+                        <!-- שמש (מוצגת במצב כהה - לחיצה תחזיר לבהיר) -->
+                        <svg class="theme-toggle-icon theme-toggle-sun w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.05 17.95l-1.414 1.414m0-13.728l1.414 1.414M17.95 17.95l1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <!-- ירח (מוצג במצב בהיר - לחיצה תעבור לכהה) -->
+                        <svg class="theme-toggle-icon theme-toggle-moon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
                     </button>
-                </form>
+                    <form method="POST" action="/logout">
+                        <button type="submit" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium">
+                            התנתק
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
 
     <!-- ניווט תחתון - נייד -->
-    <nav class="md:hidden fixed bottom-0 right-0 left-0 bg-white border-t border-slate-200 z-20 shadow-lg">
+    <nav class="md:hidden fixed bottom-0 right-0 left-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-20 shadow-lg transition-colors duration-200">
         <div class="grid grid-cols-5 gap-1 px-1 py-2">
             <a href="/" class="bottom-nav-link {% if current_page == 'dashboard' %}bottom-nav-active{% endif %}">
                 <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,35 +187,110 @@
     </nav>
 
     <!-- כותרת מובייל -->
-    <header class="md:hidden bg-white shadow-sm border-b border-slate-200 sticky top-0 z-10">
+    <header class="md:hidden bg-white dark:bg-slate-900 shadow-sm border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 transition-colors duration-200">
         <div class="flex justify-between items-center h-14 px-4">
             <a href="/" class="flex items-center">
-                <div class="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center ml-2">
+                <div class="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center ml-2 dark:shadow-[0_0_14px_-3px_rgba(59,130,246,0.55)]">
                     <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                     </svg>
                 </div>
-                <h1 class="text-lg font-bold text-slate-900">TaskFlow</h1>
+                <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">TaskFlow</h1>
             </a>
             <div class="flex items-center gap-1">
+                <button type="button"
+                        onclick="window.toggleTheme && window.toggleTheme()"
+                        class="theme-toggle theme-toggle-sm"
+                        aria-label="החלף מצב כהה/בהיר"
+                        title="החלף מצב כהה/בהיר">
+                    <svg class="theme-toggle-icon theme-toggle-sun w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.05 17.95l-1.414 1.414m0-13.728l1.414 1.414M17.95 17.95l1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    <svg class="theme-toggle-icon theme-toggle-moon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                    </svg>
+                </button>
                 <a href="/admin/backups"
-                   class="text-slate-600 hover:text-slate-900 p-2 rounded hover:bg-slate-100"
+                   class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
                    title="גיבויים">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
                     </svg>
                 </a>
                 <form method="POST" action="/logout">
-                    <button type="submit" class="text-slate-600 px-2 py-1 rounded text-sm">
+                    <button type="submit" class="text-slate-600 dark:text-slate-300 px-2 py-1 rounded text-sm">
                         התנתק
                     </button>
                 </form>
             </div>
         </div>
     </header>
+    {% else %}
+    <!-- טוגל צף בעמוד התחברות -->
+    <button type="button"
+            onclick="window.toggleTheme && window.toggleTheme()"
+            class="theme-toggle theme-toggle-floating"
+            aria-label="החלף מצב כהה/בהיר"
+            title="החלף מצב כהה/בהיר">
+        <svg class="theme-toggle-icon theme-toggle-sun w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.05 17.95l-1.414 1.414m0-13.728l1.414 1.414M17.95 17.95l1.414 1.414M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        <svg class="theme-toggle-icon theme-toggle-moon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+    </button>
     {% endif %}
 
     {% block body %}{% endblock %}
+
+    <!-- ניהול מצב כהה: שמירה ב-localStorage + עדכון theme-color + dispatch -->
+    <script>
+        (function() {
+            function applyTheme(theme, opts) {
+                var persist = !(opts && opts.persist === false);
+                var root = document.documentElement;
+                if (theme === 'dark') {
+                    root.classList.add('dark');
+                } else {
+                    root.classList.remove('dark');
+                }
+                var meta = document.getElementById('meta-theme-color');
+                if (meta) {
+                    meta.setAttribute('content', theme === 'dark' ? '#020617' : '#f8fafc');
+                }
+                // נשמר ב-localStorage רק כשהמשתמש בחר ידנית; שינויי מערכת
+                // לא ייצרו רשומה - אחרת ה-listener למטה ייחסם לאחר ההפעלה הראשונה.
+                if (persist) {
+                    try { localStorage.setItem('theme', theme); } catch (e) {}
+                }
+                window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: theme } }));
+            }
+
+            window.toggleTheme = function() {
+                var isDark = document.documentElement.classList.contains('dark');
+                applyTheme(isDark ? 'light' : 'dark');
+            };
+
+            // סנכרון theme-color בטעינה (אם הסקריפט המוקדם הפעיל dark)
+            var initial = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            var meta = document.getElementById('meta-theme-color');
+            if (meta) meta.setAttribute('content', initial === 'dark' ? '#020617' : '#f8fafc');
+
+            // האזנה לשינוי במערכת רק כשהמשתמש לא בחר ידנית
+            try {
+                var mq = window.matchMedia('(prefers-color-scheme: dark)');
+                mq.addEventListener && mq.addEventListener('change', function(e) {
+                    if (!localStorage.getItem('theme')) {
+                        applyTheme(e.matches ? 'dark' : 'light', { persist: false });
+                    }
+                });
+            } catch (e) {}
+        })();
+    </script>
 </body>
 </html>
