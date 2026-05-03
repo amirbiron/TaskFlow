@@ -40,6 +40,21 @@ _backup_lock = asyncio.Lock()
 # הודעת שגיאה כשגיבוי כבר רץ - מזוהה ע"י ה-router כדי להחזיר 409 במקום 500.
 BACKUP_ALREADY_RUNNING_ERROR = "גיבוי כבר רץ - נסה שוב מאוחר יותר"
 
+# regex לסילוק credentials מ-URIs של MongoDB. mongodump (ובמיוחד שגיאות
+# parsing/auth) עלול להחזיר את ה-URI ב-stderr - אסור לתת לו להגיע ללוגים,
+# ל-API או ל-UI כי המסד מוגן בסיסמה ב-URI עצמו.
+_MONGO_URI_CREDS_RE = re.compile(
+    r"(mongodb(?:\+srv)?://)([^/@\s]+)@",
+    re.IGNORECASE,
+)
+
+
+def _redact_secrets(text: str) -> str:
+    """מסיר user:pass מ-URI של MongoDB לפני הצגה/לוג."""
+    if not text:
+        return text
+    return _MONGO_URI_CREDS_RE.sub(r"\1***:***@", text)
+
 
 @dataclass
 class BackupInfo:
@@ -183,7 +198,8 @@ async def _run_backup_locked() -> BackupResult:
         _last_result = result
         return result
     except Exception as exc:  # noqa: BLE001 - רוצים לתפוס הכל כדי שה-scheduler ימשיך
-        msg = f"שגיאה בלתי צפויה בהרצת mongodump: {exc!r}"
+        # repr של exception עלול לכלול את ה-cmd עם ה-URI - מסננים credentials
+        msg = _redact_secrets(f"שגיאה בלתי צפויה בהרצת mongodump: {exc!r}")
         logger.exception(msg)
         result = BackupResult(success=False, error=msg, finished_at=datetime.now(timezone.utc))
         _last_result = result
@@ -199,7 +215,9 @@ async def _run_backup_locked() -> BackupResult:
                 target_path.unlink()
             except OSError:
                 pass
-        err_text = stderr.decode("utf-8", errors="replace").strip()
+        # mongodump עלול להחזיר את ה-URI עם credentials ב-stderr (במיוחד
+        # בשגיאות auth/parsing) - מסננים לפני הצגה/לוג
+        err_text = _redact_secrets(stderr.decode("utf-8", errors="replace").strip())
         # mongodump מדפיס מעט מאוד שורות - שומרים את כולן
         msg = f"mongodump נכשל (exit={return_code}): {err_text[:1000]}"
         logger.error(msg)
