@@ -59,9 +59,27 @@
 
 ## גיבויים אוטומטיים
 
-המערכת מבצעת גיבוי יומי אוטומטי של MongoDB באמצעות `mongodump`,
-שומרת את הקבצים על דיסק מתמיד של Render (`/var/data/backups`),
-ומסובבת אותם אוטומטית לפי `BACKUP_RETENTION_DAYS`.
+המערכת מבצעת גיבוי יומי אוטומטי של MongoDB **בקוד Python נטו** (motor + zipfile),
+שומרת את הקבצים כ-zip על דיסק מתמיד של Render (`/var/data/backups`),
+ומסובבת אותם אוטומטית לפי `BACKUP_RETENTION_DAYS`. **אין תלות בכלים חיצוניים**
+(לא צריך להתקין `mongodb-database-tools`).
+
+### מבנה הגיבוי
+
+קובץ zip סטנדרטי - אפשר לפתוח בקליק כפול:
+
+```
+backup_2026-05-03_03-00-15.zip
+├── _meta.json          (גרסה, תאריך, ספירת רשומות לכל collection)
+├── clients.json
+├── projects.json
+├── tasks.json
+├── tags.json
+├── task_comments.json
+└── ...
+```
+
+הפורמט: BSON Extended JSON v2 - תומך ב-ObjectId, datetime וכו'.
 
 ### הגדרה ראשונית ב-Render
 
@@ -69,9 +87,7 @@
 2. **Disk** - מוגדר ב-`render.yaml`. בפעם הראשונה ייתכן שתצטרך אישור ידני
    בלוח Render (Settings → Disks → Add Disk: name=`taskflow-backups`,
    mountPath=`/var/data`, size=1GB).
-3. **mongodb-database-tools** - מותקנים אוטומטית ב-build script
-   (ראה `render.yaml`).
-4. אין חובה לשנות env vars - יש ברירות מחדל סבירות.
+3. אין צורך ב-build command מותאם או ב-env vars נוספים.
 
 ### דף ניהול
 
@@ -86,9 +102,17 @@
 הורד את קובץ הגיבוי ולאחר מכן הרץ במחשב מקומי:
 
 ```bash
-mongorestore --gzip --archive=backup_YYYY-MM-DD_HH-MM.archive.gz \
+python scripts/restore_backup.py backup_YYYY-MM-DD_HH-MM-SS.zip \
   --uri "$MONGODB_URL"
 ```
+
+אופציות נוספות:
+- `--mode replace|upsert|skip` - אסטרטגיית כתיבה (ברירת מחדל: replace)
+- `--db NAME` - שחזור למסד אחר
+- `--only clients projects` - שחזור רק collections מסוימים
+- `--yes` - דילוג על אישור אינטראקטיבי
+
+תלות יחידה: `pip install pymongo`
 
 ### משתני סביבה
 

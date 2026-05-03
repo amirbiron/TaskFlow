@@ -31,14 +31,12 @@ class Settings(BaseSettings):
     r2_bucket_name: str = ""
     r2_public_url: str = ""
 
-    # גיבויים אוטומטיים של MongoDB ב-mongodump
+    # גיבויים אוטומטיים של MongoDB - מימוש Python נטו (zip + Extended JSON)
     backup_enabled: bool = True
     backup_dir: str = "/var/data/backups"  # ה-disk המתמיד של Render
     backup_retention_days: int = 7  # כמה ימים לשמור גיבויים אחורה
     backup_hour: int = 3  # שעת ריצה יומית (0-23)
     backup_minute: int = 0  # דקה (0-59)
-    # נתיב ל-mongodump - ב-Render מותקן ב-build script
-    mongodump_path: str = "mongodump"
 
     class Config:
         env_file = ".env"

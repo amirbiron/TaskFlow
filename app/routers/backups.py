@@ -99,7 +99,7 @@ async def api_download_backup(request: Request, filename: str):
     return FileResponse(
         path=path,
         filename=filename,
-        media_type="application/gzip",
+        media_type="application/zip",
     )
 
 
