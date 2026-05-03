@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.core.auth import is_authenticated, require_api_auth
 from app.core.backup import (
+    BACKUP_ALREADY_RUNNING_ERROR,
     delete_backup,
     get_backup_path,
     get_last_result,
@@ -69,6 +70,13 @@ async def api_run_backup(request: Request):
 
     result = await run_backup()
     if not result.success:
+        # מבדילים בין "כבר רץ" (409) לכשל אמיתי (500) כדי שה-UI יוכל להתאים
+        # את ההודעה. אם תפוס - לא צריך להיכנס לפאניקה, רק לרענן בעוד רגע.
+        if result.error == BACKUP_ALREADY_RUNNING_ERROR:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=result.error,
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result.error or "הגיבוי נכשל",

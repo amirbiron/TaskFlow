@@ -2,7 +2,7 @@
 לוגיקת גיבוי MongoDB באמצעות mongodump.
 
 מבנה הגיבוי: ארכיון יחיד דחוס gzip לכל המסד, עם חותמת זמן בשם הקובץ.
-לדוגמה: backup_2026-05-03_03-00.archive.gz
+לדוגמה: backup_2026-05-03_03-00-15.archive.gz
 
 שחזור (ידני, לא דרך האפליקציה):
     mongorestore --gzip --archive=/path/to/backup.archive.gz \
@@ -17,19 +17,28 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
 
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# פורמט שם קובץ גיבוי - חייב להישמר עקבי לטובת רוטציה ופענוח
+# פורמט שם קובץ גיבוי - חייב להישמר עקבי לטובת רוטציה ופענוח.
+# כולל שניות כדי למנוע התנגשות בין גיבוי מתוזמן לידני באותה דקה.
 BACKUP_FILENAME_PREFIX = "backup_"
 BACKUP_FILENAME_SUFFIX = ".archive.gz"
-BACKUP_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M"
-# regex מחמיר לשמות קבצי גיבוי - מונע ניסיונות path traversal דרך ה-API
+BACKUP_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
+# regex מקבל גם את הפורמט הישן (HH-MM) וגם החדש (HH-MM-SS) לטובת תאימות לאחור
 _BACKUP_FILENAME_RE = re.compile(
-    r"^backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.archive\.gz$"
+    r"^backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(-\d{2})?\.archive\.gz$"
 )
+
+# נעילה גלובלית - מונעת שתי הרצות מקבילות של mongodump (manual + scheduled,
+# או שני triggers ידניים) שעלולות לדרוס אחת את הקובץ של השנייה ולפגוע בעומס DB.
+_backup_lock = asyncio.Lock()
+
+# הודעת שגיאה כשגיבוי כבר רץ - מזוהה ע"י ה-router כדי להחזיר 409 במקום 500.
+BACKUP_ALREADY_RUNNING_ERROR = "גיבוי כבר רץ - נסה שוב מאוחר יותר"
 
 
 @dataclass
@@ -89,9 +98,25 @@ def is_safe_backup_filename(filename: str) -> bool:
 
 
 def _build_filename(now: Optional[datetime] = None) -> str:
-    """בונה שם קובץ גיבוי על בסיס שעת UTC."""
+    """בונה שם קובץ גיבוי על בסיס שעת UTC (precision של שניות)."""
     ts = (now or datetime.now(timezone.utc)).strftime(BACKUP_TIMESTAMP_FORMAT)
     return f"{BACKUP_FILENAME_PREFIX}{ts}{BACKUP_FILENAME_SUFFIX}"
+
+
+def _build_dump_uri(uri: str, database_name: str) -> str:
+    """
+    משלב database_name ל-path של ה-URI אם לא קיים שם כבר.
+
+    נדרש כי mongodump 100.x דוחה את השילוב --uri + --db
+    ("illegal argument combination"). חייבים להעביר את שם ה-DB
+    דרך ה-URI עצמו.
+    """
+    parsed = urlparse(uri)
+    current_db = parsed.path.lstrip("/")
+    if current_db:
+        # יש כבר DB ב-URI - מכבדים את הבחירה של המשתמש
+        return uri
+    return urlunparse(parsed._replace(path=f"/{database_name}"))
 
 
 async def run_backup() -> BackupResult:
@@ -100,7 +125,26 @@ async def run_backup() -> BackupResult:
 
     מחזיר BackupResult עם success=True/False ופרטים. תמיד מחזיר אובייקט,
     גם בכישלון - לא זורק חריגה (ה-scheduler מבצע catch למעלה).
+
+    אם גיבוי אחר כבר רץ - מחזיר מיידית BackupResult כושל (לא חוסם
+    את הקריאה לזמן ארוך). זה מונע התנגשות בין trigger ידני למתוזמן.
     """
+    global _last_result
+
+    # בדיקה אופטימית - אם תפוס, חוסכים את כל הסטאפ ומחזירים מהר
+    if _backup_lock.locked():
+        return BackupResult(
+            success=False,
+            error=BACKUP_ALREADY_RUNNING_ERROR,
+            finished_at=datetime.now(timezone.utc),
+        )
+
+    async with _backup_lock:
+        return await _run_backup_locked()
+
+
+async def _run_backup_locked() -> BackupResult:
+    """לוגיקת הגיבוי בפועל - תמיד נקראת מתוך ה-lock."""
     global _last_result
 
     settings = get_settings()
@@ -111,10 +155,10 @@ async def run_backup() -> BackupResult:
     filename = _build_filename(started_at)
     target_path = backup_dir / filename
 
+    dump_uri = _build_dump_uri(settings.mongodb_url, settings.database_name)
     cmd = [
         settings.mongodump_path,
-        f"--uri={settings.mongodb_url}",
-        f"--db={settings.database_name}",
+        f"--uri={dump_uri}",
         "--gzip",
         f"--archive={target_path}",
     ]
@@ -131,7 +175,7 @@ async def run_backup() -> BackupResult:
         _, stderr = await process.communicate()
         return_code = process.returncode
 
-    except FileNotFoundError as exc:
+    except FileNotFoundError:
         # mongodump לא מותקן - הודעה ברורה למסך הניהול
         msg = f"mongodump לא נמצא בנתיב '{settings.mongodump_path}'. ודא שהותקן ב-build."
         logger.error(msg)
