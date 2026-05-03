@@ -3,8 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1e293b">
+    <meta name="theme-color" content="#f8fafc" id="meta-theme-color">
     <title>{% block title %}TaskFlow{% endblock %}</title>
+
+    <!-- אנטי-FOUC: בחירת theme לפני רינדור כדי למנוע הבהוב במעבר light↔dark -->
+    <script>
+        (function() {
+            try {
+                var stored = localStorage.getItem('theme');
+                var isDark = stored === 'dark';
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                }
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.setAttribute('content', isDark ? '#111428' : '#f8fafc');
+            } catch (e) {}
+        })();
+    </script>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,20 +27,21 @@
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    <!-- Heebo Font -->
+    <!-- Rubik Font (לפי אפיון העיצוב) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/main.css">
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Heebo', 'sans-serif'],
+                        sans: ['Rubik', 'sans-serif'],
                     },
                     colors: {
                         primary: {
@@ -34,6 +50,32 @@
                             500: '#3b82f6',
                             600: '#2563eb',
                             700: '#1d4ed8',
+                        },
+                        // טוקני SyncFlow Dark Mode (לפי האפיון)
+                        sf: {
+                            'bg-deep': '#111428',
+                            'bg-card': '#1a1e38',
+                            'bg-raised': '#1e2240',
+                            'bg-input': '#161a30',
+                            'bg-table': '#1c2040',
+                            'bg-muted': '#252a4a',
+                            'bg-hover': '#2a2f50',
+                            'text-primary': '#e8eaf0',
+                            'text-secondary': '#8b90a8',
+                            'text-muted': '#5c6180',
+                            'primary': '#7c5bf5',
+                            'primary-hover': '#6b4ae0',
+                            'primary-light': '#9b7ffc',
+                            'teal': '#2dd4bf',
+                            'green': '#34d399',
+                            'blue': '#3b82f6',
+                            'amber': '#d4a020',
+                            'orange': '#f59e0b',
+                            'pink': '#e879a8',
+                            'red': '#f43f5e',
+                            'gray': '#8890a5',
+                            'border': 'rgba(255,255,255,0.10)',
+                            'border-light': 'rgba(255,255,255,0.15)',
                         }
                     }
                 }
@@ -43,10 +85,10 @@
 
     {% block head %}{% endblock %}
 </head>
-<body class="font-sans bg-slate-50 text-slate-900 min-h-screen pb-20 md:pb-0">
+<body class="font-sans bg-slate-50 dark:bg-sf-bg-deep text-slate-900 dark:text-sf-text-primary min-h-screen pb-20 md:pb-0 transition-colors">
     {% if request.url.path != '/login' %}
     <!-- ניווט עליון - טאבלט/דסקטופ -->
-    <nav class="hidden md:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-20">
+    <nav class="hidden md:block bg-white dark:bg-sf-bg-card shadow-sm border-b border-slate-200 dark:border-sf-border sticky top-0 z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <!-- לוגו -->
@@ -57,7 +99,7 @@
                                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                         </svg>
                     </div>
-                    <h1 class="text-xl font-bold text-slate-900">TaskFlow</h1>
+                    <h1 class="text-xl font-bold text-slate-900 dark:text-sf-text-primary">TaskFlow</h1>
                 </a>
 
                 <!-- קישורי ניווט -->
@@ -100,18 +142,34 @@
                     </a>
                 </div>
 
-                <!-- התנתקות -->
-                <form method="POST" action="/logout">
-                    <button type="submit" class="text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors text-sm font-medium">
-                        התנתק
+                <!-- כפתור Dark Mode + התנתקות -->
+                <div class="flex items-center gap-1">
+                    <button type="button"
+                            onclick="window.toggleTheme()"
+                            class="theme-toggle text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-colors"
+                            title="החלפת ערכת נושא"
+                            aria-label="החלפת ערכת נושא">
+                        <!-- אייקון שמש (מוצג במצב כהה) -->
+                        <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <!-- אייקון ירח (מוצג במצב בהיר) -->
+                        <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
                     </button>
-                </form>
+                    <form method="POST" action="/logout">
+                        <button type="submit" class="text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-colors text-sm font-medium">
+                            התנתק
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
 
     <!-- ניווט תחתון - נייד -->
-    <nav class="md:hidden fixed bottom-0 right-0 left-0 bg-white border-t border-slate-200 z-20 shadow-lg">
+    <nav class="md:hidden fixed bottom-0 right-0 left-0 bg-white dark:bg-sf-bg-card border-t border-slate-200 dark:border-sf-border z-20 shadow-lg">
         <div class="grid grid-cols-5 gap-1 px-1 py-2">
             <a href="/" class="bottom-nav-link {% if current_page == 'dashboard' %}bottom-nav-active{% endif %}">
                 <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +205,7 @@
     </nav>
 
     <!-- כותרת מובייל -->
-    <header class="md:hidden bg-white shadow-sm border-b border-slate-200 sticky top-0 z-10">
+    <header class="md:hidden bg-white dark:bg-sf-bg-card shadow-sm border-b border-slate-200 dark:border-sf-border sticky top-0 z-10">
         <div class="flex justify-between items-center h-14 px-4">
             <a href="/" class="flex items-center">
                 <div class="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center ml-2">
@@ -156,18 +214,30 @@
                               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                     </svg>
                 </div>
-                <h1 class="text-lg font-bold text-slate-900">TaskFlow</h1>
+                <h1 class="text-lg font-bold text-slate-900 dark:text-sf-text-primary">TaskFlow</h1>
             </a>
             <div class="flex items-center gap-1">
+                <button type="button"
+                        onclick="window.toggleTheme()"
+                        class="theme-toggle text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded hover:bg-slate-100 dark:hover:bg-sf-bg-hover"
+                        title="החלפת ערכת נושא"
+                        aria-label="החלפת ערכת נושא">
+                    <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                    </svg>
+                </button>
                 <a href="/admin/backups"
-                   class="text-slate-600 hover:text-slate-900 p-2 rounded hover:bg-slate-100"
+                   class="text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded hover:bg-slate-100 dark:hover:bg-sf-bg-hover"
                    title="גיבויים">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
                     </svg>
                 </a>
                 <form method="POST" action="/logout">
-                    <button type="submit" class="text-slate-600 px-2 py-1 rounded text-sm">
+                    <button type="submit" class="text-slate-600 dark:text-sf-text-secondary px-2 py-1 rounded text-sm">
                         התנתק
                     </button>
                 </form>
@@ -177,5 +247,18 @@
     {% endif %}
 
     {% block body %}{% endblock %}
+
+    <!-- פונקציית טוגל גלובלית למצב כהה -->
+    <script>
+        window.toggleTheme = function() {
+            var root = document.documentElement;
+            var isDark = root.classList.toggle('dark');
+            try {
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            } catch (e) {}
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', isDark ? '#111428' : '#f8fafc');
+        };
+    </script>
 </body>
 </html>
