@@ -1,59 +1,62 @@
 """
-לוגיקת גיבוי MongoDB באמצעות mongodump.
+לוגיקת גיבוי MongoDB - מימוש Python נטו עם motor + zipfile.
 
-מבנה הגיבוי: ארכיון יחיד דחוס gzip לכל המסד, עם חותמת זמן בשם הקובץ.
-לדוגמה: backup_2026-05-03_03-00-15.archive.gz
+לא נדרש כלי חיצוני (mongodump). הקובץ הוא zip סטנדרטי שניתן לפתוח
+בקליק כפול בכל מערכת הפעלה ולעיין בו ידנית.
 
-שחזור (ידני, לא דרך האפליקציה):
-    mongorestore --gzip --archive=/path/to/backup.archive.gz \
-        --uri "$MONGODB_URL"
+מבנה הארכיון:
+    backup_2026-05-03_03-00-15.zip
+    ├── _meta.json          (גרסה, תאריך, ספירת רשומות לכל collection)
+    ├── clients.json
+    ├── projects.json
+    ├── tasks.json
+    ├── tags.json
+    ├── task_comments.json
+    └── ...
+
+פורמט הרשומות: BSON Extended JSON v2 (canonical) - תומך ב-ObjectId,
+datetime וכל סוגי BSON. ניתן לטעון חזרה דרך bson.json_util.
+
+שחזור:
+    python scripts/restore_backup.py /path/to/backup.zip
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
+import zipfile
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse, urlunparse
+
+from bson import json_util
 
 from app.core.config import get_settings
+from app.core.database import get_database
 
 logger = logging.getLogger(__name__)
 
 # פורמט שם קובץ גיבוי - חייב להישמר עקבי לטובת רוטציה ופענוח.
 # כולל שניות כדי למנוע התנגשות בין גיבוי מתוזמן לידני באותה דקה.
 BACKUP_FILENAME_PREFIX = "backup_"
-BACKUP_FILENAME_SUFFIX = ".archive.gz"
+BACKUP_FILENAME_SUFFIX = ".zip"
 BACKUP_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
-# regex מקבל גם את הפורמט הישן (HH-MM) וגם החדש (HH-MM-SS) לטובת תאימות לאחור
 _BACKUP_FILENAME_RE = re.compile(
-    r"^backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(-\d{2})?\.archive\.gz$"
+    r"^backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.zip$"
 )
 
-# נעילה גלובלית - מונעת שתי הרצות מקבילות של mongodump (manual + scheduled,
-# או שני triggers ידניים) שעלולות לדרוס אחת את הקובץ של השנייה ולפגוע בעומס DB.
+# גרסה של פורמט הגיבוי - לחזרת תאימות בעתיד אם נשנה את המבנה
+BACKUP_FORMAT_VERSION = 1
+
+# נעילה גלובלית - מונעת שתי הרצות מקבילות (manual+scheduled או manual+manual)
+# שעלולות לדרוס אחת את הקובץ של השנייה, לעמיס על ה-DB או ליצור גיבוי לא עקבי.
 _backup_lock = asyncio.Lock()
 
 # הודעת שגיאה כשגיבוי כבר רץ - מזוהה ע"י ה-router כדי להחזיר 409 במקום 500.
 BACKUP_ALREADY_RUNNING_ERROR = "גיבוי כבר רץ - נסה שוב מאוחר יותר"
-
-# regex לסילוק credentials מ-URIs של MongoDB. mongodump (ובמיוחד שגיאות
-# parsing/auth) עלול להחזיר את ה-URI ב-stderr - אסור לתת לו להגיע ללוגים,
-# ל-API או ל-UI כי המסד מוגן בסיסמה ב-URI עצמו.
-_MONGO_URI_CREDS_RE = re.compile(
-    r"(mongodb(?:\+srv)?://)([^/@\s]+)@",
-    re.IGNORECASE,
-)
-
-
-def _redact_secrets(text: str) -> str:
-    """מסיר user:pass מ-URI של MongoDB לפני הצגה/לוג."""
-    if not text:
-        return text
-    return _MONGO_URI_CREDS_RE.sub(r"\1***:***@", text)
 
 
 @dataclass
@@ -78,6 +81,8 @@ class BackupResult:
     duration_seconds: float = 0.0
     error: Optional[str] = None
     finished_at: Optional[datetime] = None
+    collections_count: int = 0
+    documents_count: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -87,6 +92,8 @@ class BackupResult:
             "duration_seconds": round(self.duration_seconds, 2),
             "error": self.error,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+            "collections_count": self.collections_count,
+            "documents_count": self.documents_count,
         }
 
 
@@ -95,7 +102,7 @@ _last_result: Optional[BackupResult] = None
 
 
 def get_last_result() -> Optional[BackupResult]:
-    """מחזיר את תוצאת הגיבוי האחרון שרץ (None אם עוד לא רץ באז startup)."""
+    """מחזיר את תוצאת הגיבוי האחרון שרץ (None אם עוד לא רץ מאז startup)."""
     return _last_result
 
 
@@ -108,7 +115,8 @@ def _ensure_backup_dir() -> Path:
 
 
 def is_safe_backup_filename(filename: str) -> bool:
-    """בדיקת בטיחות לשם קובץ - חייב להתאים לפורמט הסטנדרטי שלנו."""
+    """בדיקת בטיחות לשם קובץ - חייב להתאים לפורמט הסטנדרטי שלנו.
+    מונע ניסיונות path traversal דרך ה-API."""
     return bool(_BACKUP_FILENAME_RE.match(filename))
 
 
@@ -118,27 +126,74 @@ def _build_filename(now: Optional[datetime] = None) -> str:
     return f"{BACKUP_FILENAME_PREFIX}{ts}{BACKUP_FILENAME_SUFFIX}"
 
 
-def _build_dump_uri(uri: str, database_name: str) -> str:
+async def _dump_collection_to_string(db, coll_name: str) -> tuple[str, int]:
     """
-    מחליף את ה-path של ה-URI ב-database_name.
-
-    נדרש כי mongodump 100.x דוחה את השילוב --uri + --db
-    ("illegal argument combination"). חייבים להעביר את שם ה-DB
-    דרך ה-URI עצמו.
-
-    תמיד **דורסים** את ה-path הקיים (למשל '/test' שמגיע בברירת
-    מחדל מ-Atlas) - מקור האמת הוא settings.database_name, וזה מה
-    שהאפליקציה מתחברת אליו ב-database.py דרך client[database_name].
-    אם נכבד את ה-path הקיים, הגיבוי יכול לטרגט מסד שונה מהאפליקציה
-    בלי שהמשתמש ירגיש בכך - באג שקט וחמור.
+    שולף את כל המסמכים של collection ומחזיר (json_string, doc_count).
+    מחזיר Extended JSON v2 (canonical) - פורמט שמשמר טיפוסי BSON.
     """
-    parsed = urlparse(uri)
-    return urlunparse(parsed._replace(path=f"/{database_name}"))
+    docs = []
+    cursor = db[coll_name].find({})
+    async for doc in cursor:
+        docs.append(doc)
+    # json_util.dumps מתרגם ObjectId/datetime/Decimal128 וכו' ל-Extended JSON
+    return json_util.dumps(docs, indent=2, ensure_ascii=False), len(docs)
+
+
+async def _write_backup_zip(target_path: Path) -> tuple[int, int]:
+    """
+    כותב את כל ה-collections של המסד ל-zip בנתיב target_path.
+    מחזיר (collections_count, documents_count_total).
+
+    כותב ל-.partial ואז עושה rename אטומי - מונע קובץ חלקי בכישלון.
+    הדחיסה היא ZIP_DEFLATED עם רמה 6 (אותו אלגוריתם של gzip, רק עטוף ב-zip).
+    """
+    db = get_database()
+    if db is None:
+        raise RuntimeError("חיבור למסד לא מאותחל - ודא ש-connect_to_mongo רץ ב-startup")
+
+    collections = sorted(await db.list_collection_names())
+    meta = {
+        "format_version": BACKUP_FORMAT_VERSION,
+        "format": "bson_extended_json_v2",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "database_name": get_settings().database_name,
+        "collections": {},  # יתמלא עם ספירות
+    }
+    total_docs = 0
+
+    # rename אטומי: כותבים ל-.partial, ואם הצלחנו - rename. כך אם משהו נכשל
+    # באמצע, לא יישאר קובץ חלקי שיציג את עצמו כגיבוי תקין ברשימה.
+    tmp_path = target_path.with_name(target_path.name + ".partial")
+    try:
+        with zipfile.ZipFile(
+            tmp_path,
+            mode="w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=6,
+        ) as zf:
+            for coll_name in collections:
+                json_str, doc_count = await _dump_collection_to_string(db, coll_name)
+                zf.writestr(f"{coll_name}.json", json_str)
+                meta["collections"][coll_name] = doc_count
+                total_docs += doc_count
+            # _meta.json נכתב אחרון, אחרי שיש לנו את כל הספירות
+            zf.writestr("_meta.json", json.dumps(meta, indent=2, ensure_ascii=False))
+        tmp_path.replace(target_path)
+    except Exception:
+        # ניקוי קובץ חלקי לפני הפצת החריגה
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+        raise
+
+    return len(collections), total_docs
 
 
 async def run_backup() -> BackupResult:
     """
-    מריץ mongodump לתיקיית הגיבויים, מסובב גיבויים ישנים, ושומר תוצאה.
+    מריץ גיבוי Python נטו לתיקיית הגיבויים, מסובב גיבויים ישנים, ושומר תוצאה.
 
     מחזיר BackupResult עם success=True/False ופרטים. תמיד מחזיר אובייקט,
     גם בכישלון - לא זורק חריגה (ה-scheduler מבצע catch למעלה).
@@ -148,7 +203,6 @@ async def run_backup() -> BackupResult:
     """
     global _last_result
 
-    # בדיקה אופטימית - אם תפוס, חוסכים את כל הסטאפ ומחזירים מהר
     if _backup_lock.locked():
         return BackupResult(
             success=False,
@@ -157,15 +211,12 @@ async def run_backup() -> BackupResult:
         )
 
     async with _backup_lock:
-        # רשת בטיחות: גם אם _run_backup_locked יתפוצץ במקום שלא ציפינו
-        # לו (למשל PermissionError מ-_ensure_backup_dir כשהדיסק מלא או
-        # שאין הרשאות) - מחזירים BackupResult תקין במקום להפיץ חריגה.
-        # זה מקיים את החוזה של run_backup ומבטיח ש-_last_result מתעדכן
-        # כדי שמסך הניהול יציג את הכישלון, לא מידע ישן.
+        # רשת בטיחות: מבטיחה שאף חריגה לא תפרוץ מ-run_backup, ושמסך הניהול
+        # יראה כישלון אמיתי במקום להישאר עם המידע מהריצה הקודמת.
         try:
             return await _run_backup_locked()
         except Exception as exc:  # noqa: BLE001 - safety net, intentional
-            msg = _redact_secrets(f"שגיאה בלתי צפויה בלוגיקת הגיבוי: {exc!r}")
+            msg = f"שגיאה בלתי צפויה בלוגיקת הגיבוי: {exc!r}"
             logger.exception(msg)
             result = BackupResult(
                 success=False,
@@ -188,76 +239,36 @@ async def _run_backup_locked() -> BackupResult:
     filename = _build_filename(started_at)
     target_path = backup_dir / filename
 
-    dump_uri = _build_dump_uri(settings.mongodb_url, settings.database_name)
-    cmd = [
-        settings.mongodump_path,
-        f"--uri={dump_uri}",
-        "--gzip",
-        f"--archive={target_path}",
-    ]
-
     logger.info("מתחיל גיבוי MongoDB → %s", target_path)
 
     try:
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        # mongodump כותב את ההתקדמות ל-stderr - שומרים לטובת אבחון
-        _, stderr = await process.communicate()
-        return_code = process.returncode
-
-    except FileNotFoundError:
-        # mongodump לא מותקן - הודעה ברורה למסך הניהול
-        msg = f"mongodump לא נמצא בנתיב '{settings.mongodump_path}'. ודא שהותקן ב-build."
-        logger.error(msg)
-        result = BackupResult(success=False, error=msg, finished_at=datetime.now(timezone.utc))
-        _last_result = result
-        return result
-    except Exception as exc:  # noqa: BLE001 - רוצים לתפוס הכל כדי שה-scheduler ימשיך
-        # repr של exception עלול לכלול את ה-cmd עם ה-URI - מסננים credentials
-        msg = _redact_secrets(f"שגיאה בלתי צפויה בהרצת mongodump: {exc!r}")
+        collections_count, documents_count = await _write_backup_zip(target_path)
+    except Exception as exc:  # noqa: BLE001
+        msg = f"גיבוי נכשל: {exc!r}"
         logger.exception(msg)
-        result = BackupResult(success=False, error=msg, finished_at=datetime.now(timezone.utc))
+        result = BackupResult(
+            success=False,
+            error=msg,
+            finished_at=datetime.now(timezone.utc),
+        )
         _last_result = result
         return result
 
     duration = asyncio.get_event_loop().time() - started_monotonic
     finished_at = datetime.now(timezone.utc)
-
-    if return_code != 0:
-        # ניקוי קובץ חלקי שנותר אחרי כישלון
-        if target_path.exists():
-            try:
-                target_path.unlink()
-            except OSError:
-                pass
-        # mongodump עלול להחזיר את ה-URI עם credentials ב-stderr (במיוחד
-        # בשגיאות auth/parsing) - מסננים לפני הצגה/לוג
-        err_text = _redact_secrets(stderr.decode("utf-8", errors="replace").strip())
-        # mongodump מדפיס מעט מאוד שורות - שומרים את כולן
-        msg = f"mongodump נכשל (exit={return_code}): {err_text[:1000]}"
-        logger.error(msg)
-        result = BackupResult(
-            success=False,
-            error=msg,
-            duration_seconds=duration,
-            finished_at=finished_at,
-        )
-        _last_result = result
-        return result
-
     size_bytes = target_path.stat().st_size if target_path.exists() else 0
-    logger.info("גיבוי הושלם: %s (%d bytes, %.2fs)", filename, size_bytes, duration)
 
-    # רוטציה - מוחק קבצים מעבר ל-retention
+    logger.info(
+        "גיבוי הושלם: %s (%d collections, %d docs, %d bytes, %.2fs)",
+        filename, collections_count, documents_count, size_bytes, duration,
+    )
+
+    # רוטציה - מוחק קבצים מעבר ל-retention. לא נחשב לכישלון אם נופל.
     try:
         deleted = rotate_backups(settings.backup_retention_days)
         if deleted:
             logger.info("נמחקו %d גיבויים ישנים: %s", len(deleted), deleted)
     except Exception:  # noqa: BLE001
-        # רוטציה כושלת לא צריכה להחשב ככישלון של הגיבוי עצמו
         logger.exception("שגיאה ברוטציית גיבויים")
 
     result = BackupResult(
@@ -266,6 +277,8 @@ async def _run_backup_locked() -> BackupResult:
         size_bytes=size_bytes,
         duration_seconds=duration,
         finished_at=finished_at,
+        collections_count=collections_count,
+        documents_count=documents_count,
     )
     _last_result = result
     return result
