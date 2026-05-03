@@ -24,7 +24,17 @@ ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     "blockquote", "ul", "ol", "li", "hr", "a",
     "b", "i", "strong", "em", "del", "ins",
     "sup", "sub", "mark", "nav",
+    "input",  # checkboxes של task lists
 ]
+
+def _input_attr_filter(tag: str, name: str, value: str) -> bool:
+    """מתיר רק <input type="checkbox" disabled checked? class?> - לא input אחר."""
+    if name == "type":
+        return value == "checkbox"
+    if name in ("checked", "disabled", "class"):
+        return True
+    return False
+
 
 ALLOWED_ATTRS = {
     "*": ["class", "id"],
@@ -35,6 +45,8 @@ ALLOWED_ATTRS = {
     "code": ["class"],
     "span": ["class"],
     "pre": ["class"],
+    # task lists - רק checkbox (האכיפה ב-_input_attr_filter)
+    "input": _input_attr_filter,
 }
 
 ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
@@ -150,6 +162,7 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
             "toc",
             "codehilite",
             "attr_list",
+            "pymdownx.tasklist",
         ],
         extension_configs={
             "codehilite": {
@@ -160,6 +173,10 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
             "toc": {
                 "title": "תוכן עניינים",
                 "toc_depth": 3,
+            },
+            "pymdownx.tasklist": {
+                "custom_checkbox": False,    # input רגיל (בלי label/span עוטף)
+                "clickable_checkbox": False, # קריאה בלבד - אין אינטראקציה
             },
         },
     )
@@ -180,6 +197,16 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
         attributes=ALLOWED_ATTRS,
         protocols=ALLOWED_PROTOCOLS,
         strip=True,
+    )
+
+    # bleach מפעיל את _input_attr_filter רק כשיש attribute. <input> ללא
+    # attributes חומק - וברירת המחדל ב-HTML היא type="text". לכן מסירים
+    # ידנית כל <input> שאין בו type="checkbox".
+    clean = re.sub(
+        r'<input(?![^>]*\btype\s*=\s*["\']?checkbox["\']?)[^>]*/?>',
+        "",
+        clean,
+        flags=re.IGNORECASE,
     )
 
     clean = _force_noopener(clean)
