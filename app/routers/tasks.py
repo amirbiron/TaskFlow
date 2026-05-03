@@ -35,8 +35,12 @@ def _serialize(doc: dict) -> dict:
     return doc
 
 
-async def _enrich_task(task: dict, db) -> dict:
-    """מעשיר משימה בפרטי פרויקט, לקוח ותגיות"""
+async def _enrich_task(task: dict, db, comments_count: Optional[int] = None) -> dict:
+    """מעשיר משימה בפרטי פרויקט, לקוח ותגיות.
+
+    אם `comments_count` סופק - משתמשים בו (חוסך שאילתה לכל משימה).
+    אחרת מבצעים count_documents בודד (מתאים לקריאת משימה יחידה).
+    """
     task = _serialize(task)
 
     task["project_name"] = None
@@ -71,12 +75,15 @@ async def _enrich_task(task: dict, db) -> dict:
             pass
 
     # ספירת הערות (לתצוגת המונה בכרטיס/בעמוד)
-    try:
-        task["comments_count"] = await db.task_comments.count_documents(
-            {"task_id": str(task["_id"])}
-        )
-    except Exception:
-        task["comments_count"] = 0
+    if comments_count is not None:
+        task["comments_count"] = comments_count
+    else:
+        try:
+            task["comments_count"] = await db.task_comments.count_documents(
+                {"task_id": str(task["_id"])}
+            )
+        except Exception:
+            task["comments_count"] = 0
 
     # פרטי תגיות
     task["tag_details"] = []
@@ -163,9 +170,24 @@ async def list_tasks(
     cursor = db.tasks.find(query).sort([("status", 1), ("column_order", 1)])
     tasks = await cursor.to_list(length=2000)
 
+    # ספירת הערות ב-batch אחד במקום שאילתה לכל משימה (מונע N+1)
+    task_ids = [str(t["_id"]) for t in tasks]
+    counts: dict[str, int] = {}
+    if task_ids:
+        try:
+            pipeline = [
+                {"$match": {"task_id": {"$in": task_ids}}},
+                {"$group": {"_id": "$task_id", "count": {"$sum": 1}}},
+            ]
+            async for row in db.task_comments.aggregate(pipeline):
+                counts[row["_id"]] = row["count"]
+        except Exception:
+            counts = {}
+
     result = []
     for task in tasks:
-        enriched = await _enrich_task(task, db)
+        cnt = counts.get(str(task["_id"]), 0)
+        enriched = await _enrich_task(task, db, comments_count=cnt)
         result.append(enriched)
 
     return result
