@@ -111,12 +111,10 @@
                         <dt class="text-xs text-slate-500 mb-0.5">תאריך יעד</dt>
                         <dd>
                             <span
-                                :class="isOverdue(task.due_date, task.status) ? 'text-red-700 font-medium'
-                                      : (isDueToday(task.due_date, task.status) ? 'text-amber-700 font-medium' : 'text-slate-800')"
+                                :class="isOverdue(task.due_date, task.status) ? 'text-red-700 font-medium' : 'text-slate-800'"
                                 x-text="formatDate(task.due_date)"
                             ></span>
                             <span x-show="isOverdue(task.due_date, task.status)" class="text-xs text-red-600 mr-2">(באיחור)</span>
-                            <span x-show="isDueToday(task.due_date, task.status)" class="text-xs text-amber-600 mr-2">(היום)</span>
                         </dd>
                     </div>
                     <div x-show="task.created_at">
@@ -282,7 +280,7 @@ function taskDetailPage(taskId) {
                 low: 'bg-slate-100 text-slate-600',
                 normal: 'bg-blue-50 text-blue-700',
                 high: 'bg-amber-50 text-amber-700',
-                urgent: 'bg-red-600 text-white',
+                urgent: 'bg-red-50 text-red-700',
             }[p] || 'bg-slate-100 text-slate-600';
         },
         formatDate(iso) {
@@ -296,7 +294,8 @@ function taskDetailPage(taskId) {
                 return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
             } catch (e) { return ''; }
         },
-        // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה)
+        // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה).
+        // היום ואתמול נחשבים "רגיל" - אדום מיומיים+ באיחור.
         _dueParts(dateStr) {
             const d = new Date(dateStr);
             const today = new Date();
@@ -307,12 +306,8 @@ function taskDetailPage(taskId) {
         isOverdue(due, status) {
             if (!due || status === 'completed') return false;
             const { startOfDue, startOfToday } = this._dueParts(due);
-            return startOfDue < startOfToday;
-        },
-        isDueToday(due, status) {
-            if (!due || status === 'completed') return false;
-            const { startOfDue, startOfToday } = this._dueParts(due);
-            return startOfDue.getTime() === startOfToday.getTime();
+            const oneDayMs = 86400000;
+            return (startOfToday - startOfDue) > oneDayMs;
         },
         completedSubtasksCount() {
             if (!this.task || !this.task.subtasks) return 0;

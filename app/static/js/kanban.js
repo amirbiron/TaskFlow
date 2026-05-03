@@ -119,7 +119,7 @@ function kanbanComponent(config = {}) {
                 low: 'bg-slate-100 text-slate-600',
                 normal: 'bg-blue-50 text-blue-700',
                 high: 'bg-amber-50 text-amber-700',
-                urgent: 'bg-red-600 text-white',
+                urgent: 'bg-red-50 text-red-700',
             }[p] || 'bg-slate-100 text-slate-600';
         },
 
@@ -146,21 +146,16 @@ function kanbanComponent(config = {}) {
             return { startOfDue, startOfToday };
         },
 
+        // היום ואתמול נחשבים "רגיל" (אפור). אדום רק מיומיים+ באיחור.
         isOverdue(dateStr, status) {
             if (!dateStr || status === 'completed') return false;
             const { startOfDue, startOfToday } = this._dueParts(dateStr);
-            return startOfDue < startOfToday;
-        },
-
-        isDueToday(dateStr, status) {
-            if (!dateStr || status === 'completed') return false;
-            const { startOfDue, startOfToday } = this._dueParts(dateStr);
-            return startOfDue.getTime() === startOfToday.getTime();
+            const oneDayMs = 86400000;
+            return (startOfToday - startOfDue) > oneDayMs;
         },
 
         dueDateBadgeClass(dateStr, status) {
             if (this.isOverdue(dateStr, status)) return 'bg-red-50 text-red-700';
-            if (this.isDueToday(dateStr, status)) return 'bg-amber-50 text-amber-700';
             return 'bg-slate-100 text-slate-600';
         },
 
