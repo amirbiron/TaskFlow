@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.core.auth import is_authenticated
+from app.core.config import get_settings
 from app.core.markdown_renderer import pygments_css
 
 router = APIRouter()
@@ -23,9 +24,14 @@ async def home(request: Request):
     if redirect:
         return redirect
 
+    settings = get_settings()
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "current_page": "dashboard"}
+        {
+            "request": request,
+            "current_page": "dashboard",
+            "display_name": (settings.user_display_name or "").strip(),
+        },
     )
 
 

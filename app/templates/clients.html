@@ -150,7 +150,7 @@
                 </div>
                 <div x-show="formData.notes">
                     <div class="text-sm text-slate-500 mb-1">הערות</div>
-                    <div class="whitespace-pre-wrap" x-text="formData.notes"></div>
+                    <div class="markdown-body text-sm" x-html="formData.notes_html || ''"></div>
                 </div>
                 <div>
                     <div class="text-sm text-slate-500 mb-1">צבע</div>
@@ -192,8 +192,8 @@
                     <input type="text" x-model="formData.telegram" class="form-input" placeholder="@username">
                 </div>
                 <div>
-                    <label class="form-label">הערות</label>
-                    <textarea x-model="formData.notes" class="form-input" rows="3"></textarea>
+                    <label class="form-label">הערות <span class="text-xs text-slate-400 font-normal">(תומך ב-Markdown)</span></label>
+                    <textarea x-model="formData.notes" class="form-input" rows="4" placeholder="**מודגש**, *נטוי*, `קוד`, [קישור](url)"></textarea>
                 </div>
                 <div>
                     <label class="form-label">צבע</label>
@@ -272,6 +272,7 @@ function clientsManager() {
             phone: '',
             telegram: '',
             notes: '',
+            notes_html: '',
             color: '#3B82F6',
         },
         colorOptions: [
@@ -317,6 +318,7 @@ function clientsManager() {
                 phone: '',
                 telegram: '',
                 notes: '',
+                notes_html: '',
                 color: '#3B82F6',
             };
             this.currentClientId = null;
@@ -337,6 +339,7 @@ function clientsManager() {
                 phone: client.phone || '',
                 telegram: client.telegram || '',
                 notes: client.notes || '',
+                notes_html: client.notes_html || '',
                 color: client.color || '#3B82F6',
             };
             this.modalMode = 'view';
@@ -359,8 +362,9 @@ function clientsManager() {
                     : `/api/clients/${this.currentClientId}`;
                 const method = this.modalMode === 'create' ? 'POST' : 'PUT';
 
-                // ניקוי שדות ריקים
+                // ניקוי שדות ריקים. notes_html מחושב בשרת - לא לשלוח אותו.
                 const payload = { ...this.formData };
+                delete payload.notes_html;
                 ['email', 'phone', 'telegram', 'notes'].forEach(k => {
                     if (!payload[k] || !payload[k].trim()) payload[k] = null;
                 });

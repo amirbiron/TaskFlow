@@ -71,12 +71,14 @@ _TYPE_MAP = {
 }
 
 
-def _preprocess_markdown(text: str) -> str:
+def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
     """ממיר בלוקי `::: type ... :::` ל-<div class='alert alert-*'>.
 
     מדלג על תוכן שבתוך בלוקי קוד עטופים (```/~~~) כדי לא לפגוע בהם.
     הפלייסהולדרים מקבלים נונס אקראי לכל קריאה כדי שלא ניתן יהיה
     להזריק אותם דרך קלט משתמש.
+
+    clickable_tasks משפיע על checkboxes בתוך admonitions.
     """
     if not text:
         return ""
@@ -116,7 +118,7 @@ def _preprocess_markdown(text: str) -> str:
             extension_configs={
                 "pymdownx.tasklist": {
                     "custom_checkbox": False,
-                    "clickable_checkbox": True,
+                    "clickable_checkbox": clickable_tasks,
                 },
             },
         )
@@ -157,12 +159,20 @@ def _force_noopener(html: str) -> str:
 
 # ---------- Main API ----------
 
-def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
-    """ממיר Markdown ל-HTML נקי. מחזיר (html, toc_html)."""
+def markdown_to_html(
+    text: str,
+    include_toc: bool = False,
+    clickable_tasks: bool = True,
+) -> Tuple[str, str]:
+    """ממיר Markdown ל-HTML נקי. מחזיר (html, toc_html).
+
+    clickable_tasks=False: ה-checkboxes יוצגו כ-disabled (תצוגה בלבד).
+    מתאים למקומות שבהם אין endpoint לשמירה (למשל הערות לקוח).
+    """
     if not text:
         return "", ""
 
-    processed = _preprocess_markdown(text)
+    processed = _preprocess_markdown(text, clickable_tasks=clickable_tasks)
 
     md = markdown.Markdown(
         extensions=[
@@ -185,8 +195,8 @@ def markdown_to_html(text: str, include_toc: bool = False) -> Tuple[str, str]:
                 "toc_depth": 3,
             },
             "pymdownx.tasklist": {
-                "custom_checkbox": False,    # input רגיל (בלי label/span עוטף)
-                "clickable_checkbox": True,  # ללא disabled - הקליק נתפס בצד-לקוח ונשלח לשרת
+                "custom_checkbox": False,             # input רגיל (בלי label/span עוטף)
+                "clickable_checkbox": clickable_tasks,  # True=ללא disabled (לחיץ); False=disabled
             },
         },
     )
