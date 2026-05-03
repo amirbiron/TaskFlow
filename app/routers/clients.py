@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from app.core.database import get_database
 from app.core.auth import require_api_auth
 from app.core.db_utils import validate_object_id
+from app.core.markdown_renderer import markdown_to_html
 from app.models.client import (
     Client,
     ClientCreate,
@@ -22,7 +23,22 @@ def _serialize(doc: dict) -> dict:
     return doc
 
 
-@router.get("", response_model=List[ClientWithStats])
+def _attach_notes_html(doc: dict) -> dict:
+    """מוסיף notes_html (HTML מסונן מ-Markdown) למסמך לקוח לתצוגה.
+
+    clickable_tasks=False - אין endpoint לשמירת מצב checkboxes בהערות לקוח,
+    אז מוצגים כ-disabled כדי לא להטעות.
+    """
+    notes = (doc or {}).get("notes") or ""
+    if notes:
+        html, _ = markdown_to_html(notes, clickable_tasks=False)
+        doc["notes_html"] = html
+    else:
+        doc["notes_html"] = ""
+    return doc
+
+
+@router.get("")
 async def list_clients(request: Request):
     """החזרת כל הלקוחות עם סטטיסטיקות"""
     require_api_auth(request)
@@ -48,6 +64,7 @@ async def list_clients(request: Request):
         client = _serialize(client)
         client["active_projects_count"] = active_projects
         client["open_tasks_count"] = open_tasks
+        _attach_notes_html(client)
         result.append(client)
 
     return result
@@ -92,7 +109,7 @@ async def create_client(request: Request, client_data: ClientCreate):
     return doc
 
 
-@router.get("/{client_id}", response_model=Client)
+@router.get("/{client_id}")
 async def get_client(request: Request, client_id: str):
     """החזרת לקוח לפי ID"""
     require_api_auth(request)
@@ -107,10 +124,10 @@ async def get_client(request: Request, client_id: str):
             detail="לקוח לא נמצא"
         )
 
-    return _serialize(client)
+    return _attach_notes_html(_serialize(client))
 
 
-@router.put("/{client_id}", response_model=Client)
+@router.put("/{client_id}")
 async def update_client(
     request: Request,
     client_id: str,
@@ -137,7 +154,7 @@ async def update_client(
             detail="לקוח לא נמצא"
         )
 
-    return _serialize(result)
+    return _attach_notes_html(_serialize(result))
 
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)

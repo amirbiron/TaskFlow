@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "TaskFlow"
     debug: bool = False
+    user_display_name: str = ""  # USER_DISPLAY_NAME - שם להצגה בברוך הבא בדשבורד
 
     # Telegram (לשלבים הבאים)
     telegram_bot_token: str = ""
