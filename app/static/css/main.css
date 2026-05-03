@@ -292,6 +292,8 @@ html {
     font-size: 0.95rem;
     line-height: 1.7;
     word-wrap: break-word;
+    min-width: 0;
+    max-width: 100%;
 }
 .markdown-body h1,
 .markdown-body h2,
@@ -374,6 +376,11 @@ html {
     border-collapse: collapse;
     margin: 0.8em 0;
     width: 100%;
+    /* גלילה אופקית לטבלאות רחבות (במיוחד במובייל) */
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .markdown-body th,
 .markdown-body td {
