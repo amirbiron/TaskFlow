@@ -1,11 +1,106 @@
 /* TaskFlow - סגנונות מותאמים */
 
+/* ===========================================================
+   טוקנים סמנטיים: Light (ברירת מחדל) + Dark (SyncFlow tokens)
+   הקומפוננטות המותאמות (.btn, .client-card, .markdown-body
+   וכו') משתמשות במשתנים האלה כדי לתמוך בשני המצבים בלי דריסה.
+   =========================================================== */
+:root {
+    /* רקעים */
+    --bg-base:        #f8fafc;
+    --bg-surface:     #ffffff;
+    --bg-raised:      #ffffff;
+    --bg-input:       #ffffff;
+    --bg-muted:       #f1f5f9;
+    --bg-hover:       #e2e8f0;
+    --bg-table-head:  #f1f5f9;
+    --bg-code-inline: #f1f5f9;
+    --bg-code-block:  #0f172a;
+    --bg-blockquote:  #f8fafc;
+
+    /* טקסט */
+    --text-primary:   #0f172a;
+    --text-body:      #1e293b;
+    --text-secondary: #475569;
+    --text-muted:     #94a3b8;
+    --text-on-code:   #b91c1c;
+    --text-on-pre:    #f8fafc;
+
+    /* גבולות */
+    --border:         #e2e8f0;
+    --border-strong:  #cbd5e1;
+    --border-focus:   #3b82f6;
+
+    /* Accent (תואם לקיים) */
+    --accent-primary: #2563eb;
+    --accent-primary-hover: #1d4ed8;
+    --accent-primary-soft: #dbeafe;
+    --accent-danger:  #dc2626;
+    --accent-danger-hover: #b91c1c;
+
+    /* גלילה */
+    --scrollbar-track: #f1f5f9;
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-thumb-hover: #94a3b8;
+
+    /* Modal */
+    --modal-backdrop: rgba(15, 23, 42, 0.5);
+
+    /* Kanban ghost */
+    --kanban-ghost-bg: #dbeafe;
+}
+
+html.dark {
+    /* רקעים – לפי SyncFlow Design v2 */
+    --bg-base:        #111428;
+    --bg-surface:     #1a1e38;
+    --bg-raised:      #1e2240;
+    --bg-input:       #161a30;
+    --bg-muted:       #252a4a;
+    --bg-hover:       #2a2f50;
+    --bg-table-head:  #1c2040;
+    --bg-code-inline: #1c2040;
+    --bg-code-block:  #0a0d1f;
+    --bg-blockquote:  rgba(255, 255, 255, 0.04);
+
+    /* טקסט */
+    --text-primary:   #e8eaf0;
+    --text-body:      #d4d7e0;
+    --text-secondary: #8b90a8;
+    --text-muted:     #5c6180;
+    --text-on-code:   #fca5a5;
+    --text-on-pre:    #e8eaf0;
+
+    /* גבולות */
+    --border:         rgba(255, 255, 255, 0.10);
+    --border-strong:  rgba(255, 255, 255, 0.15);
+    --border-focus:   #7c5bf5;
+
+    /* Accent */
+    --accent-primary: #7c5bf5;
+    --accent-primary-hover: #6b4ae0;
+    --accent-primary-soft: rgba(124, 91, 245, 0.18);
+    --accent-danger:  #f43f5e;
+    --accent-danger-hover: #e11d48;
+
+    /* גלילה */
+    --scrollbar-track: #161a30;
+    --scrollbar-thumb: #2a2f50;
+    --scrollbar-thumb-hover: #3a3f60;
+
+    /* Modal */
+    --modal-backdrop: rgba(0, 0, 0, 0.6);
+
+    /* Kanban ghost */
+    --kanban-ghost-bg: rgba(124, 91, 245, 0.25);
+}
+
 * {
     -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    font-family: 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -20,7 +115,7 @@ html {
     align-items: center;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    color: #475569;
+    color: var(--text-secondary);
     font-weight: 500;
     font-size: 0.95rem;
     transition: all 0.2s;
@@ -28,17 +123,22 @@ html {
 }
 
 .nav-link:hover:not(.nav-link-disabled) {
-    background-color: #f1f5f9;
-    color: #0f172a;
+    background-color: var(--bg-muted);
+    color: var(--text-primary);
 }
 
 .nav-link-active {
-    background-color: #dbeafe;
-    color: #1d4ed8;
+    background-color: var(--accent-primary-soft);
+    color: var(--accent-primary);
+}
+
+html.dark .nav-link-active {
+    color: #9b7ffc; /* sf-primary-light לקריאות בתוך רקע סגול שקוף */
 }
 
 .nav-link-active:hover {
-    background-color: #bfdbfe;
+    background-color: var(--accent-primary-soft);
+    filter: brightness(0.95);
 }
 
 .nav-link-disabled {
@@ -54,18 +154,22 @@ html {
     justify-content: center;
     padding: 0.5rem 0.25rem;
     border-radius: 0.5rem;
-    color: #64748b;
+    color: var(--text-secondary);
     font-weight: 500;
     transition: all 0.2s;
 }
 
 .bottom-nav-link:hover:not(.bottom-nav-disabled) {
-    background-color: #f1f5f9;
+    background-color: var(--bg-muted);
 }
 
 .bottom-nav-active {
-    color: #2563eb;
-    background-color: #eff6ff;
+    color: var(--accent-primary);
+    background-color: var(--accent-primary-soft);
+}
+
+html.dark .bottom-nav-active {
+    color: #9b7ffc;
 }
 
 .bottom-nav-disabled {
@@ -75,10 +179,10 @@ html {
 /* =========== כרטיסי לקוחות =========== */
 .client-card {
     position: relative;
-    background: white;
+    background: var(--bg-surface);
     border-radius: 0.75rem;
     padding: 1.25rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     transition: all 0.2s;
     cursor: pointer;
     overflow: hidden;
@@ -86,8 +190,12 @@ html {
 
 .client-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border-color: #cbd5e1;
+    border-color: var(--border-strong);
     transform: translateY(-2px);
+}
+
+html.dark .client-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .client-card-color-bar {
@@ -112,54 +220,63 @@ html {
 }
 
 .btn-primary {
-    background-color: #2563eb;
-    color: white;
+    background-color: var(--accent-primary);
+    color: #ffffff;
 }
 
 .btn-primary:hover {
-    background-color: #1d4ed8;
+    background-color: var(--accent-primary-hover);
 }
 
 .btn-secondary {
-    background-color: #f1f5f9;
-    color: #334155;
+    background-color: var(--bg-muted);
+    color: var(--text-primary);
 }
 
 .btn-secondary:hover {
-    background-color: #e2e8f0;
+    background-color: var(--bg-hover);
 }
 
 .btn-danger {
-    background-color: #dc2626;
+    background-color: var(--accent-danger);
     color: white;
 }
 
 .btn-danger:hover {
-    background-color: #b91c1c;
+    background-color: var(--accent-danger-hover);
 }
 
 /* =========== טפסים =========== */
 .form-input {
     width: 100%;
     padding: 0.625rem 0.875rem;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--border-strong);
     border-radius: 0.5rem;
     font-size: 1rem;
     transition: all 0.2s;
-    background: white;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.form-input::placeholder {
+    color: var(--text-muted);
 }
 
 .form-input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--border-focus);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+html.dark .form-input:focus {
+    box-shadow: 0 0 0 3px rgba(124, 91, 245, 0.25);
 }
 
 .form-label {
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #334155;
+    color: var(--text-secondary);
     margin-bottom: 0.375rem;
 }
 
@@ -167,7 +284,7 @@ html {
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgba(15, 23, 42, 0.5);
+    background-color: var(--modal-backdrop);
     backdrop-filter: blur(4px);
     z-index: 50;
     display: flex;
@@ -178,7 +295,7 @@ html {
 }
 
 .modal-content {
-    background: white;
+    background: var(--bg-surface);
     border-radius: 1rem;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
     width: 100%;
@@ -186,6 +303,12 @@ html {
     margin-top: 2rem;
     max-height: calc(100vh - 4rem);
     overflow-y: auto;
+    color: var(--text-primary);
+}
+
+html.dark .modal-content {
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.5);
 }
 
 /* =========== אנימציות =========== */
@@ -213,14 +336,14 @@ html {
     height: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: var(--scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: var(--scrollbar-thumb-hover);
 }
 
 /* =========== Empty State =========== */
@@ -235,10 +358,14 @@ html {
     justify-content: center;
     width: 4rem;
     height: 4rem;
-    background-color: #dbeafe;
-    color: #2563eb;
+    background-color: var(--accent-primary-soft);
+    color: var(--accent-primary);
     border-radius: 50%;
     margin-bottom: 1rem;
+}
+
+html.dark .empty-state-icon {
+    color: #9b7ffc;
 }
 
 /* =========== Kanban =========== */
@@ -268,7 +395,7 @@ html {
 /* SortableJS classes */
 .task-ghost {
     opacity: 0.4;
-    background: #dbeafe !important;
+    background: var(--kanban-ghost-bg) !important;
 }
 
 .task-chosen {
@@ -286,9 +413,17 @@ html {
     -webkit-touch-callout: none;
 }
 
+/* =========== Theme Toggle =========== */
+.theme-toggle svg {
+    transition: transform 0.3s ease;
+}
+.theme-toggle:hover svg {
+    transform: rotate(15deg);
+}
+
 /* ====== עיצוב מסמך Markdown מרונדר ====== */
 .markdown-body {
-    color: #1e293b;
+    color: var(--text-body);
     font-size: 0.95rem;
     line-height: 1.7;
     word-wrap: break-word;
@@ -304,10 +439,10 @@ html {
     font-weight: 700;
     margin: 1.2em 0 0.5em;
     line-height: 1.3;
-    color: #0f172a;
+    color: var(--text-primary);
 }
-.markdown-body h1 { font-size: 1.6rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
-.markdown-body h2 { font-size: 1.35rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25em; }
+.markdown-body h1 { font-size: 1.6rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.markdown-body h2 { font-size: 1.35rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
 .markdown-body h3 { font-size: 1.15rem; }
 .markdown-body h4 { font-size: 1rem; }
 .markdown-body p { margin: 0.6em 0; }
@@ -325,24 +460,28 @@ html {
 .markdown-body li.task-list-item input[type="checkbox"] {
     margin-top: 0.35em;
     flex-shrink: 0;
-    accent-color: #2563eb;
+    accent-color: var(--accent-primary);
 }
 .markdown-body blockquote {
-    border-inline-start: 4px solid #cbd5e1;
-    background: #f8fafc;
-    color: #475569;
+    border-inline-start: 4px solid var(--border-strong);
+    background: var(--bg-blockquote);
+    color: var(--text-secondary);
     margin: 0.8em 0;
     padding: 0.4em 1em;
     border-radius: 4px;
 }
 .markdown-body a {
-    color: #2563eb;
+    color: var(--accent-primary);
     text-decoration: underline;
 }
-.markdown-body a:hover { color: #1d4ed8; }
+.markdown-body a:hover { color: var(--accent-primary-hover); }
+
+html.dark .markdown-body a { color: #9b7ffc; }
+html.dark .markdown-body a:hover { color: #b59cff; }
+
 .markdown-body code {
-    background: #f1f5f9;
-    color: #b91c1c;
+    background: var(--bg-code-inline);
+    color: var(--text-on-code);
     padding: 0.1em 0.35em;
     border-radius: 4px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -351,14 +490,19 @@ html {
     unicode-bidi: embed;
 }
 .markdown-body pre {
-    background: #0f172a;
-    color: #f8fafc;
+    background: var(--bg-code-block);
+    color: var(--text-on-pre);
     padding: 1em;
     border-radius: 8px;
     overflow-x: auto;
     margin: 0.8em 0;
     direction: ltr;
 }
+
+html.dark .markdown-body pre {
+    border: 1px solid var(--border);
+}
+
 .markdown-body pre code {
     background: transparent;
     color: inherit;
@@ -389,11 +533,11 @@ html {
 }
 .markdown-body th,
 .markdown-body td {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     padding: 0.4em 0.7em;
     text-align: start;
 }
-.markdown-body th { background: #f1f5f9; font-weight: 600; }
+.markdown-body th { background: var(--bg-table-head); font-weight: 600; color: var(--text-primary); }
 .markdown-body img {
     max-width: 100%;
     height: auto;
@@ -401,7 +545,7 @@ html {
 }
 .markdown-body hr {
     border: none;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border);
     margin: 1.2em 0;
 }
 
@@ -416,5 +560,12 @@ html {
 .markdown-body .alert-warning { border-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
 .markdown-body .alert-danger  { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 .markdown-body .alert-success { border-color: #10b981; background: rgba(16, 185, 129, 0.08); }
+
+/* בכהה: אדמוניציות מקבלות רקע חזק יותר ושימוש בצבעי SyncFlow */
+html.dark .markdown-body .alert-info    { border-color: #3b82f6; background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+html.dark .markdown-body .alert-warning { border-color: #d4a020; background: rgba(212, 160, 32, 0.18);  color: #fcd34d; }
+html.dark .markdown-body .alert-danger  { border-color: #f43f5e; background: rgba(244, 63, 94, 0.18);   color: #fca5a5; }
+html.dark .markdown-body .alert-success { border-color: #34d399; background: rgba(52, 211, 153, 0.18);  color: #6ee7b7; }
+
 .markdown-body .alert > :first-child { margin-top: 0; }
 .markdown-body .alert > :last-child  { margin-bottom: 0; }
