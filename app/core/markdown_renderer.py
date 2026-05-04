@@ -124,11 +124,18 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
         # שמספר ה-checkboxes ב-HTML יתאים לסדר ההתאמות ב-_TASK_RE על המקור.
         inner = markdown.markdown(
             body,
-            extensions=["nl2br", "fenced_code", "pymdownx.tasklist"],
+            extensions=[
+                "nl2br", "fenced_code", "pymdownx.tasklist",
+                "pymdownx.tilde", "pymdownx.mark",
+            ],
             extension_configs={
                 "pymdownx.tasklist": {
                     "custom_checkbox": False,
                     "clickable_checkbox": clickable_tasks,
+                },
+                "pymdownx.tilde": {
+                    "smart_delete": True,
+                    "subscript": False,
                 },
             },
         )
