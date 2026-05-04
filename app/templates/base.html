@@ -137,12 +137,6 @@
                         </svg>
                         תגיות
                     </a>
-                    <a href="/archive" class="nav-link {% if current_page == 'archive' %}nav-link-active{% endif %}" title="ארכיון משימות">
-                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                        </svg>
-                        ארכיון
-                    </a>
                     <a href="/admin/backups" class="nav-link {% if current_page == 'backups' %}nav-link-active{% endif %}" title="גיבויים">
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
@@ -172,6 +166,14 @@
                             התנתק
                         </button>
                     </form>
+                    <a href="/archive"
+                       class="text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-colors {% if current_page == 'archive' %}text-primary-600 dark:text-sf-primary-light{% endif %}"
+                       title="ארכיון משימות"
+                       aria-label="ארכיון">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                        </svg>
+                    </a>
                 </div>
             </div>
         </div>
@@ -238,13 +240,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
                     </svg>
                 </button>
-                <a href="/archive"
-                   class="text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded hover:bg-slate-100 dark:hover:bg-sf-bg-hover"
-                   title="ארכיון">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                    </svg>
-                </a>
                 <a href="/admin/backups"
                    class="text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded hover:bg-slate-100 dark:hover:bg-sf-bg-hover"
                    title="גיבויים">
@@ -257,6 +252,14 @@
                         התנתק
                     </button>
                 </form>
+                <a href="/archive"
+                   class="text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded hover:bg-slate-100 dark:hover:bg-sf-bg-hover {% if current_page == 'archive' %}text-primary-600 dark:text-sf-primary-light{% endif %}"
+                   title="ארכיון משימות"
+                   aria-label="ארכיון">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                    </svg>
+                </a>
             </div>
         </div>
     </header>
