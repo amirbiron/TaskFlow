@@ -817,12 +817,15 @@ function projectDetailPage(projectId) {
 
             const value = ta.value;
             const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-            const currentLine = value.slice(lineStart, start);
+            // נחשב את השורה המלאה (גם אחרי הסמן) כדי להחליט אם היא באמת ריקה.
+            // אם הסמן באמצע פריט עם תוכן, נמשיך את הרשימה במקום לצאת ממנה.
+            const lineEndNl = value.indexOf('\n', start);
+            const lineEnd = lineEndNl === -1 ? value.length : lineEndNl;
+            const fullLine = value.slice(lineStart, lineEnd);
 
-            // ניסיון התאמה: כותב בתחילת השורה (אפשר גם רווחים) + מקף/כוכב/פלוס + רווח
-            // או מספר + נקודה + רווח
-            const bulletMatch = currentLine.match(/^(\s*)([-*+])\s+(.*)$/);
-            const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
+            // התאמה: רווחים תחילתיים + מקף/כוכב/פלוס + רווח, או מספר + נקודה + רווח
+            const bulletMatch = fullLine.match(/^(\s*)([-*+])\s+(.*)$/);
+            const numberMatch = fullLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
 
             if (!bulletMatch && !numberMatch) return;
 
@@ -831,10 +834,10 @@ function projectDetailPage(projectId) {
 
             event.preventDefault();
 
-            // שורה ריקה (רק הקידומת) - מוחקים את הקידומת ויוצאים מהרשימה
+            // שורה ריקה (כל השורה היא רק הקידומת) - מוחקים אותה ויוצאים מהרשימה
             if (!content.trim()) {
                 const before = value.slice(0, lineStart);
-                const after = value.slice(start);
+                const after = value.slice(lineEnd);
                 ta.value = before + after;
                 this.documentDraft.content_md = ta.value;
                 const newPos = lineStart;
