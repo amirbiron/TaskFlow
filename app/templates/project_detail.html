@@ -808,6 +808,9 @@ function projectDetailPage(projectId) {
         onEditorEnter(event) {
             // לא להפעיל בלחיצות שילוב מקשים (Ctrl/Shift/Alt+Enter וכו')
             if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+            // לא לחטוף Enter במהלך IME composition (אוטוקומפליט במובייל,
+            // קלט CJK, accent menu במק וכד'). Alpine v3 לא מסנן את זה לבד.
+            if (event.isComposing || event.keyCode === 229) return;
 
             const ta = event.target;
             if (!ta || typeof ta.selectionStart !== 'number') return;

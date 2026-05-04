@@ -40,7 +40,10 @@ async def list_tags(request: Request):
     for tag in tags:
         tag_id_str = str(tag["_id"])
 
-        tasks_count = await db.tasks.count_documents({"tags": tag_id_str})
+        tasks_count = await db.tasks.count_documents({
+            "tags": tag_id_str,
+            "archived": {"$ne": True},
+        })
         projects_count = await db.projects.count_documents({"tags": tag_id_str})
 
         tag = _serialize(tag)
