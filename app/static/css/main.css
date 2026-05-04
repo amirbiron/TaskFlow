@@ -64,12 +64,12 @@ html.dark {
     --bg-blockquote:  rgba(255, 255, 255, 0.04);
 
     /* טקסט */
-    --text-primary:   #b0cbf4;
-    --text-body:      #b0cbf4;
+    --text-primary:   #c4dcff;
+    --text-body:      #c4dcff;
     --text-secondary: #8b90a8;
     --text-muted:     #5c6180;
     --text-on-code:   #fca5a5;
-    --text-on-pre:    #b0cbf4;
+    --text-on-pre:    #c4dcff;
 
     /* גבולות */
     --border:         rgba(255, 255, 255, 0.10);
