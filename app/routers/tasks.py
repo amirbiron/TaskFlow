@@ -6,6 +6,7 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from app.core.database import get_database
 from app.core.auth import require_api_auth
+from app.core.markdown_renderer import markdown_to_html
 from app.models.task import (
     Task,
     TaskCreate,
@@ -15,8 +16,34 @@ from app.models.task import (
     TaskOrderUpdate,
     TaskWithContext,
 )
+from pydantic import BaseModel, Field
 
 router = APIRouter()
+
+
+# מקסימום סביר לתיאור משימה - מעט גדול יותר מהערה כדי לאפשר תיאורים מפורטים.
+MAX_TASK_DESCRIPTION = 50_000
+
+
+class TaskRenderRequest(BaseModel):
+    """תצוגה מקדימה של תיאור משימה ב-Markdown."""
+    text: str = Field(default="", max_length=MAX_TASK_DESCRIPTION)
+
+
+def _render_description(text: Optional[str]) -> Optional[str]:
+    """רינדור description ל-HTML. None/ריק → None (בלי לשמור מחרוזת ריקה)."""
+    if not text or not text.strip():
+        return None
+    html, _ = markdown_to_html(text)
+    return html
+
+
+@router.post("/_render")
+async def render_task_description(request: Request, body: TaskRenderRequest):
+    """רינדור Markdown ל-HTML לתצוגה מקדימה (ללא שמירה)."""
+    require_api_auth(request)
+    html, _ = markdown_to_html(body.text)
+    return {"html": html}
 
 
 def _validate_object_id(id_str: str) -> ObjectId:
@@ -211,6 +238,7 @@ async def create_task(request: Request, task_data: TaskCreate):
     doc["created_at"] = now
     doc["updated_at"] = now
     doc["completed_at"] = now if doc["status"] == TaskStatus.COMPLETED else None
+    doc["description_html"] = _render_description(doc.get("description"))
 
     # קביעת column_order אוטומטית בסוף העמודה
     doc["column_order"] = await _next_column_order(db, doc["project_id"], doc["status"])
@@ -256,6 +284,10 @@ async def update_task(request: Request, task_id: str, update_data: TaskUpdate):
         )
 
     update_doc = {k: v for k, v in update_data.model_dump(exclude_unset=True).items()}
+
+    # אם description התעדכן (כולל ל-None) - לרנדר מחדש את ה-HTML
+    if "description" in update_doc:
+        update_doc["description_html"] = _render_description(update_doc["description"])
 
     # ולידציה של פרויקט
     if "project_id" in update_doc and update_doc["project_id"]:

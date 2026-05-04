@@ -45,6 +45,10 @@ function kanbanComponent(config = {}) {
         newLink: '',
         newSubtask: '',
 
+        // טאב כתיבה/תצוגה־מקדימה לתיאור (Markdown)
+        descriptionTab: 'write',
+        descriptionPreviewHtml: '',
+
         // מודאל מחיקה
         deleteConfirmOpen: false,
 
@@ -260,6 +264,35 @@ function kanbanComponent(config = {}) {
             this.tagPickerOpen = false;
             this.error = null;
             this.currentTaskId = null;
+            this.descriptionTab = 'write';
+            this.descriptionPreviewHtml = '';
+        },
+
+        async loadDescriptionPreview() {
+            this.descriptionTab = 'preview';
+            const text = (this.formData.description || '').trim();
+            if (!text) { this.descriptionPreviewHtml = ''; return; }
+            try {
+                const res = await fetch('/api/tasks/_render', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.descriptionPreviewHtml = data.html || '';
+                } else {
+                    this.descriptionPreviewHtml = this.escapeHtmlForPreview(text);
+                }
+            } catch (e) {
+                this.descriptionPreviewHtml = this.escapeHtmlForPreview(text);
+            }
+        },
+
+        escapeHtmlForPreview(s) {
+            return String(s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         },
 
         navigateToTask(taskId) {
@@ -295,6 +328,8 @@ function kanbanComponent(config = {}) {
             this.tagPickerOpen = false;
             this.modalMode = 'edit';
             this.error = null;
+            this.descriptionTab = 'write';
+            this.descriptionPreviewHtml = '';
             this.modalOpen = true;
         },
 
