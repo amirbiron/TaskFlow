@@ -94,7 +94,18 @@
                 <!-- תיאור -->
                 <div x-show="task.description" class="mb-4">
                     <h3 class="text-sm font-semibold text-slate-700 dark:text-sf-text-primary mb-1">תיאור</h3>
-                    <p class="text-slate-700 dark:text-sf-text-primary whitespace-pre-wrap text-sm leading-relaxed" x-text="task.description"></p>
+                    <!-- task.description_html: רינדור Markdown מהשרת. fallback למשימות
+                         ישנות (לפני התוספת) שאין להן description_html - נציג plaintext. -->
+                    <div
+                        x-show="task.description_html"
+                        class="markdown-body text-sm leading-relaxed"
+                        x-html="task.description_html"
+                    ></div>
+                    <p
+                        x-show="!task.description_html"
+                        class="text-slate-700 dark:text-sf-text-primary whitespace-pre-wrap text-sm leading-relaxed"
+                        x-text="task.description"
+                    ></p>
                 </div>
                 <p x-show="!task.description" class="text-slate-400 dark:text-sf-text-muted italic text-sm mb-4">אין תיאור</p>
 
@@ -337,6 +348,10 @@ function taskDetailPage(taskId) {
         error: null,
         currentTaskId: null,
         deleteConfirmOpen: false,
+
+        // טאב כתיבה/תצוגה־מקדימה לתיאור (Markdown)
+        descriptionTab: 'write',
+        descriptionPreviewHtml: '',
         newLink: '',
         newSubtask: '',
         formData: {
@@ -562,6 +577,8 @@ function taskDetailPage(taskId) {
             this.error = null;
             this.newLink = '';
             this.newSubtask = '';
+            this.descriptionTab = 'write';
+            this.descriptionPreviewHtml = '';
         },
         openEditModal(task) {
             this.currentTaskId = task._id;
@@ -580,8 +597,31 @@ function taskDetailPage(taskId) {
             this.tagSearchQuery = '';
             this.tagPickerOpen = false;
             this.error = null;
+            this.descriptionTab = 'write';
+            this.descriptionPreviewHtml = '';
             this.modalMode = 'edit';
             this.modalOpen = true;
+        },
+
+        async loadDescriptionPreview() {
+            this.descriptionTab = 'preview';
+            const text = (this.formData.description || '').trim();
+            if (!text) { this.descriptionPreviewHtml = ''; return; }
+            try {
+                const res = await fetch('/api/tasks/_render', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.descriptionPreviewHtml = data.html || '';
+                } else {
+                    this.descriptionPreviewHtml = this.escapeHtml(text);
+                }
+            } catch (e) {
+                this.descriptionPreviewHtml = this.escapeHtml(text);
+            }
         },
         closeModal() {
             this.modalOpen = false;

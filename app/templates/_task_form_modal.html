@@ -21,7 +21,33 @@
 
             <div>
                 <label class="form-label">תיאור</label>
-                <textarea x-model="formData.description" class="form-input" rows="3"></textarea>
+                <div class="flex items-center gap-1 mb-1 flex-wrap">
+                    <button
+                        type="button"
+                        @click="descriptionTab = 'write'"
+                        class="text-xs px-3 py-1 rounded-md transition-colors"
+                        :class="descriptionTab === 'write' ? 'bg-primary-100 dark:bg-sf-primary/20 text-primary-700 dark:text-sf-primary-light' : 'text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover'"
+                    >כתיבה</button>
+                    <button
+                        type="button"
+                        @click="loadDescriptionPreview()"
+                        class="text-xs px-3 py-1 rounded-md transition-colors"
+                        :class="descriptionTab === 'preview' ? 'bg-primary-100 dark:bg-sf-primary/20 text-primary-700 dark:text-sf-primary-light' : 'text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover'"
+                    >תצוגה מקדימה</button>
+                    <span class="text-xs text-slate-400 dark:text-sf-text-muted mr-auto">תומך ב-Markdown</span>
+                </div>
+                <textarea
+                    x-show="descriptionTab === 'write'"
+                    x-model="formData.description"
+                    class="form-input"
+                    rows="5"
+                    maxlength="50000"
+                ></textarea>
+                <div
+                    x-show="descriptionTab === 'preview'"
+                    class="markdown-body border border-slate-300 dark:border-sf-border-light rounded-md p-3 bg-slate-50 dark:bg-sf-bg-deep min-h-[7rem] text-sm"
+                    x-html="descriptionPreviewHtml || '<span class=\'text-slate-400 dark:text-sf-text-muted italic\'>אין מה להציג</span>'"
+                ></div>
             </div>
 
             <div x-show="!projectId">
