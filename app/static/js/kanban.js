@@ -345,8 +345,12 @@ function kanbanComponent(config = {}) {
             this.selectedTaskIds = this.tasksByStatus('completed').map(t => t._id);
         },
 
-        clearSelection() {
-            this.selectedTaskIds = [];
+        // אחרי loadTasks, לסנן מהבחירה משימות שכבר לא בעמודת "הושלם"
+        // (יכול לקרות אחרי עריכה שהחזירה משימה ל"פתוח"/"בתהליך").
+        syncSelectionAfterReload() {
+            if (!this.selectionMode) return;
+            const completedIds = new Set(this.tasksByStatus('completed').map(t => t._id));
+            this.selectedTaskIds = this.selectedTaskIds.filter(id => completedIds.has(id));
         },
 
         async archiveSelected() {
@@ -574,7 +578,12 @@ function kanbanComponent(config = {}) {
 
                 await this.loadTasks();
                 this.closeModal();
-                this.$nextTick(() => this.initSortable());
+                if (this.selectionMode) {
+                    this.syncSelectionAfterReload();
+                    // לא להפעיל מחדש Sortable במצב בחירה
+                } else {
+                    this.$nextTick(() => this.initSortable());
+                }
             } catch (e) {
                 this.error = 'שגיאת רשת';
                 console.error(e);
@@ -602,7 +611,11 @@ function kanbanComponent(config = {}) {
                 this.deleteConfirmOpen = false;
                 await this.loadTasks();
                 this.resetForm();
-                this.$nextTick(() => this.initSortable());
+                if (this.selectionMode) {
+                    this.syncSelectionAfterReload();
+                } else {
+                    this.$nextTick(() => this.initSortable());
+                }
             } catch (e) {
                 alert('שגיאת רשת');
             } finally {

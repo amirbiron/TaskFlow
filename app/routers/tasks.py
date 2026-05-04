@@ -316,6 +316,15 @@ async def update_task(request: Request, task_id: str, update_data: TaskUpdate):
         elif new_status != TaskStatus.COMPLETED and existing.get("status") == TaskStatus.COMPLETED:
             update_doc["completed_at"] = None
 
+    # אם archived השתנה - לסנכרן archived_at בהתאם
+    if "archived" in update_doc:
+        new_archived = bool(update_doc["archived"])
+        was_archived = bool(existing.get("archived"))
+        if new_archived and not was_archived:
+            update_doc["archived_at"] = datetime.utcnow()
+        elif not new_archived and was_archived:
+            update_doc["archived_at"] = None
+
     update_doc["updated_at"] = datetime.utcnow()
 
     result = await db.tasks.find_one_and_update(
