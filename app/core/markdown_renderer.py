@@ -125,7 +125,7 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
         inner = markdown.markdown(
             body,
             extensions=[
-                "nl2br", "fenced_code", "pymdownx.tasklist",
+                "nl2br", "fenced_code", "tables", "pymdownx.tasklist",
                 "pymdownx.tilde", "pymdownx.mark",
             ],
             extension_configs={
