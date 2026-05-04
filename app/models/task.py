@@ -42,6 +42,10 @@ class TaskBase(BaseModel):
     links: List[str] = Field(default_factory=list)
     subtasks: List[Subtask] = Field(default_factory=list)
     column_order: int = 0
+    # האם המשימה בארכיון. משימות בארכיון מוסתרות מהקאנבן הראשי
+    # ומוצגות רק בעמוד הארכיון.
+    archived: bool = False
+    archived_at: Optional[datetime] = None
 
 
 class TaskCreate(TaskBase):
@@ -63,6 +67,7 @@ class TaskUpdate(BaseModel):
     links: Optional[List[str]] = None
     subtasks: Optional[List[Subtask]] = None
     column_order: Optional[int] = None
+    archived: Optional[bool] = None
 
 
 class TaskStatusUpdate(BaseModel):

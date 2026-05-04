@@ -92,6 +92,19 @@ async def tasks_page(request: Request):
     )
 
 
+@router.get("/archive", response_class=HTMLResponse)
+async def archive_page(request: Request):
+    """עמוד ארכיון משימות - תצוגה ושחזור"""
+    redirect = _require_auth_or_redirect(request)
+    if redirect:
+        return redirect
+
+    return templates.TemplateResponse(
+        "archive.html",
+        {"request": request, "current_page": "archive"}
+    )
+
+
 @router.get("/tasks/{task_id}", response_class=HTMLResponse)
 async def task_detail_page(request: Request, task_id: str):
     """עמוד פרטי משימה בודדת"""

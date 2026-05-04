@@ -52,6 +52,11 @@ function kanbanComponent(config = {}) {
         // מודאל מחיקה
         deleteConfirmOpen: false,
 
+        // מצב בחירה מרובה (לארכוב משימות מעמודת "הושלם")
+        selectionMode: false,
+        selectedTaskIds: [],
+        archiving: false,
+
         // עמודות
         statusColumns: [
             { id: 'open', label: 'פתוח' },
@@ -295,10 +300,93 @@ function kanbanComponent(config = {}) {
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         },
 
-        navigateToTask(taskId) {
+        navigateToTask(taskId, task) {
+            // במצב בחירה - לחיצה על כרטיס בעמודת "הושלם" מסמנת/מבטלת סימון
+            // במקום לנווט לעמוד המשימה.
+            if (this.selectionMode && task && task.status === 'completed') {
+                this.toggleTaskSelection(taskId);
+                return;
+            }
             // לחיצה על הכרטיס מנווטת לדף המשימה. עריכה מהירה
             // עדיין זמינה דרך כפתור העיפרון בכרטיס (@click.stop).
             window.location = `/tasks/${taskId}`;
+        },
+
+        // === מצב בחירה מרובה ושליחה לארכיון ===
+        enterSelectionMode() {
+            this.selectionMode = true;
+            // ברירת מחדל: כל המשימות בעמודת "הושלם" מסומנות.
+            this.selectedTaskIds = this.tasksByStatus('completed').map(t => t._id);
+            // ניטרול גרירה במצב בחירה
+            this.$nextTick(() => this.destroySortable());
+        },
+
+        exitSelectionMode() {
+            this.selectionMode = false;
+            this.selectedTaskIds = [];
+            // הפעלה מחדש של גרירה
+            this.$nextTick(() => this.initSortable());
+        },
+
+        isTaskSelected(taskId) {
+            return this.selectedTaskIds.includes(taskId);
+        },
+
+        toggleTaskSelection(taskId) {
+            const idx = this.selectedTaskIds.indexOf(taskId);
+            if (idx >= 0) {
+                this.selectedTaskIds.splice(idx, 1);
+            } else {
+                this.selectedTaskIds.push(taskId);
+            }
+        },
+
+        selectAllCompleted() {
+            this.selectedTaskIds = this.tasksByStatus('completed').map(t => t._id);
+        },
+
+        clearSelection() {
+            this.selectedTaskIds = [];
+        },
+
+        async archiveSelected() {
+            if (this.archiving) return;
+            const ids = [...this.selectedTaskIds];
+            if (ids.length === 0) return;
+            const ok = confirm(`להעביר ${ids.length} משימות לארכיון?`);
+            if (!ok) return;
+
+            this.archiving = true;
+            try {
+                const res = await fetch('/api/tasks/archive', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_ids: ids }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בארכוב');
+                    return;
+                }
+                this.selectionMode = false;
+                this.selectedTaskIds = [];
+                await this.loadTasks();
+                this.$nextTick(() => this.initSortable());
+            } catch (e) {
+                alert('שגיאת רשת');
+            } finally {
+                this.archiving = false;
+            }
+        },
+
+        destroySortable() {
+            this.statusColumns.forEach(col => {
+                const el = document.getElementById(`column-${col.id}`);
+                if (el && el._sortable) {
+                    el._sortable.destroy();
+                    el._sortable = null;
+                }
+            });
         },
 
         openCreateModal(initialStatus = 'open') {
