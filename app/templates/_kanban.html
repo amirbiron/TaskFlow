@@ -44,55 +44,51 @@
                     </span>
                 </h3>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                    <!-- כפתורי מצב בחירה - רק בעמודת "הושלם" -->
-                    <template x-if="col.id === 'completed' && tasksByStatus(col.id).length > 0 && !selectionMode">
-                        <button
-                            @click="enterSelectionMode()"
-                            class="text-slate-400 dark:text-sf-text-muted hover:text-slate-700 dark:hover:text-sf-text-primary p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors"
-                            title="בחירה מרובה לארכוב"
-                            aria-label="בחירה מרובה"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                            </svg>
-                        </button>
-                    </template>
+                    <!-- כפתור "בחירה מרובה" - רק בעמודת "הושלם" כשלא במצב בחירה -->
+                    <button
+                        x-show="col.id === 'completed' && tasksByStatus(col.id).length > 0 && !selectionMode"
+                        @click="enterSelectionMode()"
+                        class="text-slate-400 dark:text-sf-text-muted hover:text-slate-700 dark:hover:text-sf-text-primary p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors"
+                        title="בחירה מרובה לארכוב"
+                        aria-label="בחירה מרובה"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                    </button>
 
-                    <!-- במצב בחירה: כפתור "סמן הכל", "ארכב נבחרים", "ביטול" -->
-                    <template x-if="col.id === 'completed' && selectionMode">
-                        <button
-                            @click="selectAllCompleted()"
-                            class="text-slate-500 dark:text-sf-text-secondary hover:text-slate-700 dark:hover:text-sf-text-primary p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors text-xs px-2"
-                            title="סמן את כל המשימות"
-                        >
-                            סמן הכל
-                        </button>
-                    </template>
-                    <template x-if="col.id === 'completed' && selectionMode">
-                        <button
-                            @click="archiveSelected()"
-                            :disabled="selectedTaskIds.length === 0 || archiving"
-                            class="text-primary-600 dark:text-sf-primary-light hover:text-primary-800 disabled:opacity-40 disabled:cursor-not-allowed p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors"
-                            title="העבר נבחרים לארכיון"
-                            aria-label="העבר לארכיון"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                            </svg>
-                        </button>
-                    </template>
-                    <template x-if="col.id === 'completed' && selectionMode">
-                        <button
-                            @click="exitSelectionMode()"
-                            class="text-slate-400 dark:text-sf-text-muted hover:text-slate-700 dark:hover:text-sf-text-primary p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors"
-                            title="ביטול בחירה"
-                            aria-label="ביטול"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </template>
+                    <!-- במצב בחירה: "סמן הכל", "ארכב נבחרים", "ביטול" -->
+                    <button
+                        x-show="col.id === 'completed' && selectionMode"
+                        @click="selectAllCompleted()"
+                        class="text-slate-500 dark:text-sf-text-secondary hover:text-slate-700 dark:hover:text-sf-text-primary p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors text-xs px-2"
+                        title="סמן את כל המשימות"
+                    >
+                        סמן הכל
+                    </button>
+                    <button
+                        x-show="col.id === 'completed' && selectionMode"
+                        @click="archiveSelected()"
+                        :disabled="selectedTaskIds.length === 0 || archiving"
+                        class="text-primary-600 dark:text-sf-primary-light hover:text-primary-800 disabled:opacity-40 disabled:cursor-not-allowed p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors"
+                        title="העבר נבחרים לארכיון"
+                        aria-label="העבר לארכיון"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                        </svg>
+                    </button>
+                    <button
+                        x-show="col.id === 'completed' && selectionMode"
+                        @click="exitSelectionMode()"
+                        class="text-slate-400 dark:text-sf-text-muted hover:text-slate-700 dark:hover:text-sf-text-primary p-1 rounded hover:bg-white dark:hover:bg-sf-bg-card transition-colors"
+                        title="ביטול בחירה"
+                        aria-label="ביטול"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
 
                     <!-- כפתור משימה חדשה (לא במצב בחירה) -->
                     <button
@@ -118,23 +114,22 @@
                         :data-task-id="task._id"
                         @click="navigateToTask(task._id, task)"
                         class="kanban-card bg-white dark:bg-sf-bg-card rounded-lg p-3 shadow-sm border border-slate-200 dark:border-sf-border cursor-pointer hover:shadow-md transition-shadow"
-                        :class="[
-                            task.status === 'completed' ? 'opacity-60' : '',
-                            (selectionMode && col.id === 'completed' && isTaskSelected(task._id)) ? 'ring-2 ring-primary-500 dark:ring-sf-primary-light !opacity-100' : ''
-                        ]"
+                        :class="{
+                            'opacity-60': task.status === 'completed' && !(selectionMode && col.id === 'completed' && isTaskSelected(task._id)),
+                            'ring-2 ring-primary-500 dark:ring-sf-primary-light': selectionMode && col.id === 'completed' && isTaskSelected(task._id)
+                        }"
                     >
                         <!-- כותרת + checkbox/ידית גרירה + עריכה מהירה -->
                         <div class="flex items-start gap-2 mb-2">
                             <!-- Checkbox בחירה (במצב בחירה, רק לעמודת "הושלם") -->
-                            <template x-if="selectionMode && col.id === 'completed'">
-                                <input
-                                    type="checkbox"
-                                    :checked="isTaskSelected(task._id)"
-                                    @click.stop="toggleTaskSelection(task._id)"
-                                    class="flex-shrink-0 w-4 h-4 mt-0.5 accent-primary-600 cursor-pointer"
-                                    aria-label="בחר משימה"
-                                >
-                            </template>
+                            <input
+                                x-show="selectionMode && col.id === 'completed'"
+                                type="checkbox"
+                                :checked="isTaskSelected(task._id)"
+                                @click.stop="toggleTaskSelection(task._id)"
+                                class="flex-shrink-0 w-4 h-4 mt-0.5 accent-primary-600 cursor-pointer"
+                                aria-label="בחר משימה"
+                            >
 
                             <!-- ידית גרירה: רק כאן Sortable תופס את ההצבעה -->
                             <button
