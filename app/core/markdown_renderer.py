@@ -22,9 +22,10 @@ ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
     "pre", "code", "img",
     "table", "thead", "tbody", "tr", "th", "td",
     "blockquote", "ul", "ol", "li", "hr", "a",
-    "b", "i", "strong", "em", "del", "ins",
+    "b", "i", "strong", "em", "del", "ins", "s",
     "sup", "sub", "mark", "nav",
     "input",  # checkboxes של task lists
+    "details", "summary",  # ::: details ... ::: (קיפול)
 ]
 
 def _input_attr_filter(tag: str, name: str, value: str) -> bool:
@@ -47,6 +48,9 @@ ALLOWED_ATTRS = {
     "pre": ["class"],
     # task lists - רק checkbox (האכיפה ב-_input_attr_filter)
     "input": _input_attr_filter,
+    # ::: details ... :::
+    "details": ["open", "class"],
+    "summary": ["class"],
 }
 
 ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
@@ -56,6 +60,12 @@ ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
 _ADMONITION_RE = re.compile(
     r"^:::\s*(note|info|warning|important|danger|success|tip)\b[^\n]*\n(.*?)\n:::$",
+    flags=re.DOTALL | re.MULTILINE,
+)
+
+# ::: details כותרת ... :::  →  <details><summary>כותרת</summary>...</details>
+_DETAILS_RE = re.compile(
+    r"^:::\s*details\b([^\n]*)\n(.*?)\n:::$",
     flags=re.DOTALL | re.MULTILINE,
 )
 
@@ -114,11 +124,18 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
         # שמספר ה-checkboxes ב-HTML יתאים לסדר ההתאמות ב-_TASK_RE על המקור.
         inner = markdown.markdown(
             body,
-            extensions=["nl2br", "fenced_code", "pymdownx.tasklist"],
+            extensions=[
+                "nl2br", "fenced_code", "tables", "pymdownx.tasklist",
+                "pymdownx.tilde", "pymdownx.mark",
+            ],
             extension_configs={
                 "pymdownx.tasklist": {
                     "custom_checkbox": False,
                     "clickable_checkbox": clickable_tasks,
+                },
+                "pymdownx.tilde": {
+                    "smart_delete": True,
+                    "subscript": False,
                 },
             },
         )
@@ -135,7 +152,49 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
 
     processed = _ADMONITION_RE.sub(_replace, stashed)
 
-    # שלב 3: החזרת בלוקי קוד שנותרו (כאלה שלא היו בתוך admonition).
+    # שלב 2.5: עיבוד `::: details כותרת ... :::` ל-<details>/<summary>.
+    def _replace_details(match: re.Match) -> str:
+        title = (match.group(1) or "").strip() or "לחצו להצגה"
+        body = match.group(2).strip()
+        # אם בגוף יש בלוקי קוד שנשמרו - מחזירים אותם לפני הרינדור הפנימי.
+        body = placeholder_re.sub(_restore_placeholder, body)
+        inner = markdown.markdown(
+            body,
+            extensions=[
+                "nl2br", "fenced_code", "tables",
+                "pymdownx.tasklist", "pymdownx.tilde", "pymdownx.mark",
+            ],
+            extension_configs={
+                "pymdownx.tasklist": {
+                    "custom_checkbox": False,
+                    "clickable_checkbox": clickable_tasks,
+                },
+                "pymdownx.tilde": {
+                    "smart_delete": True,
+                    "subscript": False,
+                },
+            },
+        )
+        clean_inner = bleach.clean(
+            inner,
+            tags=ALLOWED_TAGS,
+            attributes=ALLOWED_ATTRS,
+            protocols=ALLOWED_PROTOCOLS,
+            strip=True,
+        )
+        # escape לכותרת כדי למנוע XSS דרך התוכן בשורת ה-:::.
+        safe_title = (title.replace("&", "&amp;").replace("<", "&lt;")
+                            .replace(">", "&gt;").replace('"', "&quot;"))
+        return (
+            f'\n\n<details class="markdown-details">'
+            f'<summary class="markdown-summary">{safe_title}</summary>'
+            f'<div class="details-content">{clean_inner}</div>'
+            f'</details>\n\n'
+        )
+
+    processed = _DETAILS_RE.sub(_replace_details, processed)
+
+    # שלב 3: החזרת בלוקי קוד שנותרו (כאלה שלא היו בתוך admonition/details).
     return placeholder_re.sub(_restore_placeholder, processed)
 
 
@@ -183,6 +242,8 @@ def markdown_to_html(
             "codehilite",
             "attr_list",
             "pymdownx.tasklist",
+            "pymdownx.tilde",   # ~~strikethrough~~  →  <del>...</del>
+            "pymdownx.mark",    # ==highlight==      →  <mark>...</mark>
         ],
         extension_configs={
             "codehilite": {
@@ -197,6 +258,12 @@ def markdown_to_html(
             "pymdownx.tasklist": {
                 "custom_checkbox": False,             # input רגיל (בלי label/span עוטף)
                 "clickable_checkbox": clickable_tasks,  # True=ללא disabled (לחיץ); False=disabled
+            },
+            "pymdownx.tilde": {
+                # רק קו חוצה (~~...~~). בלי ~subscript~ — מונע התנגשות עם
+                # שימושים שגרתיים של "~" בטקסט עברי/בנתיבים.
+                "smart_delete": True,
+                "subscript": False,
             },
         },
     )
