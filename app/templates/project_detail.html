@@ -840,15 +840,30 @@ function projectDetailPage(projectId) {
 
             event.preventDefault();
 
+            // שימוש ב-execCommand('insertText') כדי לשמר את ה-undo stack
+            // של הדפדפן ולהפעיל אירוע input (כך ש-x-model ו-refreshDocPreview
+            // מתעדכנים אוטומטית). יש fallback לכתיבה ישירה אם ה-API לא זמין
+            // (דפדפנים נדירים) - אז עדיין יוצא תוכן נכון, רק בלי undo.
+            const replaceRange = (selStart, selEnd, text) => {
+                ta.focus();
+                ta.setSelectionRange(selStart, selEnd);
+                let ok = false;
+                try {
+                    ok = document.execCommand('insertText', false, text);
+                } catch (e) {
+                    ok = false;
+                }
+                if (!ok) {
+                    ta.value = ta.value.slice(0, selStart) + text + ta.value.slice(selEnd);
+                    const newPos = selStart + text.length;
+                    ta.setSelectionRange(newPos, newPos);
+                    ta.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            };
+
             // שורה ריקה (כל השורה היא רק הקידומת) - מוחקים אותה ויוצאים מהרשימה
             if (!content.trim()) {
-                const before = value.slice(0, lineStart);
-                const after = value.slice(lineEnd);
-                ta.value = before + after;
-                this.documentDraft.content_md = ta.value;
-                const newPos = lineStart;
-                ta.setSelectionRange(newPos, newPos);
-                this.refreshDocPreview();
+                replaceRange(lineStart, lineEnd, '');
                 return;
             }
 
@@ -861,14 +876,7 @@ function projectDetailPage(projectId) {
                 prefix = indent + nextNum + '. ';
             }
 
-            const insert = '\n' + prefix;
-            const before = value.slice(0, start);
-            const after = value.slice(end);
-            ta.value = before + insert + after;
-            this.documentDraft.content_md = ta.value;
-            const newPos = start + insert.length;
-            ta.setSelectionRange(newPos, newPos);
-            this.refreshDocPreview();
+            replaceRange(start, end, '\n' + prefix);
         },
 
         onDocumentFileSelected(event) {
