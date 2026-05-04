@@ -58,7 +58,8 @@ async def list_clients(request: Request):
 
         open_tasks = await db.tasks.count_documents({
             "client_id": client_id_str,
-            "status": {"$in": ["open", "in_progress"]}
+            "status": {"$in": ["open", "in_progress"]},
+            "archived": {"$ne": True},
         })
 
         client = _serialize(client)

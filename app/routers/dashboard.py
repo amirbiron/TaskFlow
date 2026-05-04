@@ -13,11 +13,13 @@ async def dashboard_stats(request: Request):
     db = get_database()
 
     open_tasks = await db.tasks.count_documents({
-        "status": {"$in": ["open", "in_progress"]}
+        "status": {"$in": ["open", "in_progress"]},
+        "archived": {"$ne": True},
     })
     urgent_tasks = await db.tasks.count_documents({
         "status": {"$in": ["open", "in_progress"]},
         "priority": "urgent",
+        "archived": {"$ne": True},
     })
 
     return {

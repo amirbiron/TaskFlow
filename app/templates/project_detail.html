@@ -256,6 +256,7 @@
                             <textarea
                                 x-model="documentDraft.content_md"
                                 @input.debounce.300ms="refreshDocPreview()"
+                                @keydown.enter="onEditorEnter($event)"
                                 class="form-input font-mono text-sm leading-6 min-w-0 w-full"
                                 rows="18"
                                 placeholder="כתוב כאן Markdown... תומך ב-# כותרות, **bold**, רשימות, טבלאות, ```code``` ובלוקי ::: warning :::"
@@ -798,6 +799,87 @@ function projectDetailPage(projectId) {
             } catch (e) {
                 // לא קריטי
             }
+        },
+
+        // המשך אוטומטי של רשימות Markdown בעורך המסמך:
+        // Enter על שורה שמתחילה ב-"- ", "* ", "+ " או ב-"<num>. "
+        // יוסיף בשורה החדשה את אותה הקידומת (במספור ייווצר המספר הבא).
+        // אם השורה ריקה (רק הקידומת בלי תוכן) - הקידומת תימחק כדי לצאת מהרשימה.
+        onEditorEnter(event) {
+            // לא להפעיל בלחיצות שילוב מקשים (Ctrl/Shift/Alt+Enter וכו')
+            if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+            // לא לחטוף Enter במהלך IME composition (אוטוקומפליט במובייל,
+            // קלט CJK, accent menu במק וכד'). Alpine v3 לא מסנן את זה לבד.
+            if (event.isComposing || event.keyCode === 229) return;
+
+            const ta = event.target;
+            if (!ta || typeof ta.selectionStart !== 'number') return;
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            if (start !== end) return; // יש בחירה - להתנהג רגיל
+
+            const value = ta.value;
+            const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+            // נחשב את השורה המלאה (גם אחרי הסמן) כדי להחליט אם היא באמת ריקה.
+            // אם הסמן באמצע פריט עם תוכן, נמשיך את הרשימה במקום לצאת ממנה.
+            const lineEndNl = value.indexOf('\n', start);
+            const lineEnd = lineEndNl === -1 ? value.length : lineEndNl;
+            const fullLine = value.slice(lineStart, lineEnd);
+
+            // התאמה: רווחים תחילתיים + מקף/כוכב/פלוס + רווח, או מספר + נקודה + רווח
+            const bulletMatch = fullLine.match(/^(\s*)([-*+])\s+(.*)$/);
+            const numberMatch = fullLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
+
+            if (!bulletMatch && !numberMatch) return;
+
+            const indent = (bulletMatch || numberMatch)[1];
+            const content = (bulletMatch || numberMatch)[3];
+
+            // אם הסמן באזור הקידומת (לפני התוכן) - להחזיר את התנהגות
+            // ברירת המחדל של Enter, אחרת היינו משכפלים את הקידומת.
+            const prefixLen = fullLine.length - content.length;
+            const cursorInLine = start - lineStart;
+            if (cursorInLine < prefixLen) return;
+
+            event.preventDefault();
+
+            // שימוש ב-execCommand('insertText') כדי לשמר את ה-undo stack
+            // של הדפדפן ולהפעיל אירוע input (כך ש-x-model ו-refreshDocPreview
+            // מתעדכנים אוטומטית). יש fallback לכתיבה ישירה אם ה-API לא זמין
+            // (דפדפנים נדירים) - אז עדיין יוצא תוכן נכון, רק בלי undo.
+            const replaceRange = (selStart, selEnd, text) => {
+                ta.focus();
+                ta.setSelectionRange(selStart, selEnd);
+                let ok = false;
+                try {
+                    ok = document.execCommand('insertText', false, text);
+                } catch (e) {
+                    ok = false;
+                }
+                if (!ok) {
+                    ta.value = ta.value.slice(0, selStart) + text + ta.value.slice(selEnd);
+                    const newPos = selStart + text.length;
+                    ta.setSelectionRange(newPos, newPos);
+                    ta.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            };
+
+            // שורה ריקה (כל השורה היא רק הקידומת) - מוחקים אותה ויוצאים מהרשימה
+            if (!content.trim()) {
+                replaceRange(lineStart, lineEnd, '');
+                return;
+            }
+
+            // המשך הרשימה
+            let prefix;
+            if (bulletMatch) {
+                prefix = indent + bulletMatch[2] + ' ';
+            } else {
+                const nextNum = parseInt(numberMatch[2], 10) + 1;
+                prefix = indent + nextNum + '. ';
+            }
+
+            replaceRange(start, end, '\n' + prefix);
         },
 
         onDocumentFileSelected(event) {

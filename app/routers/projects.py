@@ -29,14 +29,16 @@ async def _enrich_project(project: dict, db) -> dict:
     project = _serialize(project)
     project_id_str = project["_id"]
 
-    # ספירת משימות
+    # ספירת משימות. משימות בארכיון מוסתרות מכל הספירות.
     open_tasks = await db.tasks.count_documents({
         "project_id": project_id_str,
-        "status": {"$in": ["open", "in_progress"]}
+        "status": {"$in": ["open", "in_progress"]},
+        "archived": {"$ne": True},
     })
     completed_tasks = await db.tasks.count_documents({
         "project_id": project_id_str,
-        "status": "completed"
+        "status": "completed",
+        "archived": {"$ne": True},
     })
 
     project["open_tasks_count"] = open_tasks
