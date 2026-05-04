@@ -181,6 +181,8 @@ async def list_tasks(
     project_id: Optional[str] = Query(None, description="סינון לפי פרויקט"),
     client_id: Optional[str] = Query(None, description="סינון לפי לקוח"),
     status_filter: Optional[str] = Query(None, alias="status", description="סינון לפי סטטוס"),
+    archived: Optional[bool] = Query(None, description="true: רק ארכיון, false: ללא ארכיון, None: ברירת מחדל מסתיר ארכיון"),
+    include_archived: bool = Query(False, description="לכלול גם משימות בארכיון"),
 ):
     """החזרת רשימת משימות עם פרטי פרויקט ולקוח"""
     require_api_auth(request)
@@ -193,6 +195,15 @@ async def list_tasks(
         query["client_id"] = client_id
     if status_filter:
         query["status"] = status_filter
+
+    # ברירת מחדל: לא להחזיר משימות בארכיון. archived=true מחזיר רק ארכיון,
+    # archived=false או include_archived=true מאפשרים שליטה מפורשת.
+    if archived is True:
+        query["archived"] = True
+    elif archived is False:
+        query["archived"] = {"$ne": True}
+    elif not include_archived:
+        query["archived"] = {"$ne": True}
 
     cursor = db.tasks.find(query).sort([("status", 1), ("column_order", 1)])
     tasks = await cursor.to_list(length=2000)
@@ -304,6 +315,15 @@ async def update_task(request: Request, task_id: str, update_data: TaskUpdate):
             update_doc["completed_at"] = datetime.utcnow()
         elif new_status != TaskStatus.COMPLETED and existing.get("status") == TaskStatus.COMPLETED:
             update_doc["completed_at"] = None
+
+    # אם archived השתנה - לסנכרן archived_at בהתאם
+    if "archived" in update_doc:
+        new_archived = bool(update_doc["archived"])
+        was_archived = bool(existing.get("archived"))
+        if new_archived and not was_archived:
+            update_doc["archived_at"] = datetime.utcnow()
+        elif not new_archived and was_archived:
+            update_doc["archived_at"] = None
 
     update_doc["updated_at"] = datetime.utcnow()
 
@@ -437,6 +457,65 @@ async def reorder_tasks(request: Request, payload: dict):
             updated += 1
 
     return {"updated": updated}
+
+
+class ArchiveRequest(BaseModel):
+    """בקשה לארכוב/שחזור של משימות לפי מזהים."""
+    task_ids: List[str] = Field(default_factory=list)
+
+
+@router.post("/archive")
+async def archive_tasks(request: Request, payload: ArchiveRequest):
+    """העברת רשימת משימות לארכיון."""
+    require_api_auth(request)
+    db = get_database()
+
+    if not payload.task_ids:
+        return {"archived": 0}
+
+    obj_ids = []
+    for tid in payload.task_ids:
+        try:
+            obj_ids.append(ObjectId(tid))
+        except InvalidId:
+            continue
+
+    if not obj_ids:
+        return {"archived": 0}
+
+    now = datetime.utcnow()
+    result = await db.tasks.update_many(
+        {"_id": {"$in": obj_ids}, "archived": {"$ne": True}},
+        {"$set": {"archived": True, "archived_at": now, "updated_at": now}},
+    )
+    return {"archived": result.modified_count}
+
+
+@router.post("/unarchive")
+async def unarchive_tasks(request: Request, payload: ArchiveRequest):
+    """החזרת רשימת משימות מהארכיון."""
+    require_api_auth(request)
+    db = get_database()
+
+    if not payload.task_ids:
+        return {"unarchived": 0}
+
+    obj_ids = []
+    for tid in payload.task_ids:
+        try:
+            obj_ids.append(ObjectId(tid))
+        except InvalidId:
+            continue
+
+    if not obj_ids:
+        return {"unarchived": 0}
+
+    now = datetime.utcnow()
+    result = await db.tasks.update_many(
+        {"_id": {"$in": obj_ids}, "archived": True},
+        {"$set": {"archived": False, "archived_at": None, "updated_at": now}},
+    )
+    return {"unarchived": result.modified_count}
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
