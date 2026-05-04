@@ -570,6 +570,59 @@ html.dark .markdown-body .alert-success { border-color: #34d399; background: rgb
 .markdown-body .alert > :first-child { margin-top: 0; }
 .markdown-body .alert > :last-child  { margin-bottom: 0; }
 
+/* Strikethrough (~~text~~ → <del>) */
+.markdown-body del,
+.markdown-body s {
+    text-decoration: line-through;
+    opacity: 0.75;
+}
+
+/* Highlight (==text== → <mark>) */
+.markdown-body mark {
+    background: #fff59d;
+    color: inherit;
+    padding: 0 0.15em;
+    border-radius: 3px;
+}
+html.dark .markdown-body mark {
+    background: #5c4b00;
+    color: #fff8c5;
+}
+
+/* Details (::: details כותרת ... :::) */
+.markdown-body details.markdown-details {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 0.8em 0;
+    background: var(--bg-blockquote);
+}
+.markdown-body details.markdown-details > summary.markdown-summary {
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+    padding: 4px 0;
+    color: var(--text-primary);
+}
+.markdown-body details.markdown-details > summary.markdown-summary::-webkit-details-marker {
+    display: none;
+}
+.markdown-body details.markdown-details > summary.markdown-summary::before {
+    content: "▶";
+    display: inline-block;
+    margin-inline-end: 8px;
+    font-size: 0.8em;
+    transition: transform 0.15s ease;
+}
+.markdown-body details.markdown-details[open] > summary.markdown-summary::before {
+    transform: rotate(90deg);
+}
+.markdown-body details.markdown-details > .details-content {
+    padding-top: 8px;
+}
+.markdown-body details.markdown-details > .details-content > :first-child { margin-top: 0; }
+.markdown-body details.markdown-details > .details-content > :last-child  { margin-bottom: 0; }
+
 /* ====== RTL אוטומטי לבלוקי קוד עם רוב עברית (markdown_enhance.js) ====== */
 .markdown-body pre.rtl-code {
     direction: rtl;
