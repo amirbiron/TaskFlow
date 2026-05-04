@@ -256,6 +256,7 @@
                             <textarea
                                 x-model="documentDraft.content_md"
                                 @input.debounce.300ms="refreshDocPreview()"
+                                @keydown.enter="onEditorEnter($event)"
                                 class="form-input font-mono text-sm leading-6 min-w-0 w-full"
                                 rows="18"
                                 placeholder="כתוב כאן Markdown... תומך ב-# כותרות, **bold**, רשימות, טבלאות, ```code``` ובלוקי ::: warning :::"
@@ -798,6 +799,67 @@ function projectDetailPage(projectId) {
             } catch (e) {
                 // לא קריטי
             }
+        },
+
+        // המשך אוטומטי של רשימות Markdown בעורך המסמך:
+        // Enter על שורה שמתחילה ב-"- ", "* ", "+ " או ב-"<num>. "
+        // יוסיף בשורה החדשה את אותה הקידומת (במספור ייווצר המספר הבא).
+        // אם השורה ריקה (רק הקידומת בלי תוכן) - הקידומת תימחק כדי לצאת מהרשימה.
+        onEditorEnter(event) {
+            // לא להפעיל בלחיצות שילוב מקשים (Ctrl/Shift/Alt+Enter וכו')
+            if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+
+            const ta = event.target;
+            if (!ta || typeof ta.selectionStart !== 'number') return;
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            if (start !== end) return; // יש בחירה - להתנהג רגיל
+
+            const value = ta.value;
+            const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+            const currentLine = value.slice(lineStart, start);
+
+            // ניסיון התאמה: כותב בתחילת השורה (אפשר גם רווחים) + מקף/כוכב/פלוס + רווח
+            // או מספר + נקודה + רווח
+            const bulletMatch = currentLine.match(/^(\s*)([-*+])\s+(.*)$/);
+            const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
+
+            if (!bulletMatch && !numberMatch) return;
+
+            const indent = (bulletMatch || numberMatch)[1];
+            const content = (bulletMatch || numberMatch)[3];
+
+            event.preventDefault();
+
+            // שורה ריקה (רק הקידומת) - מוחקים את הקידומת ויוצאים מהרשימה
+            if (!content.trim()) {
+                const before = value.slice(0, lineStart);
+                const after = value.slice(start);
+                ta.value = before + after;
+                this.documentDraft.content_md = ta.value;
+                const newPos = lineStart;
+                ta.setSelectionRange(newPos, newPos);
+                this.refreshDocPreview();
+                return;
+            }
+
+            // המשך הרשימה
+            let prefix;
+            if (bulletMatch) {
+                prefix = indent + bulletMatch[2] + ' ';
+            } else {
+                const nextNum = parseInt(numberMatch[2], 10) + 1;
+                prefix = indent + nextNum + '. ';
+            }
+
+            const insert = '\n' + prefix;
+            const before = value.slice(0, start);
+            const after = value.slice(end);
+            ta.value = before + insert + after;
+            this.documentDraft.content_md = ta.value;
+            const newPos = start + insert.length;
+            ta.setSelectionRange(newPos, newPos);
+            this.refreshDocPreview();
         },
 
         onDocumentFileSelected(event) {
