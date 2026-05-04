@@ -171,7 +171,10 @@
                 </aside>
 
                 <!-- אזור תצוגה/עריכה -->
-                <section class="p-6 min-w-0 w-full">
+                <section
+                    class="p-6 min-w-0 w-full"
+                    :class="documentsList.length === 0 ? 'md:col-span-2' : ''"
+                >
                     <div x-show="documentLoading" class="text-center py-8">
                         <svg class="w-6 h-6 mx-auto animate-spin text-primary-600 dark:text-sf-primary-light" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
