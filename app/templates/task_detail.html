@@ -93,7 +93,23 @@
 
                 <!-- תיאור -->
                 <div x-show="task.description" class="mb-4">
-                    <h3 class="text-sm font-semibold text-slate-700 dark:text-sf-text-primary mb-1">תיאור</h3>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="text-sm font-semibold text-slate-700 dark:text-sf-text-primary">תיאור</h3>
+                        <!-- כפתור העתקה לתיאור (Markdown מקור) -->
+                        <button
+                            type="button"
+                            @click="copyDescription()"
+                            class="text-slate-400 dark:text-sf-text-muted hover:text-primary-600 dark:hover:text-sf-primary-light p-1 rounded"
+                            :title="descriptionCopied ? 'הועתק!' : 'העתק תיאור'"
+                        >
+                            <svg x-show="!descriptionCopied" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            <svg x-show="descriptionCopied" x-cloak class="w-4 h-4 text-green-600 dark:text-sf-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                    </div>
                     <!-- task.description_html: רינדור Markdown מהשרת. fallback למשימות
                          ישנות (לפני התוספת) שאין להן description_html - נציג plaintext. -->
                     <div
@@ -217,6 +233,20 @@
                                         <span x-show="c.edited_at" class="mr-1 italic">(נערך)</span>
                                     </div>
                                     <div class="flex items-center gap-1">
+                                        <!-- כפתור העתקה להערה (Markdown מקור) -->
+                                        <button
+                                            type="button"
+                                            @click="copyComment(c)"
+                                            class="text-slate-400 dark:text-sf-text-muted hover:text-primary-600 dark:hover:text-sf-primary-light p-1 rounded"
+                                            :title="copiedCommentId === c._id ? 'הועתק!' : 'העתק הערה'"
+                                        >
+                                            <svg x-show="copiedCommentId !== c._id" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                            </svg>
+                                            <svg x-show="copiedCommentId === c._id" x-cloak class="w-3.5 h-3.5 text-green-600 dark:text-sf-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </button>
                                         <button @click="startEditComment(c)" class="text-xs text-slate-500 dark:text-sf-text-secondary hover:text-primary-600 dark:hover:text-sf-primary-light px-2 py-1 rounded">
                                             עריכה
                                         </button>
@@ -332,6 +362,10 @@ function taskDetailPage(taskId) {
         editingId: null,
         editingBody: '',
         commentDeleteId: null,
+
+        // === מצב העתקה (clipboard) ===
+        descriptionCopied: false,
+        copiedCommentId: null,
 
         // === שדות שהמודאל המשותף דורש ===
         projectId: '',  // ריק כדי שמסך הפרויקט יוצג בטופס העריכה
@@ -710,6 +744,49 @@ function taskDetailPage(taskId) {
                     : '/tasks';
             } catch (e) { alert('שגיאת רשת'); }
             finally { this.saving = false; }
+        },
+
+        // === העתקה ל-clipboard ===
+        // עזר משותף: מנסה Clipboard API ונופל ל-execCommand בדפדפנים ישנים / HTTP
+        async _copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        },
+
+        async copyDescription() {
+            const text = (this.task && this.task.description) || '';
+            if (!text) return;
+            try {
+                await this._copyToClipboard(text);
+                this.descriptionCopied = true;
+                clearTimeout(this._descCopiedTimer);
+                this._descCopiedTimer = setTimeout(() => { this.descriptionCopied = false; }, 1500);
+            } catch (e) {
+                alert('לא הצלחתי להעתיק - יש להעתיק ידנית');
+            }
+        },
+
+        async copyComment(c) {
+            const text = (c && c.body) || '';
+            if (!text) return;
+            try {
+                await this._copyToClipboard(text);
+                this.copiedCommentId = c._id;
+                clearTimeout(this._commentCopiedTimer);
+                this._commentCopiedTimer = setTimeout(() => { this.copiedCommentId = null; }, 1500);
+            } catch (e) {
+                alert('לא הצלחתי להעתיק - יש להעתיק ידנית');
+            }
         },
 
         // === הערות (Markdown) ===
