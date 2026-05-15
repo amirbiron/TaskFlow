@@ -73,7 +73,7 @@ _DETAILS_RE = re.compile(
 # CommonMark מתיר עד 3 רווחי הזחה לפני הגדר — pymdownx.superfences מכבד את זה,
 # וגם ה-regex כאן חייב להתיישר עם זה כדי שה-stashing וספירת ה-checkboxes יהיו מסונכרנים.
 _FENCED_CODE_RE = re.compile(
-    r"^[ ]{0,3}(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^[ ]{0,3}(?P=fence)[ \t]*$",
+    r"^[ ]{0,3}(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^[ ]{0,3}(?P=fence)[ \t]*\r?$",
     flags=re.DOTALL | re.MULTILINE,
 )
 
@@ -243,17 +243,21 @@ def markdown_to_html(
             "tables",
             "nl2br",
             "toc",
-            "codehilite",
+            # highlight הוא המחליף הרשמי של codehilite ב-pymdown-extensions,
+            # והיחיד ש-superfences מתחשב בהגדרותיו עבור fenced blocks
+            # (codehilite אינו נתמך עם superfences מאז גרסה 7.0).
+            "pymdownx.highlight",
             "attr_list",
             "pymdownx.tasklist",
             "pymdownx.tilde",   # ~~strikethrough~~  →  <del>...</del>
             "pymdownx.mark",    # ==highlight==      →  <mark>...</mark>
         ],
         extension_configs={
-            "codehilite": {
+            "pymdownx.highlight": {
                 "css_class": "highlight",
                 "linenums": False,
                 "guess_lang": False,
+                "use_pygments": True,
             },
             "toc": {
                 "title": "תוכן עניינים",
