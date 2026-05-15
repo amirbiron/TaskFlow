@@ -70,8 +70,10 @@ _DETAILS_RE = re.compile(
 )
 
 # בלוקי קוד עטופים בגדר (``` או ~~~). תופסים אותם כדי לא לעבד admonitions בתוכם.
+# CommonMark מתיר עד 3 רווחי הזחה לפני הגדר — pymdownx.superfences מכבד את זה,
+# וגם ה-regex כאן חייב להתיישר עם זה כדי שה-stashing וספירת ה-checkboxes יהיו מסונכרנים.
 _FENCED_CODE_RE = re.compile(
-    r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$",
+    r"^[ ]{0,3}(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^[ ]{0,3}(?P=fence)[ \t]*\r?$",
     flags=re.DOTALL | re.MULTILINE,
 )
 
@@ -125,7 +127,7 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
         inner = markdown.markdown(
             body,
             extensions=[
-                "nl2br", "fenced_code", "tables", "pymdownx.tasklist",
+                "nl2br", "pymdownx.superfences", "tables", "pymdownx.tasklist",
                 "pymdownx.tilde", "pymdownx.mark",
             ],
             extension_configs={
@@ -161,7 +163,7 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
         inner = markdown.markdown(
             body,
             extensions=[
-                "nl2br", "fenced_code", "tables",
+                "nl2br", "pymdownx.superfences", "tables",
                 "pymdownx.tasklist", "pymdownx.tilde", "pymdownx.mark",
             ],
             extension_configs={
@@ -235,21 +237,27 @@ def markdown_to_html(
 
     md = markdown.Markdown(
         extensions=[
-            "fenced_code",
+            # superfences במקום fenced_code: עוקב CommonMark, מכבד הזחה של עד
+            # 3 רווחים לפני ה-fence (נדרש לבלוקי קוד בתוך פריטי רשימה).
+            "pymdownx.superfences",
             "tables",
             "nl2br",
             "toc",
-            "codehilite",
+            # highlight הוא המחליף הרשמי של codehilite ב-pymdown-extensions,
+            # והיחיד ש-superfences מתחשב בהגדרותיו עבור fenced blocks
+            # (codehilite אינו נתמך עם superfences מאז גרסה 7.0).
+            "pymdownx.highlight",
             "attr_list",
             "pymdownx.tasklist",
             "pymdownx.tilde",   # ~~strikethrough~~  →  <del>...</del>
             "pymdownx.mark",    # ==highlight==      →  <mark>...</mark>
         ],
         extension_configs={
-            "codehilite": {
+            "pymdownx.highlight": {
                 "css_class": "highlight",
                 "linenums": False,
                 "guess_lang": False,
+                "use_pygments": True,
             },
             "toc": {
                 "title": "תוכן עניינים",
