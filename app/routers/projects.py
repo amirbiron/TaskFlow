@@ -94,10 +94,104 @@ async def list_projects(
     cursor = db.projects.find(query).sort([("status", 1), ("name", 1)])
     projects = await cursor.to_list(length=1000)
 
+    if not projects:
+        return []
+
+    project_ids = [str(p["_id"]) for p in projects]
+
+    # איסוף מזהי לקוחות ותגיות ייחודיים מכל הפרויקטים
+    client_obj_ids: List[ObjectId] = []
+    seen_clients = set()
+    for p in projects:
+        cid = p.get("client_id")
+        if cid and cid not in seen_clients:
+            try:
+                client_obj_ids.append(ObjectId(cid))
+                seen_clients.add(cid)
+            except (InvalidId, TypeError):
+                pass
+
+    tag_obj_ids: List[ObjectId] = []
+    seen_tags = set()
+    for p in projects:
+        for tid in p.get("tags") or []:
+            if tid in seen_tags:
+                continue
+            if ObjectId.is_valid(tid):
+                tag_obj_ids.append(ObjectId(tid))
+                seen_tags.add(tid)
+
+    # ספירת משימות לכל הפרויקטים ב-aggregation אחד
+    task_counts: dict[str, dict[str, int]] = {}
+    counts_pipeline = [
+        {"$match": {
+            "project_id": {"$in": project_ids},
+            "archived": {"$ne": True},
+            "status": {"$in": ["open", "in_progress", "completed"]},
+        }},
+        {"$group": {
+            "_id": {
+                "project_id": "$project_id",
+                "bucket": {
+                    "$cond": [
+                        {"$eq": ["$status", "completed"]},
+                        "completed",
+                        "open",
+                    ]
+                },
+            },
+            "count": {"$sum": 1},
+        }},
+    ]
+    async for row in db.tasks.aggregate(counts_pipeline):
+        pid = row["_id"]["project_id"]
+        bucket = row["_id"]["bucket"]
+        task_counts.setdefault(pid, {})[bucket] = row["count"]
+
+    # שליפת כל הלקוחות והתגיות הרלוונטיים בשתי קריאות
+    clients_by_id: dict[str, dict] = {}
+    if client_obj_ids:
+        async for c in db.clients.find(
+            {"_id": {"$in": client_obj_ids}},
+            {"name": 1, "color": 1},
+        ):
+            clients_by_id[str(c["_id"])] = c
+
+    tags_by_id: dict[str, dict] = {}
+    if tag_obj_ids:
+        async for t in db.tags.find({"_id": {"$in": tag_obj_ids}}):
+            tags_by_id[str(t["_id"])] = t
+
+    # הרכבת התוצאה בזיכרון
     result = []
     for project in projects:
-        enriched = await _enrich_project(project, db)
-        result.append(enriched)
+        project = _serialize(project)
+        pid = project["_id"]
+
+        counts = task_counts.get(pid, {})
+        project["open_tasks_count"] = counts.get("open", 0)
+        project["completed_tasks_count"] = counts.get("completed", 0)
+
+        project["client_name"] = None
+        project["client_color"] = None
+        cid = project.get("client_id")
+        if cid and cid in clients_by_id:
+            client = clients_by_id[cid]
+            project["client_name"] = client.get("name")
+            project["client_color"] = client.get("color")
+
+        tag_details = []
+        for tid in project.get("tags") or []:
+            tag = tags_by_id.get(tid)
+            if tag:
+                tag_details.append({
+                    "_id": str(tag["_id"]),
+                    "name": tag.get("name"),
+                    "color": tag.get("color", "#3B82F6"),
+                })
+        project["tag_details"] = tag_details
+
+        result.append(project)
 
     return result
 

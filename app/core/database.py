@@ -26,6 +26,10 @@ async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     """אינדקסים חיוניים לביצועים. create_index ב-Mongo idempotent."""
     await database.task_comments.create_index("task_id")
     await database.task_comments.create_index([("task_id", 1), ("created_at", 1)])
+    # אינדקס לספירת משימות לכל פרויקט (עמוד הפרויקטים)
+    await database.tasks.create_index([("project_id", 1), ("status", 1), ("archived", 1)])
+    # אינדקס לסינון רשימת הפרויקטים לפי סטטוס
+    await database.projects.create_index([("status", 1), ("name", 1)])
 
 
 async def close_mongo_connection():
