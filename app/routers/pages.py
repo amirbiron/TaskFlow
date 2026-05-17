@@ -4,7 +4,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.core.auth import is_authenticated
 from app.core.config import get_settings
-from app.core.markdown_renderer import pygments_css
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -74,7 +73,6 @@ async def project_detail_page(request: Request, project_id: str):
             "request": request,
             "current_page": "projects",
             "project_id": project_id,
-            "pygments_css": pygments_css(),
         }
     )
 

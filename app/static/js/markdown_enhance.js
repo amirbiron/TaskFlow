@@ -137,8 +137,23 @@
 
     // ============ Main entry ============
 
+    function runHljs(codeEl) {
+        // חייב לרוץ *אחרי* applyRtlIfHebrew: applyRtlIfHebrew מסתמך על
+        // ה-class המקורי (לפני ש-hljs מוסיף language-X משלו).
+        // idempotent: hljs מסמן data-highlighted='yes' ולא יריץ פעמיים.
+        if (!window.hljs || typeof window.hljs.highlightElement !== 'function') return;
+        if (codeEl.dataset.highlighted === 'yes') return;
+        try {
+            window.hljs.highlightElement(codeEl);
+        } catch (e) {
+            // לא מפיל את ה-page בגלל בלוק בעייתי
+            console.warn('hljs failed on block:', e);
+        }
+    }
+
     function enhanceBlock(codeEl) {
         applyRtlIfHebrew(codeEl);
+        runHljs(codeEl);
         var pre = codeEl.closest('pre');
         if (pre) addCopyButton(pre);
     }

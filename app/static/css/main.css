@@ -497,6 +497,9 @@ html.dark .markdown-body a:hover { color: #b59cff; }
     overflow-x: auto;
     margin: 0.8em 0;
     direction: ltr;
+    /* חיוני ל-bidi בבלוקים מעורבים (עברית+אנגלית): כל שורה לוגית
+       נשארת שורה ויזואלית אחת, ו-bidi לא מעיף תוכן לשורה הבאה. */
+    white-space: pre !important;
 }
 
 html.dark .markdown-body pre {
