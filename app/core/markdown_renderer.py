@@ -259,8 +259,9 @@ def markdown_to_html(
                 # ניחוש שפה אוטומטי כש-fence ללא תווית, כדי ש-Pygments
                 # יעטוף tokens ב-<span>. בלי spans, RTL על בלוק מעורב
                 # (פרוזה עברית + קוד אנגלי) מבלבל את אלגוריתם ה-bidi כי
-                # הכל פיסקה אחת ארוכה.
-                "guess_lang": True,
+                # הכל פיסקה אחת ארוכה. "block" מגביל לבלוקים בלבד -
+                # inline code (`x`) לא צריך highlighting.
+                "guess_lang": "block",
                 "use_pygments": True,
             },
             "toc": {
