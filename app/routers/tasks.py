@@ -1,8 +1,10 @@
 """ראוטר לניהול משימות - API"""
+import logging
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
 from bson.errors import InvalidId
+from pymongo.errors import PyMongoError
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from app.core.database import get_database
 from app.core.auth import require_api_auth
@@ -19,6 +21,7 @@ from app.models.task import (
 from pydantic import BaseModel, Field
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # מקסימום סביר לתיאור משימה - מעט גדול יותר מהערה כדי לאפשר תיאורים מפורטים.
@@ -211,7 +214,9 @@ async def list_tasks(
     if not tasks:
         return []
 
-    # ספירת הערות ב-batch אחד במקום שאילתה לכל משימה (מונע N+1)
+    # ספירת הערות ב-batch אחד במקום שאילתה לכל משימה (מונע N+1).
+    # comments_count הוא מונה תצוגה לא-קריטי: אם השאילתה נכשלת מציגים 0
+    # במקום לשבור את כל רשימת המשימות.
     task_ids = [str(t["_id"]) for t in tasks]
     counts: dict[str, int] = {}
     try:
@@ -220,7 +225,11 @@ async def list_tasks(
             {"$group": {"_id": "$task_id", "count": {"$sum": 1}}},
         ]):
             counts[row["_id"]] = row["count"]
-    except Exception:
+    except PyMongoError as exc:
+        logger.warning(
+            "Failed to aggregate comment counts for %d tasks: %s",
+            len(task_ids), exc, exc_info=True,
+        )
         counts = {}
 
     # שליפה bulk של projects לכל המשימות (גם בשביל fallback ל-client_id)
