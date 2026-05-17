@@ -506,9 +506,13 @@ html.dark .markdown-body pre {
     border: 1px solid var(--border);
 }
 
-.markdown-body pre code {
+.markdown-body pre code,
+.markdown-body pre code.hljs {
     background: transparent;
     color: inherit;
+    /* hljs theme מגדיר padding: 1em על pre code.hljs באותו specificity.
+       הסלקטור הכפול מעלה specificity ל-(0,2,2) ומנצח את (0,1,2) של hljs,
+       אחרת מתקבל double padding (1em מה-pre + 1em מה-code). */
     padding: 0;
     font-size: 0.875rem;
 }

@@ -49,13 +49,18 @@
         var pre = codeEl.closest('pre');
         if (!pre) return false;
 
-        var isHebrew = !hasExplicitLanguage(codeEl) && isHebrewMajority(codeEl.textContent);
+        // ההחלטה ננעלת בהפעלה הראשונה. רן חוזר (MutationObserver אחרי
+        // ש-hljs הוסיף language-X) לא יהפוך את הכיוון - אחרת hasExplicitLanguage
+        // היה מחזיר true בריצה השנייה ומסיר את rtl-code מבלוקים עבריים.
+        if (codeEl.dataset.rtlDecided === '1') {
+            return pre.classList.contains('rtl-code');
+        }
 
+        var isHebrew = !hasExplicitLanguage(codeEl) && isHebrewMajority(codeEl.textContent);
         if (isHebrew) {
             pre.classList.add('rtl-code');
-        } else {
-            pre.classList.remove('rtl-code');
         }
+        codeEl.dataset.rtlDecided = '1';
         return isHebrew;
     }
 

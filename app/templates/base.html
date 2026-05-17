@@ -36,9 +36,18 @@
     <link rel="stylesheet" href="/static/css/main.css">
 
     <!-- highlight.js — syntax highlighting בצד-לקוח לבלוקי קוד.
-         theme: atom-one-dark (תואם לרקע הכהה של בלוקי קוד אצלנו). -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.10.0/styles/atom-one-dark.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.10.0/highlight.min.js" defer></script>
+         theme: atom-one-dark (תואם לרקע הכהה של בלוקי קוד אצלנו).
+         SRI: hash SHA-384 חישוב על תוכן הקבצים של v11.10.0 - מגן מפני
+         שינוי תוכן בצד ה-CDN. crossorigin=anonymous נחוץ כדי שה-SRI
+         יאומת (בלעדיו הדפדפן לא טוען את הקובץ). -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.10.0/styles/atom-one-dark.min.css"
+          integrity="sha384-oaMLBGEzBOJx3UHwac0cVndtX5fxGQIfnAeFZ35RTgqPcYlbprH9o9PUV/F8Le07"
+          crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.10.0/highlight.min.js"
+            integrity="sha384-GdEWAbCjn+ghjX0gLx7/N1hyTVmPAjdC2OvoAA0RyNcAOhqwtT8qnbCxWle2+uJX"
+            crossorigin="anonymous"
+            defer></script>
 
     <!-- שיפורי Markdown: RTL אוטומטי לבלוקי קוד עם רוב עברית, הפעלת hljs,
          וכפתור העתקה. חייב להיטען *אחרי* hljs כדי שיהיה זמין בקריאה. -->

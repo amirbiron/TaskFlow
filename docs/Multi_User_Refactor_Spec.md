@@ -61,6 +61,8 @@ collection חדש: **`users`**.
 | `last_login_at` | datetime \| null | למעקב/אבטחה |
 | `settings` | dict | preferences פר-משתמש (ראה 2.4) |
 | `disabled` | bool | מצב חסום (אדמין) |
+| `is_admin` | bool | default false. גישה ל-`/admin/*` (ראה §7) |
+| `session_version` | int | default 1. נקודת ביטול per-user לכל ה-sessions (ראה §2.3) |
 
 **Indexes**:
 - `email` unique.
@@ -97,15 +99,27 @@ collection חדש: **`users`**.
 
 ה-token יישא:
 ```json
-{ "uid": "<user_id_hex>", "v": 1 }
+{ "uid": "<user_id_hex>", "v": 1, "sv": 1 }
 ```
 
 - `uid` — string ObjectId של היוזר. השאילתה תקרא אותו לכל request.
-- `v` — token schema version, מאפשר ביטול גורף בעתיד (bump → טוקנים ישנים
-  ייכשלו).
+- `v` — token schema version, מאפשר ביטול גורף בעתיד (bump גלובלי → כל
+  הטוקנים נפסלים).
+- `sv` — session_version של היוזר בעת יצירת הטוקן. בכל בקשה: ה-middleware
+  טוען את ה-user, ואם `user.session_version != token.sv` → 401. בעצם זו
+  נקודת ביטול **per-user** ללא state בצד שרת לכל session.
+
+**אירועים שמעלים `users.session_version` ומבטלים את כל ה-sessions של היוזר**:
+- שינוי סיסמה (`change-password` או `reset-password`).
+- "Logout from all devices" (אופציה ידנית בעמוד החשבון).
+- חשד לקומפרומיז (אדמין בודה ידנית).
+
+החיסרון: כל בקשה דורשת קריאה קצרה ל-`users` collection לקבלת `session_version`.
+מקלימייץ: cache קצר (30s) במידה והעומס מצדיק, או אינדקס על `_id` בלבד שכבר
+קיים → lookup זול.
 
 **Migration consideration**: טוקנים קיימים (`{authenticated: true}`) ייפסלו
-אוטומטית כי חסר להם `uid`. כל המשתמשים יצטרכו להתחבר מחדש פעם אחת.
+אוטומטית כי חסר להם `uid`/`sv`. כל המשתמשים יצטרכו להתחבר מחדש פעם אחת.
 
 ### 2.4 הגדרות פר-משתמש
 
@@ -175,7 +189,7 @@ collection חדש: **`users`**.
 
 ### 4.1 endpoints חדשים
 
-```
+```text
 POST   /api/auth/register
 POST   /api/auth/login
 POST   /api/auth/logout
@@ -438,7 +452,7 @@ Logout מנקה ומפנה ל-`/login`.
 
 ## 13. נספח — קבצים שיושפעו
 
-```
+```text
 NEW:
   app/models/user.py
   app/routers/users.py
