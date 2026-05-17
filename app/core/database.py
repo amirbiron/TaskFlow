@@ -30,6 +30,13 @@ async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     await database.tasks.create_index([("project_id", 1), ("status", 1), ("archived", 1)])
     # אינדקס לסינון רשימת הפרויקטים לפי סטטוס
     await database.projects.create_index([("status", 1), ("name", 1)])
+    # אינדקסים לעמוד הלקוחות (ספירת פרויקטים ומשימות פתוחות לכל לקוח)
+    await database.clients.create_index([("name", 1)])
+    await database.projects.create_index([("client_id", 1), ("status", 1)])
+    await database.tasks.create_index([("client_id", 1), ("status", 1), ("archived", 1)])
+    # אינדקסים לעמוד התגיות (multikey על מערך tags)
+    await database.tasks.create_index("tags")
+    await database.projects.create_index("tags")
 
 
 async def close_mongo_connection():
