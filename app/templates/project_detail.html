@@ -248,15 +248,40 @@
                                 <input type="checkbox" x-model="documentPreviewMode" @change="refreshDocPreview()" class="w-4 h-4 ml-2">
                                 תצוגה מקדימה
                             </label>
+                            <!-- כפתור העלאת תמונה למסמך + drag-and-drop רמז -->
+                            <button
+                                type="button"
+                                @click="$refs.docImageInput.click()"
+                                :disabled="docImageUploading"
+                                class="btn btn-secondary text-sm"
+                                title="העלה תמונה ושבץ במסמך"
+                            >
+                                <span x-show="!docImageUploading">📷 הוסף תמונה</span>
+                                <span x-show="docImageUploading">מעלה...</span>
+                            </button>
+                            <input
+                                type="file"
+                                x-ref="docImageInput"
+                                accept="image/png,image/jpeg,image/gif,image/webp"
+                                class="hidden"
+                                @change="onDocImageSelected($event)"
+                            >
+                            <span class="text-xs text-slate-400 dark:text-sf-text-muted">גרור תמונה לעורך / הדבק</span>
                         </div>
 
                         <!-- min-w-0 על הילדים מבטיח שהעורך/תצוגה לא יקרסו לרוחב min-content. grid-cols-2 של Tailwind כבר משתמש ב-minmax(0,1fr) פנימית -->
                         <div :class="documentPreviewMode ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : ''">
                             <textarea
                                 x-model="documentDraft.content_md"
+                                x-ref="documentTextarea"
                                 @input.debounce.300ms="refreshDocPreview()"
                                 @keydown.enter="onEditorEnter($event)"
+                                @dragover.prevent="docDragOver = true"
+                                @dragleave.prevent="docDragOver = false"
+                                @drop.prevent="onDocImageDrop($event)"
+                                @paste="onDocImagePaste($event)"
                                 class="form-input font-mono text-sm leading-6 min-w-0 w-full"
+                                :class="docDragOver ? 'ring-2 ring-primary-400' : ''"
                                 rows="18"
                                 placeholder="כתוב כאן Markdown... תומך ב-# כותרות, **bold**, רשימות, טבלאות, ```code``` ובלוקי ::: warning :::"
                                 dir="ltr"
@@ -545,6 +570,8 @@ function projectDetailPage(projectId) {
         documentSaving: false,
         documentError: null,
         documentCopied: false,
+        docImageUploading: false,
+        docDragOver: false,
         _docPreviewSeq: 0,
         _docCopiedTimer: null,
 
@@ -879,6 +906,92 @@ function projectDetailPage(projectId) {
             }
 
             replaceRange(start, end, '\n' + prefix);
+        },
+
+        // === העלאת תמונה לעורך המסמך ===
+        async _uploadDocImageAndInsert(file) {
+            if (!file) return;
+            if (!file.type || !file.type.startsWith('image/')) {
+                alert('אפשר להעלות רק תמונות');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                alert('התמונה גדולה מדי (עד 5MB)');
+                return;
+            }
+            this.docImageUploading = true;
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const res = await fetch('/api/uploads/image', { method: 'POST', body: fd });
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בהעלאת תמונה');
+                    return;
+                }
+                const data = await res.json();
+                this._insertDocAtCursor(`![${file.name || 'image'}](${data.file_url})`);
+                this.refreshDocPreview();
+            } catch (e) {
+                alert('שגיאת רשת בהעלאה');
+            } finally {
+                this.docImageUploading = false;
+            }
+        },
+
+        _insertDocAtCursor(text) {
+            const ta = this.$refs.documentTextarea;
+            const current = this.documentDraft.content_md || '';
+            const start = ta ? ta.selectionStart : current.length;
+            const end = ta ? ta.selectionEnd : current.length;
+            const before = current.slice(0, start);
+            const after = current.slice(end);
+
+            const leadingNl = before.endsWith('\n\n') || before === '' ? '' :
+                              before.endsWith('\n') ? '\n' : '\n\n';
+            const trailingNl = after.startsWith('\n\n') || after === '' ? '' :
+                               after.startsWith('\n') ? '\n' : '\n\n';
+
+            const insert = leadingNl + text + trailingNl;
+            this.documentDraft.content_md = before + insert + after;
+
+            if (ta) {
+                const newPos = start + insert.length;
+                this.$nextTick(() => {
+                    ta.focus();
+                    ta.setSelectionRange(newPos, newPos);
+                });
+            }
+        },
+
+        onDocImageSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (file) this._uploadDocImageAndInsert(file);
+        },
+
+        onDocImageDrop(event) {
+            this.docDragOver = false;
+            const dt = event.dataTransfer;
+            if (!dt || !dt.files || !dt.files.length) return;
+            const file = Array.from(dt.files).find(f => f.type.startsWith('image/'));
+            if (file) this._uploadDocImageAndInsert(file);
+        },
+
+        onDocImagePaste(event) {
+            const items = event.clipboardData && event.clipboardData.items;
+            if (!items) return;
+            for (const it of items) {
+                if (it.kind === 'file' && it.type.startsWith('image/')) {
+                    const file = it.getAsFile();
+                    if (file) {
+                        event.preventDefault();
+                        this._uploadDocImageAndInsert(file);
+                        return;
+                    }
+                }
+            }
         },
 
         onDocumentFileSelected(event) {

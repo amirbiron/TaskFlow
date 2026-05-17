@@ -125,6 +125,81 @@
                 </div>
                 <p x-show="!task.description" class="text-slate-400 dark:text-sf-text-muted italic text-sm mb-4">אין תיאור</p>
 
+                <!-- קבצים מצורפים -->
+                <div class="mb-4"
+                     @dragover.prevent="attachmentsDragOver = true"
+                     @dragleave.prevent="attachmentsDragOver = false"
+                     @drop.prevent="onAttachmentDrop($event)"
+                     :class="attachmentsDragOver ? 'ring-2 ring-primary-400 rounded-lg' : ''"
+                >
+                    <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                        <h3 class="text-sm font-semibold text-slate-700 dark:text-sf-text-primary">
+                            קבצים מצורפים
+                            <span x-show="attachments.length > 0" class="text-xs text-slate-500 dark:text-sf-text-secondary font-normal">
+                                (<span x-text="attachments.length"></span>)
+                            </span>
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                @click="$refs.attachmentFileInput.click()"
+                                :disabled="attachmentUploading"
+                                class="btn btn-secondary text-xs"
+                            >
+                                <span x-show="!attachmentUploading">+ הוסף קובץ</span>
+                                <span x-show="attachmentUploading">מעלה...</span>
+                            </button>
+                            <input
+                                type="file"
+                                x-ref="attachmentFileInput"
+                                class="hidden"
+                                accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.md,.zip,.rar,image/*,application/pdf,application/zip,application/vnd.rar,application/x-rar-compressed,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,text/markdown"
+                                @change="onAttachmentFileSelected($event)"
+                            >
+                        </div>
+                    </div>
+
+                    <div x-show="attachmentsLoading" class="text-xs text-slate-500 dark:text-sf-text-secondary">טוען...</div>
+
+                    <div x-show="!attachmentsLoading && attachments.length === 0" class="text-xs text-slate-400 dark:text-sf-text-muted italic">
+                        אין קבצים מצורפים. אפשר לגרור לכאן קובץ או ללחוץ על "+ הוסף קובץ".
+                    </div>
+
+                    <ul x-show="attachments.length > 0" class="space-y-1.5">
+                        <template x-for="att in attachments" :key="att._id">
+                            <li class="flex items-center gap-2 bg-slate-50 dark:bg-sf-bg-deep px-3 py-2 rounded text-sm">
+                                <span class="text-lg flex-shrink-0" x-text="attachmentIcon(att.mime_type)"></span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="truncate text-slate-800 dark:text-sf-text-primary" x-text="att.filename"></div>
+                                    <div class="text-xs text-slate-500 dark:text-sf-text-secondary" x-text="formatFileSize(att.file_size)"></div>
+                                </div>
+                                <a
+                                    :href="att.file_url"
+                                    :download="att.filename"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="text-slate-500 dark:text-sf-text-secondary hover:text-primary-600 dark:hover:text-sf-primary-light p-1 rounded hover:bg-slate-100 dark:hover:bg-sf-bg-hover"
+                                    title="הורדה"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+                                    </svg>
+                                </a>
+                                <button
+                                    type="button"
+                                    @click="deleteAttachment(att)"
+                                    class="text-slate-500 dark:text-sf-text-secondary hover:text-red-600 dark:hover:text-sf-red p-1 rounded hover:bg-red-50 dark:hover:bg-sf-red/15"
+                                    title="מחק"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
                 <!-- מטא-נתונים -->
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div x-show="task.client_name">
@@ -367,6 +442,16 @@ function taskDetailPage(taskId) {
         descriptionCopied: false,
         copiedCommentId: null,
 
+        // === קבצים מצורפים ===
+        attachments: [],
+        attachmentsLoading: false,
+        attachmentUploading: false,
+        attachmentsDragOver: false,
+
+        // === העלאת תמונה לתיאור (במודאל העריכה) ===
+        descImageUploading: false,
+        descDragOver: false,
+
         // === שדות שהמודאל המשותף דורש ===
         projectId: '',  // ריק כדי שמסך הפרויקט יוצג בטופס העריכה
         projectOptions: [],
@@ -408,6 +493,7 @@ function taskDetailPage(taskId) {
                 this.loadClients(),
                 this.loadAllTags(),
                 this.loadComments(),
+                this.loadAttachments(),
             ]);
         },
 
@@ -948,6 +1034,181 @@ function taskDetailPage(taskId) {
                 alert('שגיאת רשת');
             } finally {
                 cb.disabled = false;
+            }
+        },
+
+        // === קבצים מצורפים ===
+        async loadAttachments() {
+            this.attachmentsLoading = true;
+            try {
+                const res = await fetch(`/api/tasks/${taskId}/attachments`);
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (res.ok) this.attachments = await res.json();
+            } catch (e) { console.error(e); }
+            finally { this.attachmentsLoading = false; }
+        },
+
+        attachmentIcon(mime) {
+            if (!mime) return '📎';
+            if (mime.startsWith('image/')) return '🖼️';
+            if (mime === 'application/pdf') return '📕';
+            if (mime.includes('word') || mime === 'text/plain' || mime === 'text/markdown') return '📄';
+            if (mime.includes('sheet') || mime.includes('excel')) return '📊';
+            if (mime.includes('presentation') || mime.includes('powerpoint')) return '📑';
+            if (mime.includes('zip') || mime.includes('rar') || mime === 'application/octet-stream') return '🗜️';
+            return '📎';
+        },
+
+        formatFileSize(bytes) {
+            if (typeof bytes !== 'number') return '';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        },
+
+        async _uploadAttachment(file) {
+            if (!file) return;
+            // ולידציה בצד הלקוח כדי לחסוך roundtrip על קבצים גדולים/לא מותרים.
+            const isImage = file.type && file.type.startsWith('image/');
+            const maxSize = isImage ? 5 * 1024 * 1024 : 20 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert(isImage ? 'תמונה גדולה מ-5MB' : 'קובץ גדול מ-20MB');
+                return;
+            }
+            this.attachmentUploading = true;
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const res = await fetch(`/api/tasks/${taskId}/attachments`, {
+                    method: 'POST', body: fd,
+                });
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בהעלאה');
+                    return;
+                }
+                const created = await res.json();
+                this.attachments.unshift(created);
+            } catch (e) {
+                alert('שגיאת רשת');
+            } finally {
+                this.attachmentUploading = false;
+            }
+        },
+
+        onAttachmentFileSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (file) this._uploadAttachment(file);
+        },
+
+        onAttachmentDrop(event) {
+            this.attachmentsDragOver = false;
+            const dt = event.dataTransfer;
+            if (!dt || !dt.files || !dt.files.length) return;
+            // מעלים את הקובץ הראשון; קבצים מרובים = להעלות ברצף.
+            const files = Array.from(dt.files);
+            (async () => {
+                for (const f of files) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await this._uploadAttachment(f);
+                }
+            })();
+        },
+
+        async deleteAttachment(att) {
+            if (!att) return;
+            if (!confirm(`למחוק את הקובץ "${att.filename}"?`)) return;
+            try {
+                const res = await fetch(`/api/attachments/${att._id}`, { method: 'DELETE' });
+                if (!res.ok && res.status !== 204) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה במחיקה');
+                    return;
+                }
+                this.attachments = this.attachments.filter(a => a._id !== att._id);
+            } catch (e) {
+                alert('שגיאת רשת');
+            }
+        },
+
+        // === העלאת תמונה לתיאור (Markdown) - בתוך מודאל העריכה ===
+        async _uploadDescImageAndInsert(file) {
+            if (!file) return;
+            if (!file.type || !file.type.startsWith('image/')) {
+                alert('אפשר להעלות רק תמונות');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                alert('התמונה גדולה מדי (עד 5MB)');
+                return;
+            }
+            this.descImageUploading = true;
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const res = await fetch('/api/uploads/image', { method: 'POST', body: fd });
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בהעלאת תמונה');
+                    return;
+                }
+                const data = await res.json();
+                const ta = this.$refs.descriptionTextarea;
+                const current = this.formData.description || '';
+                const start = ta ? ta.selectionStart : current.length;
+                const end = ta ? ta.selectionEnd : current.length;
+                const before = current.slice(0, start);
+                const after = current.slice(end);
+                const leadingNl = before.endsWith('\n\n') || before === '' ? '' :
+                                  before.endsWith('\n') ? '\n' : '\n\n';
+                const trailingNl = after.startsWith('\n\n') || after === '' ? '' :
+                                   after.startsWith('\n') ? '\n' : '\n\n';
+                const md = `![${file.name || 'image'}](${data.file_url})`;
+                const insert = leadingNl + md + trailingNl;
+                this.formData.description = before + insert + after;
+                if (ta) {
+                    const newPos = start + insert.length;
+                    this.$nextTick(() => {
+                        ta.focus();
+                        ta.setSelectionRange(newPos, newPos);
+                    });
+                }
+            } catch (e) {
+                alert('שגיאת רשת בהעלאה');
+            } finally {
+                this.descImageUploading = false;
+            }
+        },
+
+        onDescImageSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (file) this._uploadDescImageAndInsert(file);
+        },
+
+        onDescImageDrop(event) {
+            this.descDragOver = false;
+            const dt = event.dataTransfer;
+            if (!dt || !dt.files || !dt.files.length) return;
+            const file = Array.from(dt.files).find(f => f.type.startsWith('image/'));
+            if (file) this._uploadDescImageAndInsert(file);
+        },
+
+        onDescImagePaste(event) {
+            const items = event.clipboardData && event.clipboardData.items;
+            if (!items) return;
+            for (const it of items) {
+                if (it.kind === 'file' && it.type.startsWith('image/')) {
+                    const file = it.getAsFile();
+                    if (file) {
+                        event.preventDefault();
+                        this._uploadDescImageAndInsert(file);
+                        return;
+                    }
+                }
             }
         },
 

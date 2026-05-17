@@ -1,10 +1,14 @@
 """מודל קובץ מצורף"""
+from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field
 from app.models.base import MongoBaseModel, PyObjectId
 
 
 class AttachmentBase(BaseModel):
-    task_id: PyObjectId
+    # task_id אופציונלי: תמונות שמשובצות בעורך Markdown (תיאור/מסמך) לא משויכות
+    # למשימה ספציפית. רק קבצים שהועלו לאזור "קבצים מצורפים" נושאים task_id.
+    task_id: Optional[PyObjectId] = None
     filename: str
     file_url: str
     file_size: int
@@ -16,4 +20,4 @@ class AttachmentCreate(AttachmentBase):
 
 
 class Attachment(MongoBaseModel, AttachmentBase):
-    pass
+    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
