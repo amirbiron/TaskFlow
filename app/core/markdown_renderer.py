@@ -256,13 +256,13 @@ def markdown_to_html(
             "pymdownx.highlight": {
                 "css_class": "highlight",
                 "linenums": False,
-                # ניחוש שפה אוטומטי כש-fence ללא תווית, כדי ש-Pygments
-                # יעטוף tokens ב-<span>. בלי spans, RTL על בלוק מעורב
-                # (פרוזה עברית + קוד אנגלי) מבלבל את אלגוריתם ה-bidi כי
-                # הכל פיסקה אחת ארוכה. "block" מגביל לבלוקים בלבד -
-                # inline code (`x`) לא צריך highlighting.
-                "guess_lang": "block",
-                "use_pygments": True,
+                # הסינטקס-הילייטינג נעשה בצד-לקוח ב-highlight.js (hljs).
+                # השרת מחזיר <pre><code class="language-X">raw</code></pre>
+                # בלי spans של Pygments. זה נדרש כדי ש-hljs יוכל לרוץ
+                # *אחרי* applyRtlIfHebrew ו-bidi יקבל tokens לעבוד איתם
+                # (אחרת בלוקים מעורבים עברית+אנגלית מתרנדרים מבולגן).
+                "guess_lang": False,
+                "use_pygments": False,
             },
             "toc": {
                 "title": "תוכן עניינים",

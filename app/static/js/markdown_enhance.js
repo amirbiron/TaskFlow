@@ -49,13 +49,18 @@
         var pre = codeEl.closest('pre');
         if (!pre) return false;
 
-        var isHebrew = !hasExplicitLanguage(codeEl) && isHebrewMajority(codeEl.textContent);
+        // ההחלטה ננעלת בהפעלה הראשונה. רן חוזר (MutationObserver אחרי
+        // ש-hljs הוסיף language-X) לא יהפוך את הכיוון - אחרת hasExplicitLanguage
+        // היה מחזיר true בריצה השנייה ומסיר את rtl-code מבלוקים עבריים.
+        if (codeEl.dataset.rtlDecided === '1') {
+            return pre.classList.contains('rtl-code');
+        }
 
+        var isHebrew = !hasExplicitLanguage(codeEl) && isHebrewMajority(codeEl.textContent);
         if (isHebrew) {
             pre.classList.add('rtl-code');
-        } else {
-            pre.classList.remove('rtl-code');
         }
+        codeEl.dataset.rtlDecided = '1';
         return isHebrew;
     }
 
@@ -137,8 +142,23 @@
 
     // ============ Main entry ============
 
+    function runHljs(codeEl) {
+        // חייב לרוץ *אחרי* applyRtlIfHebrew: applyRtlIfHebrew מסתמך על
+        // ה-class המקורי (לפני ש-hljs מוסיף language-X משלו).
+        // idempotent: hljs מסמן data-highlighted='yes' ולא יריץ פעמיים.
+        if (!window.hljs || typeof window.hljs.highlightElement !== 'function') return;
+        if (codeEl.dataset.highlighted === 'yes') return;
+        try {
+            window.hljs.highlightElement(codeEl);
+        } catch (e) {
+            // לא מפיל את ה-page בגלל בלוק בעייתי
+            console.warn('hljs failed on block:', e);
+        }
+    }
+
     function enhanceBlock(codeEl) {
         applyRtlIfHebrew(codeEl);
+        runHljs(codeEl);
         var pre = codeEl.closest('pre');
         if (pre) addCopyButton(pre);
     }
