@@ -208,25 +208,112 @@ async def list_tasks(
     cursor = db.tasks.find(query).sort([("status", 1), ("column_order", 1)])
     tasks = await cursor.to_list(length=2000)
 
+    if not tasks:
+        return []
+
     # ספירת הערות ב-batch אחד במקום שאילתה לכל משימה (מונע N+1)
     task_ids = [str(t["_id"]) for t in tasks]
     counts: dict[str, int] = {}
-    if task_ids:
-        try:
-            pipeline = [
-                {"$match": {"task_id": {"$in": task_ids}}},
-                {"$group": {"_id": "$task_id", "count": {"$sum": 1}}},
-            ]
-            async for row in db.task_comments.aggregate(pipeline):
-                counts[row["_id"]] = row["count"]
-        except Exception:
-            counts = {}
+    try:
+        async for row in db.task_comments.aggregate([
+            {"$match": {"task_id": {"$in": task_ids}}},
+            {"$group": {"_id": "$task_id", "count": {"$sum": 1}}},
+        ]):
+            counts[row["_id"]] = row["count"]
+    except Exception:
+        counts = {}
 
+    # שליפה bulk של projects לכל המשימות (גם בשביל fallback ל-client_id)
+    project_obj_ids: List[ObjectId] = []
+    seen_projects: set = set()
+    for t in tasks:
+        pid = t.get("project_id")
+        if pid and pid not in seen_projects and ObjectId.is_valid(pid):
+            project_obj_ids.append(ObjectId(pid))
+            seen_projects.add(pid)
+
+    projects_by_id: dict[str, dict] = {}
+    if project_obj_ids:
+        async for p in db.projects.find(
+            {"_id": {"$in": project_obj_ids}},
+            {"name": 1, "client_id": 1},
+        ):
+            projects_by_id[str(p["_id"])] = p
+
+    # שליפה bulk של clients (כולל אלה שמגיעים דרך fallback של פרויקט)
+    client_obj_ids: List[ObjectId] = []
+    seen_clients: set = set()
+    for t in tasks:
+        cid = t.get("client_id")
+        if not cid:
+            project = projects_by_id.get(t.get("project_id") or "")
+            cid = (project or {}).get("client_id")
+        if cid and cid not in seen_clients and ObjectId.is_valid(cid):
+            client_obj_ids.append(ObjectId(cid))
+            seen_clients.add(cid)
+
+    clients_by_id: dict[str, dict] = {}
+    if client_obj_ids:
+        async for c in db.clients.find(
+            {"_id": {"$in": client_obj_ids}},
+            {"name": 1, "color": 1},
+        ):
+            clients_by_id[str(c["_id"])] = c
+
+    # שליפה bulk של תגיות
+    tag_obj_ids: List[ObjectId] = []
+    seen_tags: set = set()
+    for t in tasks:
+        for tid in t.get("tags") or []:
+            if tid in seen_tags:
+                continue
+            if ObjectId.is_valid(tid):
+                tag_obj_ids.append(ObjectId(tid))
+                seen_tags.add(tid)
+
+    tags_by_id: dict[str, dict] = {}
+    if tag_obj_ids:
+        async for tg in db.tags.find(
+            {"_id": {"$in": tag_obj_ids}},
+            {"name": 1, "color": 1},
+        ):
+            tags_by_id[str(tg["_id"])] = tg
+
+    # הרכבת התוצאה בזיכרון
     result = []
     for task in tasks:
-        cnt = counts.get(str(task["_id"]), 0)
-        enriched = await _enrich_task(task, db, comments_count=cnt)
-        result.append(enriched)
+        task = _serialize(task)
+        task["project_name"] = None
+        task["client_name"] = None
+        task["client_color"] = None
+
+        project = projects_by_id.get(task.get("project_id") or "")
+        if project:
+            task["project_name"] = project.get("name")
+            if not task.get("client_id") and project.get("client_id"):
+                task["client_id"] = project["client_id"]
+
+        cid = task.get("client_id")
+        if cid:
+            client = clients_by_id.get(cid)
+            if client:
+                task["client_name"] = client.get("name")
+                task["client_color"] = client.get("color")
+
+        task["comments_count"] = counts.get(task["_id"], 0)
+
+        tag_details = []
+        for tid in task.get("tags") or []:
+            tg = tags_by_id.get(tid)
+            if tg:
+                tag_details.append({
+                    "_id": str(tg["_id"]),
+                    "name": tg.get("name"),
+                    "color": tg.get("color", "#3B82F6"),
+                })
+        task["tag_details"] = tag_details
+
+        result.append(task)
 
     return result
 

@@ -47,24 +47,40 @@ async def list_clients(request: Request):
     clients_cursor = db.clients.find().sort("name", 1)
     clients = await clients_cursor.to_list(length=1000)
 
-    result = []
-    for client in clients:
-        client_id_str = str(client["_id"])
+    if not clients:
+        return []
 
-        active_projects = await db.projects.count_documents({
-            "client_id": client_id_str,
-            "status": {"$in": ["active", "pending"]}
-        })
+    client_ids = [str(c["_id"]) for c in clients]
 
-        open_tasks = await db.tasks.count_documents({
-            "client_id": client_id_str,
+    # ספירת פרויקטים פעילים לכל לקוח - aggregation אחד
+    projects_counts: dict[str, int] = {}
+    async for row in db.projects.aggregate([
+        {"$match": {
+            "client_id": {"$in": client_ids},
+            "status": {"$in": ["active", "pending"]},
+        }},
+        {"$group": {"_id": "$client_id", "count": {"$sum": 1}}},
+    ]):
+        projects_counts[row["_id"]] = row["count"]
+
+    # ספירת משימות פתוחות לכל לקוח - aggregation אחד
+    tasks_counts: dict[str, int] = {}
+    async for row in db.tasks.aggregate([
+        {"$match": {
+            "client_id": {"$in": client_ids},
             "status": {"$in": ["open", "in_progress"]},
             "archived": {"$ne": True},
-        })
+        }},
+        {"$group": {"_id": "$client_id", "count": {"$sum": 1}}},
+    ]):
+        tasks_counts[row["_id"]] = row["count"]
 
+    result = []
+    for client in clients:
         client = _serialize(client)
-        client["active_projects_count"] = active_projects
-        client["open_tasks_count"] = open_tasks
+        cid = client["_id"]
+        client["active_projects_count"] = projects_counts.get(cid, 0)
+        client["open_tasks_count"] = tasks_counts.get(cid, 0)
         _attach_notes_html(client)
         result.append(client)
 

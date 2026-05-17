@@ -36,20 +36,39 @@ async def list_tags(request: Request):
     cursor = db.tags.find().sort("name", 1)
     tags = await cursor.to_list(length=1000)
 
+    if not tags:
+        return []
+
+    tag_ids = [str(t["_id"]) for t in tags]
+
+    # ספירת שימוש במשימות (לא בארכיון) ובפרויקטים - שתי aggregations
+    tasks_counts: dict[str, int] = {}
+    async for row in db.tasks.aggregate([
+        {"$match": {"tags": {"$in": tag_ids}, "archived": {"$ne": True}}},
+        {"$unwind": "$tags"},
+        {"$match": {"tags": {"$in": tag_ids}}},
+        {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+    ]):
+        tasks_counts[row["_id"]] = row["count"]
+
+    projects_counts: dict[str, int] = {}
+    async for row in db.projects.aggregate([
+        {"$match": {"tags": {"$in": tag_ids}}},
+        {"$unwind": "$tags"},
+        {"$match": {"tags": {"$in": tag_ids}}},
+        {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+    ]):
+        projects_counts[row["_id"]] = row["count"]
+
     result = []
     for tag in tags:
-        tag_id_str = str(tag["_id"])
-
-        tasks_count = await db.tasks.count_documents({
-            "tags": tag_id_str,
-            "archived": {"$ne": True},
-        })
-        projects_count = await db.projects.count_documents({"tags": tag_id_str})
-
         tag = _serialize(tag)
-        tag["tasks_count"] = tasks_count
-        tag["projects_count"] = projects_count
-        tag["usage_count"] = tasks_count + projects_count
+        tid = tag["_id"]
+        t_cnt = tasks_counts.get(tid, 0)
+        p_cnt = projects_counts.get(tid, 0)
+        tag["tasks_count"] = t_cnt
+        tag["projects_count"] = p_cnt
+        tag["usage_count"] = t_cnt + p_cnt
         result.append(tag)
 
     return result
