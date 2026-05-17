@@ -256,7 +256,11 @@ def markdown_to_html(
             "pymdownx.highlight": {
                 "css_class": "highlight",
                 "linenums": False,
-                "guess_lang": False,
+                # ניחוש שפה אוטומטי כש-fence ללא תווית, כדי ש-Pygments
+                # יעטוף tokens ב-<span>. בלי spans, RTL על בלוק מעורב
+                # (פרוזה עברית + קוד אנגלי) מבלבל את אלגוריתם ה-bidi כי
+                # הכל פיסקה אחת ארוכה.
+                "guess_lang": True,
                 "use_pygments": True,
             },
             "toc": {
