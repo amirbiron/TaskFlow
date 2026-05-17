@@ -159,7 +159,10 @@ async def list_projects(
 
     tags_by_id: dict[str, dict] = {}
     if tag_obj_ids:
-        async for t in db.tags.find({"_id": {"$in": tag_obj_ids}}):
+        async for t in db.tags.find(
+            {"_id": {"$in": tag_obj_ids}},
+            {"name": 1, "color": 1},
+        ):
             tags_by_id[str(t["_id"])] = t
 
     # הרכבת התוצאה בזיכרון
