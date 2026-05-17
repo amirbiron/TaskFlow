@@ -41,13 +41,16 @@ async def list_tags(request: Request):
 
     tag_ids = [str(t["_id"]) for t in tags]
 
-    # ספירת שימוש במשימות (לא בארכיון) ובפרויקטים - שתי aggregations
+    # ספירת שימוש במשימות (לא בארכיון) ובפרויקטים - שתי aggregations.
+    # $addToSet על _id מבטיח ספירת מסמכים ייחודיים גם אם תגית מופיעה
+    # יותר מפעם אחת במערך tags של אותו מסמך.
     tasks_counts: dict[str, int] = {}
     async for row in db.tasks.aggregate([
         {"$match": {"tags": {"$in": tag_ids}, "archived": {"$ne": True}}},
         {"$unwind": "$tags"},
         {"$match": {"tags": {"$in": tag_ids}}},
-        {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+        {"$group": {"_id": "$tags", "docs": {"$addToSet": "$_id"}}},
+        {"$project": {"count": {"$size": "$docs"}}},
     ]):
         tasks_counts[row["_id"]] = row["count"]
 
@@ -56,7 +59,8 @@ async def list_tags(request: Request):
         {"$match": {"tags": {"$in": tag_ids}}},
         {"$unwind": "$tags"},
         {"$match": {"tags": {"$in": tag_ids}}},
-        {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+        {"$group": {"_id": "$tags", "docs": {"$addToSet": "$_id"}}},
+        {"$project": {"count": {"$size": "$docs"}}},
     ]):
         projects_counts[row["_id"]] = row["count"]
 
