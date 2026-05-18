@@ -1166,7 +1166,8 @@ function taskDetailPage(taskId) {
                                   before.endsWith('\n') ? '\n' : '\n\n';
                 const trailingNl = after.startsWith('\n\n') || after === '' ? '' :
                                    after.startsWith('\n') ? '\n' : '\n\n';
-                const md = `![${file.name || 'image'}](${data.file_url})`;
+                const alt = String(file.name || '').replace(/[\\\[\]()]/g, '\\$&') || 'image';
+                const md = `![${alt}](${data.file_url})`;
                 const insert = leadingNl + md + trailingNl;
                 this.formData.description = before + insert + after;
                 if (ta) {

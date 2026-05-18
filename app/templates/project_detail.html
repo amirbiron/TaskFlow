@@ -931,7 +931,8 @@ function projectDetailPage(projectId) {
                     return;
                 }
                 const data = await res.json();
-                this._insertDocAtCursor(`![${file.name || 'image'}](${data.file_url})`);
+                const alt = String(file.name || '').replace(/[\\\[\]()]/g, '\\$&') || 'image';
+                this._insertDocAtCursor(`![${alt}](${data.file_url})`);
                 this.refreshDocPreview();
             } catch (e) {
                 alert('שגיאת רשת בהעלאה');

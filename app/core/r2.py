@@ -9,6 +9,7 @@ from typing import Optional
 import boto3
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
 
@@ -78,13 +79,12 @@ def public_url_for(key: str) -> str:
     return f"{base}/{key.lstrip('/')}"
 
 
-def upload_bytes(
+def _upload_bytes_sync(
     data: bytes,
     key: str,
     content_type: str,
     original_filename: Optional[str] = None,
 ) -> str:
-    """מעלה bytes ל-R2 ומחזיר את ה-URL הציבורי."""
     try:
         client = _get_client()
         settings = get_settings()
@@ -108,14 +108,32 @@ def upload_bytes(
     return public_url_for(key)
 
 
-def delete_object(key: str) -> None:
-    """מחיקת אובייקט מ-R2. שקט אם הקובץ לא קיים."""
+def _delete_object_sync(key: str) -> None:
     try:
         client = _get_client()
         settings = get_settings()
         client.delete_object(Bucket=settings.r2_bucket_name, Key=key)
     except (BotoCoreError, ClientError) as exc:
         raise R2Error(f"מחיקה מ-R2 נכשלה: {exc}") from exc
+
+
+# קריאות boto3 הן blocking I/O. עוטפים ב-run_in_threadpool כדי לא לחנוק
+# את ה-event loop של FastAPI בזמן העלאה/מחיקה מ-R2.
+async def upload_bytes(
+    data: bytes,
+    key: str,
+    content_type: str,
+    original_filename: Optional[str] = None,
+) -> str:
+    """מעלה bytes ל-R2 (async wrapper) ומחזיר את ה-URL הציבורי."""
+    return await run_in_threadpool(
+        _upload_bytes_sync, data, key, content_type, original_filename
+    )
+
+
+async def delete_object(key: str) -> None:
+    """מחיקת אובייקט מ-R2 (async wrapper)."""
+    await run_in_threadpool(_delete_object_sync, key)
 
 
 def key_from_public_url(url: str) -> Optional[str]:

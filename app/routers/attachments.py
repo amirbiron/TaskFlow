@@ -55,6 +55,25 @@ ALLOWED_ARCHIVE_EXT = {"zip", "rar"}
 ALLOWED_FILE_MIME = ALLOWED_IMAGE_MIME | ALLOWED_DOCUMENT_MIME | ALLOWED_ARCHIVE_MIME
 ALLOWED_FILE_EXT = ALLOWED_IMAGE_EXT | ALLOWED_DOCUMENT_EXT | ALLOWED_ARCHIVE_EXT
 
+# מיפוי קנוני של סיומת ל-MIME היחיד שאנחנו שומרים. כשמגיע MIME אחר
+# מהדפדפן עבור אותה סיומת - או שזה octet-stream (אז ניקח את הקנוני),
+# או שזו אי-התאמה ונדחה את הבקשה.
+MIME_BY_EXT = {
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "webp": "image/webp",
+    "pdf": "application/pdf",
+    "txt": "text/plain",
+    "md": "text/markdown",
+    "zip": "application/zip",
+    "rar": "application/vnd.rar",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
+
 
 def _ext_of(filename: Optional[str]) -> str:
     if not filename or "." not in filename:
@@ -131,15 +150,16 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
             detail="הקובץ ריק",
         )
 
-    # מיישרים את ה-mime לאחד מהמותרים (חלק מהדפדפנים שולחים image/jpg)
-    if mime == "image/jpg":
-        mime = "image/jpeg"
-    if mime not in ALLOWED_IMAGE_MIME:
-        mime = f"image/{ext}" if ext in ALLOWED_IMAGE_EXT else "application/octet-stream"
+    # יישור ל-MIME קנוני לפי סיומת (כדי שלא נשמור image/jpg לא תקני).
+    canonical = MIME_BY_EXT.get(ext)
+    if canonical:
+        mime = canonical
+    elif mime not in ALLOWED_IMAGE_MIME:
+        mime = "application/octet-stream"
 
     key = r2.build_object_key(file.filename or f"image.{ext or 'png'}")
     try:
-        url = r2.upload_bytes(data, key, mime, original_filename=file.filename)
+        url = await r2.upload_bytes(data, key, mime, original_filename=file.filename)
     except r2.R2Error as exc:
         logger.exception("R2 image upload failed")
         raise HTTPException(
@@ -186,26 +206,33 @@ async def upload_task_attachment(
     await _ensure_task_exists(db, task_id)
 
     ext = _ext_of(file.filename)
-    mime = (file.content_type or "").lower()
+    raw_mime = (file.content_type or "").lower()
 
-    is_image = _is_image(mime, ext)
-    is_allowed = (
-        mime in ALLOWED_FILE_MIME
-        or ext in ALLOWED_FILE_EXT
-    )
-    if not is_allowed:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="סוג קובץ לא נתמך",
-        )
+    # יישור: image/jpg הוא לא-תקני; נירמול מיידי.
+    if raw_mime == "image/jpg":
+        raw_mime = "image/jpeg"
 
-    # אם זה ארכיון בלבד שמגיע כ-octet-stream - נוודא לפי הסיומת
-    if mime == "application/octet-stream" and ext not in ALLOWED_FILE_EXT:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="סוג קובץ לא נתמך",
-        )
+    # אכיפה: אם הסיומת מוכרת - ה-MIME חייב להתאים לקנוני, או להיות
+    # octet-stream (דפדפנים מסוימים שולחים כך לארכיונים/קבצים לא מזוהים).
+    # אחרת - נדחה כאי-התאמה. אם הסיומת לא מוכרת - ה-MIME עצמו חייב להיות
+    # ברשימת המותרים.
+    canonical = MIME_BY_EXT.get(ext)
+    if canonical:
+        if raw_mime and raw_mime != canonical and raw_mime != "application/octet-stream":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="סוג קובץ לא נתמך",
+            )
+        mime = canonical
+    else:
+        if raw_mime not in ALLOWED_FILE_MIME:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="סוג קובץ לא נתמך",
+            )
+        mime = raw_mime
 
+    is_image = mime in ALLOWED_IMAGE_MIME
     limit = MAX_IMAGE_SIZE if is_image else MAX_FILE_SIZE
     data = await _read_with_limit(file, limit)
     if not data:
@@ -214,24 +241,9 @@ async def upload_task_attachment(
             detail="הקובץ ריק",
         )
 
-    # יישור mime לסטנדרט מותר
-    if mime == "image/jpg":
-        mime = "image/jpeg"
-    if not mime or mime == "application/octet-stream":
-        mime_by_ext = {
-            "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
-            "gif": "image/gif", "webp": "image/webp",
-            "pdf": "application/pdf", "txt": "text/plain", "md": "text/markdown",
-            "zip": "application/zip", "rar": "application/vnd.rar",
-            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        }
-        mime = mime_by_ext.get(ext, "application/octet-stream")
-
     key = r2.build_object_key(file.filename or f"file.{ext or 'bin'}")
     try:
-        url = r2.upload_bytes(data, key, mime, original_filename=file.filename)
+        url = await r2.upload_bytes(data, key, mime, original_filename=file.filename)
     except r2.R2Error as exc:
         logger.exception("R2 attachment upload failed")
         raise HTTPException(
@@ -274,7 +286,7 @@ async def delete_attachment(request: Request, attachment_id: str):
     key = r2.key_from_public_url(doc.get("file_url") or "")
     if key:
         try:
-            r2.delete_object(key)
+            await r2.delete_object(key)
         except r2.R2Error:
             logger.warning("Failed to delete R2 object %s", key, exc_info=True)
 

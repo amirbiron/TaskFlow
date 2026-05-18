@@ -305,6 +305,12 @@ function kanbanComponent(config = {}) {
         },
 
         // === העלאת תמונה לתיאור משימה (Markdown) ===
+        // escape ל-alt text של תמונת Markdown - תווים שעלולים לשבור
+        // את התחביר ![alt](url) (סוגריים, סוגריים מרובעים, backslash).
+        _escapeMdAlt(name) {
+            return String(name || '').replace(/[\\\[\]()]/g, '\\$&');
+        },
+
         // מעלה תמונה ל-R2 ומשבץ ![](url) במקום הסמן (או בסוף הטקסט).
         async _uploadImageAndInsert(file) {
             if (!file) return;
@@ -328,10 +334,11 @@ function kanbanComponent(config = {}) {
                     return;
                 }
                 const data = await res.json();
+                const alt = this._escapeMdAlt(file.name) || 'image';
                 this._insertAtCursor(
                     this.$refs.descriptionTextarea,
                     'description',
-                    `![${file.name || 'image'}](${data.file_url})`,
+                    `![${alt}](${data.file_url})`,
                 );
             } catch (e) {
                 alert('שגיאת רשת בהעלאה');
