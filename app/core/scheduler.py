@@ -44,7 +44,7 @@ async def _backup_job() -> None:
 def _format_reminder_message(task: dict, project_name: Optional[str]) -> str:
     """בונה את גוף ההודעה לטלגרם (HTML parse_mode)."""
     title = html_escape(task.get("title") or "(ללא כותרת)")
-    lines = [f"⏰ <b>תזכורת למשימה</b>", f"📝 {title}"]
+    lines = ["⏰ <b>תזכורת למשימה</b>", f"📝 {title}"]
     if project_name:
         lines.append(f"📁 פרויקט: {html_escape(project_name)}")
     due = task.get("due_date")
@@ -98,18 +98,29 @@ async def _telegram_reminders_job() -> None:
                 projects_by_id[str(p["_id"])] = p.get("name") or ""
 
         for task in tasks:
+            # claim אטומי לפני השליחה: רק worker אחד יצליח לסמן reminder_sent=True
+            # על משימה ש-reminder_sent עוד לא היה True. כך גם בריצות חופפות / מופעים
+            # מקבילים לא תישלח אותה התראה פעמיים.
+            claim = await db.tasks.update_one(
+                {"_id": task["_id"], "reminder_sent": {"$ne": True}},
+                {"$set": {"reminder_sent": True, "updated_at": datetime.utcnow()}},
+            )
+            if claim.modified_count == 0:
+                # worker אחר כבר תפס את המשימה - מדלגים
+                continue
+
             project_name = projects_by_id.get(task.get("project_id") or "")
             message = _format_reminder_message(task, project_name)
             sent = await telegram.send_message(message)
             if sent:
-                await db.tasks.update_one(
-                    {"_id": task["_id"]},
-                    {"$set": {"reminder_sent": True, "updated_at": datetime.utcnow()}},
-                )
                 logger.info("Telegram reminder sent for task %s", task["_id"])
             else:
-                # נשמור על reminder_sent=false כדי לנסות שוב בריצה הבאה
-                logger.warning("Telegram reminder send failed for task %s", task["_id"])
+                # החזרת ה-claim כדי לאפשר retry בריצה הבאה.
+                logger.warning("Telegram reminder send failed for task %s - releasing claim", task["_id"])
+                await db.tasks.update_one(
+                    {"_id": task["_id"]},
+                    {"$set": {"reminder_sent": False, "updated_at": datetime.utcnow()}},
+                )
     except Exception:  # noqa: BLE001
         logger.exception("חריגה לא צפויה ב-job של תזכורות טלגרם")
 

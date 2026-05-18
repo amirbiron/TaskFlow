@@ -283,6 +283,7 @@ function kanbanComponent(config = {}) {
             this.tagPickerOpen = false;
             this.error = null;
             this.currentTaskId = null;
+            this.originalReminderDate = null;
             this.descriptionTab = 'write';
             this.descriptionPreviewHtml = '';
         },
@@ -517,6 +518,11 @@ function kanbanComponent(config = {}) {
 
         openEditModal(task) {
             this.currentTaskId = task._id;
+            // שומרים את הערך המקורי של reminder_date כדי לזהות שינוי בזמן שמירה
+            // (כך לא מאפסים reminder_sent אם השדה לא נגעו בו)
+            this.originalReminderDate = task.reminder_date
+                ? new Date(task.reminder_date).toISOString()
+                : null;
             this.formData = {
                 title: task.title || '',
                 description: task.description || '',
@@ -669,14 +675,19 @@ function kanbanComponent(config = {}) {
                 if (!payload.due_date) payload.due_date = null;
                 else payload.due_date = new Date(payload.due_date).toISOString();
 
-                // reminder_date - datetime-local: ריק => null + איפוס reminder_sent
+                // reminder_date - datetime-local: ריק => null
                 if (!payload.reminder_date) {
                     payload.reminder_date = null;
                 } else {
                     payload.reminder_date = new Date(payload.reminder_date).toISOString();
                 }
-                // בכל עריכה של reminder_date - לאפס את reminder_sent כדי שתישלח שוב
-                payload.reminder_sent = false;
+                // מאפסים reminder_sent רק כש-reminder_date באמת השתנה (או ביצירה),
+                // כדי שעריכה של שדות אחרים לא תגרור שליחת התראה חוזרת.
+                if (this.modalMode === 'create' || payload.reminder_date !== this.originalReminderDate) {
+                    payload.reminder_sent = false;
+                } else {
+                    delete payload.reminder_sent;
+                }
 
                 if (!payload.project_id) {
                     this.error = 'יש לבחור פרויקט';

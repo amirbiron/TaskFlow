@@ -709,6 +709,10 @@ function taskDetailPage(taskId) {
         },
         openEditModal(task) {
             this.currentTaskId = task._id;
+            // שומרים את הערך המקורי של reminder_date כדי לזהות שינוי בזמן שמירה
+            this.originalReminderDate = task.reminder_date
+                ? new Date(task.reminder_date).toISOString()
+                : null;
             this.formData = {
                 title: task.title || '',
                 description: task.description || '',
@@ -791,13 +795,18 @@ function taskDetailPage(taskId) {
                 if (!payload.description || !payload.description.trim()) payload.description = null;
                 if (!payload.due_date) payload.due_date = null;
                 else payload.due_date = new Date(payload.due_date).toISOString();
-                // reminder_date - datetime-local: ריק => null, ובכל עריכה לאפס reminder_sent
+                // reminder_date - datetime-local: ריק => null
                 if (!payload.reminder_date) {
                     payload.reminder_date = null;
                 } else {
                     payload.reminder_date = new Date(payload.reminder_date).toISOString();
                 }
-                payload.reminder_sent = false;
+                // מאפסים reminder_sent רק כש-reminder_date באמת השתנה
+                if (payload.reminder_date !== this.originalReminderDate) {
+                    payload.reminder_sent = false;
+                } else {
+                    delete payload.reminder_sent;
+                }
                 if (!payload.project_id) {
                     this.error = 'יש לבחור פרויקט';
                     return;
