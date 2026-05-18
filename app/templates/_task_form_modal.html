@@ -34,14 +34,38 @@
                         class="text-xs px-3 py-1 rounded-md transition-colors"
                         :class="descriptionTab === 'preview' ? 'bg-primary-100 dark:bg-sf-primary/20 text-primary-700 dark:text-sf-primary-light' : 'text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover'"
                     >תצוגה מקדימה</button>
-                    <span class="text-xs text-slate-400 dark:text-sf-text-muted mr-auto">תומך ב-Markdown</span>
+                    <!-- כפתור העלאת תמונה לתיאור -->
+                    <button
+                        type="button"
+                        @click="$refs.descImageInput.click()"
+                        :disabled="descImageUploading"
+                        class="text-xs px-3 py-1 rounded-md transition-colors text-slate-600 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover disabled:opacity-50"
+                        title="העלה תמונה ושבץ ב-Markdown"
+                    >
+                        <span x-show="!descImageUploading">📷 הוסף תמונה</span>
+                        <span x-show="descImageUploading">מעלה...</span>
+                    </button>
+                    <input
+                        type="file"
+                        x-ref="descImageInput"
+                        accept="image/png,image/jpeg,image/gif,image/webp"
+                        class="hidden"
+                        @change="onDescImageSelected($event)"
+                    >
+                    <span class="text-xs text-slate-400 dark:text-sf-text-muted mr-auto">תומך ב-Markdown · גרור תמונה / הדבק</span>
                 </div>
                 <textarea
                     x-show="descriptionTab === 'write'"
+                    x-ref="descriptionTextarea"
                     x-model="formData.description"
                     class="form-input"
                     rows="5"
                     maxlength="50000"
+                    @dragover.prevent="descDragOver = true"
+                    @dragleave.prevent="descDragOver = false"
+                    @drop.prevent="onDescImageDrop($event)"
+                    @paste="onDescImagePaste($event)"
+                    :class="descDragOver ? 'ring-2 ring-primary-400' : ''"
                 ></textarea>
                 <div
                     x-show="descriptionTab === 'preview'"

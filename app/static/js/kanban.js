@@ -49,6 +49,10 @@ function kanbanComponent(config = {}) {
         descriptionTab: 'write',
         descriptionPreviewHtml: '',
 
+        // העלאת תמונה לתיאור משימה (R2)
+        descImageUploading: false,
+        descDragOver: false,
+
         // מודאל מחיקה
         deleteConfirmOpen: false,
 
@@ -298,6 +302,107 @@ function kanbanComponent(config = {}) {
             return String(s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        },
+
+        // === העלאת תמונה לתיאור משימה (Markdown) ===
+        // escape ל-alt text של תמונת Markdown - תווים שעלולים לשבור
+        // את התחביר ![alt](url) (סוגריים, סוגריים מרובעים, backslash).
+        _escapeMdAlt(name) {
+            return String(name || '').replace(/[\\\[\]()]/g, '\\$&');
+        },
+
+        // מעלה תמונה ל-R2 ומשבץ ![](url) במקום הסמן (או בסוף הטקסט).
+        async _uploadImageAndInsert(file) {
+            if (!file) return;
+            if (!file.type || !file.type.startsWith('image/')) {
+                alert('אפשר להעלות רק תמונות');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                alert('התמונה גדולה מדי (עד 5MB)');
+                return;
+            }
+            this.descImageUploading = true;
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const res = await fetch('/api/uploads/image', { method: 'POST', body: fd });
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.detail || 'שגיאה בהעלאת תמונה');
+                    return;
+                }
+                const data = await res.json();
+                const alt = this._escapeMdAlt(file.name) || 'image';
+                this._insertAtCursor(
+                    this.$refs.descriptionTextarea,
+                    'description',
+                    `![${alt}](${data.file_url})`,
+                );
+            } catch (e) {
+                alert('שגיאת רשת בהעלאה');
+            } finally {
+                this.descImageUploading = false;
+            }
+        },
+
+        // הוספת טקסט במקום הסמן בתוך textarea של Alpine (x-model).
+        // עוטף ברווחים נקיים כדי שהשיבוץ לא יידבק לטקסט קיים.
+        _insertAtCursor(ta, modelField, text) {
+            const target = ta && typeof ta.selectionStart === 'number' ? ta : null;
+            const current = this.formData[modelField] || '';
+            const start = target ? target.selectionStart : current.length;
+            const end = target ? target.selectionEnd : current.length;
+            const before = current.slice(0, start);
+            const after = current.slice(end);
+
+            // נדאג שיהיו שורות ריקות לפני ואחרי כדי שהתמונה תופיע כבלוק.
+            const leadingNl = before.endsWith('\n\n') || before === '' ? '' :
+                              before.endsWith('\n') ? '\n' : '\n\n';
+            const trailingNl = after.startsWith('\n\n') || after === '' ? '' :
+                               after.startsWith('\n') ? '\n' : '\n\n';
+
+            const insert = leadingNl + text + trailingNl;
+            const newValue = before + insert + after;
+            this.formData[modelField] = newValue;
+
+            if (target) {
+                const newPos = start + insert.length;
+                this.$nextTick(() => {
+                    target.focus();
+                    target.setSelectionRange(newPos, newPos);
+                });
+            }
+        },
+
+        onDescImageSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (file) this._uploadImageAndInsert(file);
+        },
+
+        onDescImageDrop(event) {
+            this.descDragOver = false;
+            const dt = event.dataTransfer;
+            if (!dt || !dt.files || !dt.files.length) return;
+            const file = Array.from(dt.files).find(f => f.type.startsWith('image/'));
+            if (file) this._uploadImageAndInsert(file);
+        },
+
+        onDescImagePaste(event) {
+            const items = event.clipboardData && event.clipboardData.items;
+            if (!items) return;
+            for (const it of items) {
+                if (it.kind === 'file' && it.type.startsWith('image/')) {
+                    const file = it.getAsFile();
+                    if (file) {
+                        event.preventDefault();
+                        this._uploadImageAndInsert(file);
+                        return;
+                    }
+                }
+            }
         },
 
         navigateToTask(taskId, task) {

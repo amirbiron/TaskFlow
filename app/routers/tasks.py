@@ -632,4 +632,26 @@ async def delete_task(request: Request, task_id: str):
     # מחיקת ההערות הקשורות (cascade)
     await db.task_comments.delete_many({"task_id": task_id})
 
+    # מחיקת קבצים מצורפים (cascade) - מבודדים את ניקיון R2 ממחיקת ה-DB
+    # כדי שכשל ב-R2 לא ישאיר רשומות יתומות באוסף attachments.
+    from app.core import r2 as _r2  # ייבוא דחוי כדי לא לחייב את boto3 בעת ייבוא הראוטר
+    try:
+        cursor = db.attachments.find({"task_id": task_id}, {"file_url": 1})
+        async for att in cursor:
+            key = _r2.key_from_public_url(att.get("file_url") or "")
+            if not key:
+                continue
+            try:
+                await _r2.delete_object(key)
+            except Exception:
+                # נכשל למחוק מ-R2 - נשאיר יתום שם, אבל נמשיך לנקות את ה-DB
+                logger.warning("Failed to delete R2 object on cascade", exc_info=True)
+    except Exception:
+        logger.exception("R2 cascade cleanup failed")
+
+    try:
+        await db.attachments.delete_many({"task_id": task_id})
+    except Exception:
+        logger.exception("Cascade delete of attachment records failed")
+
     return None

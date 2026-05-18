@@ -37,6 +37,8 @@ async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     # אינדקסים לעמוד התגיות (multikey על מערך tags)
     await database.tasks.create_index("tags")
     await database.projects.create_index("tags")
+    # אינדקס לקבצים מצורפים - שליפת כל הקבצים של משימה
+    await database.attachments.create_index("task_id")
 
 
 async def close_mongo_connection():
