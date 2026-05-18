@@ -99,14 +99,22 @@ async def _telegram_reminders_job() -> None:
 
         for task in tasks:
             # claim אטומי לפני השליחה: רק worker אחד יצליח לסמן reminder_sent=True
-            # על משימה ש-reminder_sent עוד לא היה True. כך גם בריצות חופפות / מופעים
-            # מקבילים לא תישלח אותה התראה פעמיים.
+            # על משימה ש-reminder_sent עוד לא היה True. ה-filter חוזר על כל
+            # תנאי הברירה - כדי לא לסמן כ-sent משימה ש-reminder_date שלה
+            # זז לעתיד / הסטטוס שונה / היא ארכובה בין ה-find ל-claim.
+            claim_now = datetime.utcnow()
             claim = await db.tasks.update_one(
-                {"_id": task["_id"], "reminder_sent": {"$ne": True}},
-                {"$set": {"reminder_sent": True, "updated_at": datetime.utcnow()}},
+                {
+                    "_id": task["_id"],
+                    "reminder_date": {"$lte": claim_now, "$ne": None},
+                    "reminder_sent": {"$ne": True},
+                    "status": {"$ne": "completed"},
+                    "archived": {"$ne": True},
+                },
+                {"$set": {"reminder_sent": True, "updated_at": claim_now}},
             )
             if claim.modified_count == 0:
-                # worker אחר כבר תפס את המשימה - מדלגים
+                # worker אחר כבר תפס, או שהמשימה השתנתה בין הסריקה ל-claim
                 continue
 
             project_name = projects_by_id.get(task.get("project_id") or "")
