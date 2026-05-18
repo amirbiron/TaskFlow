@@ -20,9 +20,13 @@ class Settings(BaseSettings):
     debug: bool = False
     user_display_name: str = ""  # USER_DISPLAY_NAME - שם להצגה בברוך הבא בדשבורד
 
-    # Telegram (לשלבים הבאים)
+    # Telegram - התראות תזכורת למשימות
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    # kill-switch כללי. גם אם token+chat_id מוגדרים - אפשר לכבות מכאן
+    telegram_enabled: bool = True
+    # כל כמה דקות לבדוק תזכורות שהבשילו (reminder_date <= now)
+    telegram_reminder_check_minutes: int = 5
 
     # Cloudflare R2 (לשלבים הבאים)
     r2_account_id: str = ""

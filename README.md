@@ -133,9 +133,39 @@ python scripts/restore_backup.py backup_YYYY-MM-DD_HH-MM-SS.zip \
 - `GET /api/admin/backups/{filename}/download` - הורדה
 - `DELETE /api/admin/backups/{filename}` - מחיקה
 
+## התראות טלגרם
+
+המערכת שולחת תזכורת לטלגרם כשמגיע ה-`reminder_date` של משימה
+(משימות שלא הושלמו ולא בארכיון). הסריקה רצה ברקע דרך APScheduler.
+
+### הגדרה ראשונית
+
+1. פתח שיחה עם [@BotFather](https://t.me/BotFather) בטלגרם, צור בוט חדש
+   (`/newbot`) וקבל את ה-token.
+2. שלח לבוט הודעה כלשהי (כדי שיהיה לו צ'אט פעיל).
+3. כדי לקבל את ה-`chat_id`: פתח בדפדפן
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` ושלוף את `chat.id`
+   מהתשובה.
+4. הגדר את משתני הסביבה:
+
+| משתנה | ברירת מחדל | תיאור |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | ריק | ה-token שקיבלת מ-BotFather |
+| `TELEGRAM_CHAT_ID` | ריק | מזהה הצ'אט אליו תישלחנה ההתראות |
+| `TELEGRAM_ENABLED` | `true` | kill-switch כללי |
+| `TELEGRAM_REMINDER_CHECK_MINUTES` | `5` | כל כמה דקות לסרוק תזכורות שהבשילו |
+
+ללא token + chat_id - המערכת פשוט לא תאתחל את ה-job של התזכורות (no-op).
+
+### שימוש
+
+בעריכת משימה - שדה "תזכורת (טלגרם)" עם בורר תאריך+שעה.
+ברגע שהזמן עובר, תישלח הודעת טלגרם פעם אחת והשדה `reminder_sent` יסומן.
+עריכה של ה-`reminder_date` מאפסת את הסימון - כך שתזכורת מעודכנת תישלח שוב.
+
 ## השלבים הבאים
 
 - שלב 6: העלאת קבצים (Cloudflare R2)
-- שלב 7: תזכורות בטלגרם
+- שלב 7: תזכורות בטלגרם ✅
 - שלב 8: דשבורד מלא עם נתונים אמיתיים
 - שלב 9: ליטוש סופי

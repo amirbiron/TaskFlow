@@ -38,6 +38,7 @@ function kanbanComponent(config = {}) {
             priority: 'normal',
             status: 'open',
             due_date: '',
+            reminder_date: '',
             links: [],
             tags: [],
             subtasks: [],
@@ -148,6 +149,22 @@ function kanbanComponent(config = {}) {
             if (diff === 1) return 'מחר';
             if (diff === -1) return 'אתמול';
             return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+        },
+
+        // השרת מחזיר naive UTC (ללא "Z") - JS היה מפרש מחרוזת כזו כזמן מקומי
+        // ומסיט את הערך ב-offset של המשתמש. ההלפר מוסיף "Z" כשאין TZ designator.
+        parseServerDate(s) {
+            if (!s) return null;
+            const hasTz = /(Z|[+-]\d{2}:?\d{2})$/.test(s);
+            return new Date(hasTz ? s : s + 'Z');
+        },
+
+        // המרה של ISO datetime לפורמט שמתאים ל-<input type="datetime-local"> בזמן מקומי
+        toDatetimeLocal(isoStr) {
+            const d = this.parseServerDate(isoStr);
+            if (!d) return '';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         },
 
         // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה)
@@ -263,6 +280,7 @@ function kanbanComponent(config = {}) {
                 priority: 'normal',
                 status: 'open',
                 due_date: '',
+                reminder_date: '',
                 links: [],
                 tags: [],
                 subtasks: [],
@@ -273,6 +291,7 @@ function kanbanComponent(config = {}) {
             this.tagPickerOpen = false;
             this.error = null;
             this.currentTaskId = null;
+            this.originalReminderDate = null;
             this.descriptionTab = 'write';
             this.descriptionPreviewHtml = '';
         },
@@ -507,6 +526,11 @@ function kanbanComponent(config = {}) {
 
         openEditModal(task) {
             this.currentTaskId = task._id;
+            // שומרים את הערך המקורי של reminder_date כדי לזהות שינוי בזמן שמירה
+            // (כך לא מאפסים reminder_sent אם השדה לא נגעו בו). חובה לעבור דרך
+            // parseServerDate כדי לנרמל את ה-naive UTC של השרת.
+            const origRem = this.parseServerDate(task.reminder_date);
+            this.originalReminderDate = origRem ? origRem.toISOString() : null;
             this.formData = {
                 title: task.title || '',
                 description: task.description || '',
@@ -515,6 +539,7 @@ function kanbanComponent(config = {}) {
                 priority: task.priority || 'normal',
                 status: task.status || 'open',
                 due_date: task.due_date ? task.due_date.substring(0, 10) : '',
+                reminder_date: task.reminder_date ? this.toDatetimeLocal(task.reminder_date) : '',
                 links: [...(task.links || [])],
                 tags: [...(task.tags || [])],
                 subtasks: (task.subtasks || []).map(st => ({ ...st })),
@@ -657,6 +682,20 @@ function kanbanComponent(config = {}) {
                 if (!payload.description || !payload.description.trim()) payload.description = null;
                 if (!payload.due_date) payload.due_date = null;
                 else payload.due_date = new Date(payload.due_date).toISOString();
+
+                // reminder_date - datetime-local: ריק => null
+                if (!payload.reminder_date) {
+                    payload.reminder_date = null;
+                } else {
+                    payload.reminder_date = new Date(payload.reminder_date).toISOString();
+                }
+                // מאפסים reminder_sent רק כש-reminder_date באמת השתנה (או ביצירה),
+                // כדי שעריכה של שדות אחרים לא תגרור שליחת התראה חוזרת.
+                if (this.modalMode === 'create' || payload.reminder_date !== this.originalReminderDate) {
+                    payload.reminder_sent = false;
+                } else {
+                    delete payload.reminder_sent;
+                }
 
                 if (!payload.project_id) {
                     this.error = 'יש לבחור פרויקט';
