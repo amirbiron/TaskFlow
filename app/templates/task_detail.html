@@ -475,7 +475,7 @@ function taskDetailPage(taskId) {
         newSubtask: '',
         formData: {
             title: '', description: '', project_id: '', client_id: '',
-            priority: 'normal', status: 'open', due_date: '',
+            priority: 'normal', status: 'open', due_date: '', reminder_date: '',
             links: [], tags: [], subtasks: [],
         },
 
@@ -565,6 +565,13 @@ function taskDetailPage(taskId) {
             try {
                 return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
             } catch (e) { return ''; }
+        },
+        // המרה של ISO datetime לפורמט שמתאים ל-<input type="datetime-local"> בזמן מקומי
+        toDatetimeLocal(isoStr) {
+            if (!isoStr) return '';
+            const d = new Date(isoStr);
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         },
         // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה).
         // אין צבע מיוחד לתאריכים שעברו - רק תווית טקסט "(באיחור)".
@@ -689,7 +696,7 @@ function taskDetailPage(taskId) {
         resetForm() {
             this.formData = {
                 title: '', description: '', project_id: '', client_id: '',
-                priority: 'normal', status: 'open', due_date: '',
+                priority: 'normal', status: 'open', due_date: '', reminder_date: '',
                 links: [], tags: [], subtasks: [],
             };
             this.tagSearchQuery = '';
@@ -710,6 +717,7 @@ function taskDetailPage(taskId) {
                 priority: task.priority || 'normal',
                 status: task.status || 'open',
                 due_date: task.due_date ? task.due_date.split('T')[0] : '',
+                reminder_date: task.reminder_date ? this.toDatetimeLocal(task.reminder_date) : '',
                 links: [...(task.links || [])],
                 tags: [...(task.tags || [])],
                 subtasks: (task.subtasks || []).map(s => ({ ...s })),
@@ -783,6 +791,13 @@ function taskDetailPage(taskId) {
                 if (!payload.description || !payload.description.trim()) payload.description = null;
                 if (!payload.due_date) payload.due_date = null;
                 else payload.due_date = new Date(payload.due_date).toISOString();
+                // reminder_date - datetime-local: ריק => null, ובכל עריכה לאפס reminder_sent
+                if (!payload.reminder_date) {
+                    payload.reminder_date = null;
+                } else {
+                    payload.reminder_date = new Date(payload.reminder_date).toISOString();
+                }
+                payload.reminder_sent = false;
                 if (!payload.project_id) {
                     this.error = 'יש לבחור פרויקט';
                     return;

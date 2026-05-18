@@ -38,6 +38,7 @@ function kanbanComponent(config = {}) {
             priority: 'normal',
             status: 'open',
             due_date: '',
+            reminder_date: '',
             links: [],
             tags: [],
             subtasks: [],
@@ -148,6 +149,14 @@ function kanbanComponent(config = {}) {
             if (diff === 1) return 'מחר';
             if (diff === -1) return 'אתמול';
             return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+        },
+
+        // המרה של ISO datetime לפורמט שמתאים ל-<input type="datetime-local"> בזמן מקומי
+        toDatetimeLocal(isoStr) {
+            if (!isoStr) return '';
+            const d = new Date(isoStr);
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         },
 
         // עזרים להשוואת תאריכי דדליין מול היום (בזמן מקומי, ללא שעה)
@@ -263,6 +272,7 @@ function kanbanComponent(config = {}) {
                 priority: 'normal',
                 status: 'open',
                 due_date: '',
+                reminder_date: '',
                 links: [],
                 tags: [],
                 subtasks: [],
@@ -515,6 +525,7 @@ function kanbanComponent(config = {}) {
                 priority: task.priority || 'normal',
                 status: task.status || 'open',
                 due_date: task.due_date ? task.due_date.substring(0, 10) : '',
+                reminder_date: task.reminder_date ? this.toDatetimeLocal(task.reminder_date) : '',
                 links: [...(task.links || [])],
                 tags: [...(task.tags || [])],
                 subtasks: (task.subtasks || []).map(st => ({ ...st })),
@@ -657,6 +668,15 @@ function kanbanComponent(config = {}) {
                 if (!payload.description || !payload.description.trim()) payload.description = null;
                 if (!payload.due_date) payload.due_date = null;
                 else payload.due_date = new Date(payload.due_date).toISOString();
+
+                // reminder_date - datetime-local: ריק => null + איפוס reminder_sent
+                if (!payload.reminder_date) {
+                    payload.reminder_date = null;
+                } else {
+                    payload.reminder_date = new Date(payload.reminder_date).toISOString();
+                }
+                // בכל עריכה של reminder_date - לאפס את reminder_sent כדי שתישלח שוב
+                payload.reminder_sent = false;
 
                 if (!payload.project_id) {
                     this.error = 'יש לבחור פרויקט';
