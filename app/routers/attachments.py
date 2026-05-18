@@ -19,45 +19,9 @@ logger = logging.getLogger(__name__)
 MAX_IMAGE_SIZE = 5 * 1024 * 1024     # 5MB
 MAX_FILE_SIZE = 20 * 1024 * 1024     # 20MB
 
-# סוגי תוכן מותרים לתמונות (לעורך Markdown)
-ALLOWED_IMAGE_MIME = {
-    "image/png",
-    "image/jpeg",
-    "image/jpg",
-    "image/gif",
-    "image/webp",
-}
-ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "gif", "webp"}
-
-# סוגי תוכן מותרים לקבצים מצורפים למשימה (תמונות + מסמכים + ארכיונים)
-ALLOWED_DOCUMENT_MIME = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # docx
-    "application/msword",  # שמרני: לקבצי doc ישנים (לא חובה, יקרה רק אם הדפדפן יזהה ככה)
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",        # xlsx
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # pptx
-    "application/vnd.ms-powerpoint",
-    "text/plain",
-    "text/markdown",
-}
-ALLOWED_DOCUMENT_EXT = {"pdf", "docx", "xlsx", "pptx", "txt", "md"}
-
-ALLOWED_ARCHIVE_MIME = {
-    "application/zip",
-    "application/x-zip-compressed",
-    "application/x-rar-compressed",
-    "application/vnd.rar",
-    "application/octet-stream",  # דפדפנים מסוימים שולחים ככה לארכיונים
-}
-ALLOWED_ARCHIVE_EXT = {"zip", "rar"}
-
-ALLOWED_FILE_MIME = ALLOWED_IMAGE_MIME | ALLOWED_DOCUMENT_MIME | ALLOWED_ARCHIVE_MIME
-ALLOWED_FILE_EXT = ALLOWED_IMAGE_EXT | ALLOWED_DOCUMENT_EXT | ALLOWED_ARCHIVE_EXT
-
-# מיפוי קנוני של סיומת ל-MIME היחיד שאנחנו שומרים. כשמגיע MIME אחר
-# מהדפדפן עבור אותה סיומת - או שזה octet-stream (אז ניקח את הקנוני),
-# או שזו אי-התאמה ונדחה את הבקשה.
+# מיפוי קנוני של סיומת מותרת ל-MIME היחיד שאנחנו שומרים.
+# זהו ה-whitelist היחיד - סיומת שאינה כאן נדחית, גם אם הדפדפן הצהיר על
+# MIME "תמים" (למשל application/octet-stream על .exe/.html/.bat).
 MIME_BY_EXT = {
     "png": "image/png",
     "jpg": "image/jpeg",
@@ -74,15 +38,13 @@ MIME_BY_EXT = {
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
 
+IMAGE_EXT = {"png", "jpg", "jpeg", "gif", "webp"}
+
 
 def _ext_of(filename: Optional[str]) -> str:
     if not filename or "." not in filename:
         return ""
     return filename.rsplit(".", 1)[1].lower()
-
-
-def _is_image(mime: str, ext: str) -> bool:
-    return mime in ALLOWED_IMAGE_MIME or ext in ALLOWED_IMAGE_EXT
 
 
 async def _read_with_limit(upload: UploadFile, limit: int) -> bytes:
@@ -136,12 +98,25 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
     require_api_auth(request)
 
     ext = _ext_of(file.filename)
-    mime = (file.content_type or "").lower()
-    if not _is_image(mime, ext):
+    raw_mime = (file.content_type or "").lower()
+    if raw_mime == "image/jpg":
+        raw_mime = "image/jpeg"
+
+    # אכיפה: הסיומת חייבת להיות במפה הקנונית ולהיות סיומת תמונה.
+    # אם ה-MIME שהדפדפן הצהיר עליו ידוע, הוא חייב להתאים לקנוני
+    # (octet-stream מותר כי דפדפנים שולחים זאת לסיומות לא מזוהות).
+    canonical = MIME_BY_EXT.get(ext)
+    if not canonical or ext not in IMAGE_EXT:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="ניתן להעלות רק תמונות (png/jpg/gif/webp)",
         )
+    if raw_mime and raw_mime != canonical and raw_mime != "application/octet-stream":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ניתן להעלות רק תמונות (png/jpg/gif/webp)",
+        )
+    mime = canonical
 
     data = await _read_with_limit(file, MAX_IMAGE_SIZE)
     if not data:
@@ -149,13 +124,6 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="הקובץ ריק",
         )
-
-    # יישור ל-MIME קנוני לפי סיומת (כדי שלא נשמור image/jpg לא תקני).
-    canonical = MIME_BY_EXT.get(ext)
-    if canonical:
-        mime = canonical
-    elif mime not in ALLOWED_IMAGE_MIME:
-        mime = "application/octet-stream"
 
     key = r2.build_object_key(file.filename or f"image.{ext or 'png'}")
     try:
@@ -207,32 +175,27 @@ async def upload_task_attachment(
 
     ext = _ext_of(file.filename)
     raw_mime = (file.content_type or "").lower()
-
-    # יישור: image/jpg הוא לא-תקני; נירמול מיידי.
     if raw_mime == "image/jpg":
         raw_mime = "image/jpeg"
 
-    # אכיפה: אם הסיומת מוכרת - ה-MIME חייב להתאים לקנוני, או להיות
-    # octet-stream (דפדפנים מסוימים שולחים כך לארכיונים/קבצים לא מזוהים).
-    # אחרת - נדחה כאי-התאמה. אם הסיומת לא מוכרת - ה-MIME עצמו חייב להיות
-    # ברשימת המותרים.
+    # אכיפה: MIME_BY_EXT הוא ה-whitelist היחיד. סיומת שאינה שם נדחית,
+    # גם אם ה-MIME מ-content_type נראה תמים (למשל application/octet-stream
+    # על .exe/.html/.bat - הדפדפן שולח את זה לסיומות לא מזוהות).
+    # אם הסיומת מוכרת - ה-MIME חייב להתאים לקנוני או להיות octet-stream.
     canonical = MIME_BY_EXT.get(ext)
-    if canonical:
-        if raw_mime and raw_mime != canonical and raw_mime != "application/octet-stream":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="סוג קובץ לא נתמך",
-            )
-        mime = canonical
-    else:
-        if raw_mime not in ALLOWED_FILE_MIME:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="סוג קובץ לא נתמך",
-            )
-        mime = raw_mime
+    if not canonical:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="סוג קובץ לא נתמך",
+        )
+    if raw_mime and raw_mime != canonical and raw_mime != "application/octet-stream":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="סוג קובץ לא נתמך",
+        )
+    mime = canonical
 
-    is_image = mime in ALLOWED_IMAGE_MIME
+    is_image = ext in IMAGE_EXT
     limit = MAX_IMAGE_SIZE if is_image else MAX_FILE_SIZE
     data = await _read_with_limit(file, limit)
     if not data:
