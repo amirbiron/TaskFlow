@@ -630,6 +630,24 @@ html.dark .markdown-body mark {
 .markdown-body details.markdown-details > .details-content > :first-child { margin-top: 0; }
 .markdown-body details.markdown-details > .details-content > :last-child  { margin-bottom: 0; }
 
+/* פס גלילה אופקי דק במיוחד עבור בלוקי קוד וטבלאות בתוך markdown */
+.markdown-body pre::-webkit-scrollbar,
+.markdown-body .highlight::-webkit-scrollbar,
+.markdown-body .markdown-table-wrap::-webkit-scrollbar {
+    height: 3px;
+    width: 3px;
+}
+.markdown-body pre::-webkit-scrollbar-thumb,
+.markdown-body .highlight::-webkit-scrollbar-thumb,
+.markdown-body .markdown-table-wrap::-webkit-scrollbar-thumb {
+    border-radius: 2px;
+}
+.markdown-body pre,
+.markdown-body .highlight,
+.markdown-body .markdown-table-wrap {
+    scrollbar-width: thin;
+}
+
 /* ====== RTL אוטומטי לבלוקי קוד עם רוב עברית (markdown_enhance.js) ====== */
 .markdown-body pre.rtl-code {
     direction: rtl;

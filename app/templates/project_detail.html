@@ -789,6 +789,15 @@ function projectDetailPage(projectId) {
             this.documentDraft = { title: '', content_md: '' };
             this.documentPreviewHtml = '';
             this.documentEditing = true;
+            // במובייל: גלילה אוטומטית אל אזור הזנת הטקסט של המסמך החדש
+            this.$nextTick(() => {
+                if (window.innerWidth < 768) {
+                    const ta = this.$refs.documentTextarea;
+                    if (ta) {
+                        ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            });
         },
 
         editDocument() {
