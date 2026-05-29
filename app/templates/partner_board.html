@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <!--
-  מסך השותף (mriox) - תבנית עצמאית ומבודדת.
+  מסך השותף (mriox) - תבנית עצמאית ומבודדת (אפליקציית Alpine קלה).
   בכוונה אינה יורשת מ-base.html: אין ניווט, אין קישורים לשאר TaskFlow.
+  הנתונים נטענים/נשמרים דרך /api/partner/board/<secret>/... (מאומת מול ה-secret).
 -->
 <html lang="he" dir="rtl">
 <head>
@@ -11,57 +12,351 @@
     <meta name="robots" content="noindex, nofollow">
     <title>אצלך עכשיו</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Heebo', sans-serif; }
+        [x-cloak] { display: none !important; }
+        /* עיצוב מינימלי לתצוגת ה-Markdown של הפתקים (בלי תלות ב-main.css) */
+        .note-md > *:first-child { margin-top: 0; }
+        .note-md > *:last-child { margin-bottom: 0; }
+        .note-md p { margin: 0.4rem 0; }
+        .note-md ul, .note-md ol { margin: 0.4rem 0; padding-inline-start: 1.5rem; }
+        .note-md ul { list-style: disc; }
+        .note-md ol { list-style: decimal; }
+        .note-md h1, .note-md h2, .note-md h3 { font-weight: 700; margin: 0.6rem 0 0.3rem; }
+        .note-md h1 { font-size: 1.2rem; } .note-md h2 { font-size: 1.1rem; } .note-md h3 { font-size: 1rem; }
+        .note-md a { color: #7dd3fc; text-decoration: underline; }
+        .note-md code { background: #0b1220; border: 1px solid #1e293b; border-radius: 4px; padding: 0.05rem 0.3rem; font-size: 0.85em; }
+        .note-md pre { background: #0b1220; border: 1px solid #1e293b; border-radius: 8px; padding: 0.75rem; overflow-x: auto; margin: 0.5rem 0; }
+        .note-md pre code { background: none; border: 0; padding: 0; }
+        .note-md blockquote { border-inline-start: 3px solid #334155; padding-inline-start: 0.75rem; color: #94a3b8; margin: 0.5rem 0; }
+        .note-md hr { border-color: #1e293b; margin: 0.75rem 0; }
+        .note-md table { border-collapse: collapse; } .note-md th, .note-md td { border: 1px solid #1e293b; padding: 0.3rem 0.5rem; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased">
-    <div class="max-w-xl mx-auto px-4 py-8">
-        <header class="mb-6">
-            <h1 class="text-3xl font-extrabold tracking-tight">אצלך עכשיו</h1>
-            <p class="text-slate-400 text-sm mt-1">
-                {% if tasks %}{{ tasks|length }} משימות פתוחות{% else %}אין משימות פתוחות 🎉{% endif %}
-            </p>
-        </header>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased" x-data="partnerBoard('{{ secret }}')" x-cloak>
+    <div class="max-w-xl mx-auto px-4 py-6">
 
-        {% if not tasks %}
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
-            הכל סגור. אין כרגע משימות שממתינות לך.
+        <!-- מתגי טאבים -->
+        <div class="flex gap-2 mb-5 bg-slate-900 border border-slate-800 rounded-2xl p-1">
+            <button @click="tab='tasks'" class="flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
+                    :class="tab==='tasks' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'">אצלך עכשיו</button>
+            <button @click="tab='notes'" class="flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
+                    :class="tab==='notes' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'">טיוטות ורעיונות</button>
         </div>
-        {% endif %}
 
-        <div class="space-y-3">
-            {% for task in tasks %}
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 flex-1">
-                        <h2 class="text-lg font-bold text-slate-50 break-words">{{ task.title }}</h2>
-                        {% if task.deadline_display %}
-                        <div class="text-sm text-slate-400 mt-1">📅 דדליין: {{ task.deadline_display }}</div>
-                        {% endif %}
-                        {% if task.consequence %}
-                        <div class="text-sm text-amber-300/90 mt-1">⚠️ אם עובר: {{ task.consequence }}</div>
-                        {% endif %}
+        <!-- ============ טאב משימות ============ -->
+        <section x-show="tab==='tasks'">
+            <div class="flex items-center justify-between mb-3">
+                <h1 class="text-2xl font-extrabold tracking-tight">אצלך עכשיו</h1>
+                <button @click="showAddTask=!showAddTask"
+                        class="text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-1.5 font-semibold">➕ הוסף משימה</button>
+            </div>
+
+            <!-- טופס הוספת משימה -->
+            <div x-show="showAddTask" x-transition class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4 space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">שם המשימה</label>
+                    <input x-model="newTask.title" type="text" maxlength="300"
+                           class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 outline-none focus:border-emerald-500"
+                           placeholder="מה צריך לעשות?">
+                </div>
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class="block text-xs text-slate-400 mb-1">דדליין</label>
+                        <input x-model="newTask.deadline" type="date"
+                               class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 outline-none focus:border-emerald-500">
                     </div>
-                    <div class="flex flex-col items-center flex-shrink-0 px-1
-                        {% if task.stuck_level == 'high' %}text-rose-400{% elif task.stuck_level == 'mid' %}text-amber-400{% else %}text-slate-500{% endif %}">
-                        <span class="text-3xl font-extrabold leading-none {% if task.stuck_level == 'high' %}animate-pulse{% endif %}">{{ task.stuck_days }}</span>
-                        <span class="text-[10px] uppercase tracking-wide mt-1">ימים תקוע</span>
+                    <div class="w-32">
+                        <label class="block text-xs text-slate-400 mb-1">תזכורת אחרי (ימים)</label>
+                        <input x-model.number="newTask.reminder_after_days" type="number" min="0" max="3650"
+                               class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 outline-none focus:border-emerald-500">
                     </div>
                 </div>
-                <form method="POST" action="/m/{{ secret }}/done/{{ task.id }}" class="mt-3"
-                      onsubmit="this.querySelector('button').disabled = true;">
-                    <button type="submit"
-                        class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-60">
-                        ✓ סיימתי
+                <div x-show="addTaskError" class="text-rose-400 text-sm" x-text="addTaskError"></div>
+                <div class="flex gap-2">
+                    <button @click="addTask()" :disabled="addingTask"
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl py-2 font-semibold disabled:opacity-60">
+                        <span x-show="!addingTask">שמור</span><span x-show="addingTask">שומר...</span>
                     </button>
-                </form>
+                    <button @click="showAddTask=false" class="px-4 bg-slate-800 hover:bg-slate-700 rounded-xl py-2">ביטול</button>
+                </div>
             </div>
-            {% endfor %}
-        </div>
+
+            <div x-show="loadingTasks" class="text-center text-slate-500 py-10">טוען…</div>
+            <div x-show="!loadingTasks && tasks.length===0"
+                 class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400">הכל סגור. אין כרגע משימות שממתינות לך 🎉</div>
+
+            <div class="space-y-3">
+                <template x-for="task in tasks" :key="task._id">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0 flex-1">
+                                <h2 class="text-lg font-bold text-slate-50 break-words" x-text="task.title"></h2>
+                                <div x-show="task.deadline" class="text-sm text-slate-400 mt-1">📅 דדליין: <span x-text="fmtDate(task.deadline)"></span></div>
+                                <div x-show="task.consequence" class="text-sm text-amber-300/90 mt-1">⚠️ אם עובר: <span x-text="task.consequence"></span></div>
+                            </div>
+                            <div class="flex flex-col items-center flex-shrink-0 px-1" :class="stuckClass(task.stuck_level)">
+                                <span class="text-3xl font-extrabold leading-none" :class="task.stuck_level==='high' ? 'animate-pulse' : ''" x-text="task.stuck_days"></span>
+                                <span class="text-[10px] uppercase tracking-wide mt-1">ימים תקוע</span>
+                            </div>
+                        </div>
+
+                        <!-- הערת התקדמות -->
+                        <div class="mt-3 border-t border-slate-800 pt-3">
+                            <template x-if="editingTaskId !== task._id">
+                                <div class="flex items-start gap-2">
+                                    <div class="flex-1 min-w-0">
+                                        <div x-show="task.progress_note" class="text-sm text-sky-300 whitespace-pre-wrap break-words" x-text="task.progress_note"></div>
+                                        <div x-show="!task.progress_note" class="text-sm text-slate-500 italic">אין הערת התקדמות</div>
+                                    </div>
+                                    <button @click="startEditTaskNote(task)"
+                                            class="text-xs text-slate-400 hover:text-slate-200 underline flex-shrink-0"
+                                            x-text="task.progress_note ? 'ערוך' : '➕ הערה'"></button>
+                                </div>
+                            </template>
+                            <template x-if="editingTaskId === task._id">
+                                <div class="space-y-2">
+                                    <textarea x-model="taskNoteDraft" rows="2" maxlength="2000"
+                                              class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+                                              placeholder="עדכון התקדמות: התחלתי / תקוע כי… / מחכה לאישור מאמיר"></textarea>
+                                    <div class="flex gap-2">
+                                        <button @click="saveTaskNote(task)" :disabled="savingTaskNote"
+                                                class="bg-sky-600 hover:bg-sky-500 rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-60">שמור הערה</button>
+                                        <button @click="cancelEditTaskNote()" class="bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 text-sm">ביטול</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <button @click="markDone(task)"
+                                class="w-full mt-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-colors">✓ סיימתי</button>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <!-- ============ טאב טיוטות ורעיונות ============ -->
+        <section x-show="tab==='notes'">
+            <div class="flex items-center justify-between mb-3">
+                <h1 class="text-2xl font-extrabold tracking-tight">טיוטות ורעיונות</h1>
+                <button @click="showAddNote=!showAddNote"
+                        class="text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-1.5 font-semibold">➕ פתק חדש</button>
+            </div>
+
+            <div x-show="showAddNote" x-transition class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4 space-y-3">
+                <textarea x-model="newNoteContent" rows="4" maxlength="20000"
+                          class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 outline-none focus:border-emerald-500"
+                          placeholder="רעיון, טיוטה, לינק… (תומך Markdown)"></textarea>
+                <div x-show="addNoteError" class="text-rose-400 text-sm" x-text="addNoteError"></div>
+                <div class="flex gap-2">
+                    <button @click="addNote()" :disabled="addingNote"
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl py-2 font-semibold disabled:opacity-60">
+                        <span x-show="!addingNote">שמור פתק</span><span x-show="addingNote">שומר...</span>
+                    </button>
+                    <button @click="showAddNote=false" class="px-4 bg-slate-800 hover:bg-slate-700 rounded-xl py-2">ביטול</button>
+                </div>
+            </div>
+
+            <div x-show="loadingNotes" class="text-center text-slate-500 py-10">טוען…</div>
+            <div x-show="!loadingNotes && notes.length===0"
+                 class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400">אין עדיין פתקים. כתוב רעיון ראשון.</div>
+
+            <div class="space-y-3">
+                <template x-for="note in notes" :key="note._id">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                        <template x-if="editingNoteId !== note._id">
+                            <div>
+                                <div class="note-md text-slate-200 break-words" x-html="note.content_html || ''"></div>
+                                <div class="flex gap-3 mt-3 text-xs">
+                                    <button @click="startEditNote(note)" class="text-slate-400 hover:text-slate-200 underline">ערוך</button>
+                                    <button @click="deleteNote(note)" class="text-rose-400 hover:text-rose-300 underline">מחק</button>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="editingNoteId === note._id">
+                            <div class="space-y-2">
+                                <textarea x-model="noteDraft" rows="5" maxlength="20000"
+                                          class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 outline-none focus:border-sky-500"></textarea>
+                                <div class="flex gap-2">
+                                    <button @click="saveNote(note)" :disabled="savingNote"
+                                            class="bg-sky-600 hover:bg-sky-500 rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-60">שמור</button>
+                                    <button @click="cancelEditNote()" class="bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 text-sm">ביטול</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </section>
     </div>
+
+    <script>
+    function partnerBoard(secret) {
+        return {
+            secret: secret,
+            tab: 'tasks',
+            tasks: [],
+            notes: [],
+            loadingTasks: true,
+            loadingNotes: true,
+            // הוספת משימה
+            showAddTask: false,
+            newTask: { title: '', deadline: '', reminder_after_days: 3 },
+            addingTask: false,
+            addTaskError: '',
+            // עריכת הערת התקדמות (לפי מזהה משימה)
+            editingTaskId: null,
+            taskNoteDraft: '',
+            savingTaskNote: false,
+            // פתקים
+            showAddNote: false,
+            newNoteContent: '',
+            addingNote: false,
+            addNoteError: '',
+            editingNoteId: null,
+            noteDraft: '',
+            savingNote: false,
+
+            api(path) {
+                return '/api/partner/board/' + encodeURIComponent(this.secret) + path;
+            },
+
+            init() {
+                this.loadTasks();
+                this.loadNotes();
+            },
+
+            async loadTasks() {
+                this.loadingTasks = true;
+                try {
+                    const r = await fetch(this.api('/tasks'));
+                    if (r.ok) this.tasks = await r.json();
+                } catch (e) { console.error(e); }
+                finally { this.loadingTasks = false; }
+            },
+
+            async loadNotes() {
+                this.loadingNotes = true;
+                try {
+                    const r = await fetch(this.api('/notes'));
+                    if (r.ok) this.notes = await r.json();
+                } catch (e) { console.error(e); }
+                finally { this.loadingNotes = false; }
+            },
+
+            fmtDate(v) {
+                if (!v) return '';
+                const d = new Date(v);
+                return isNaN(d) ? '' : d.toLocaleDateString('he-IL');
+            },
+
+            stuckClass(level) {
+                if (level === 'high') return 'text-rose-400';
+                if (level === 'mid') return 'text-amber-400';
+                return 'text-slate-500';
+            },
+
+            async addTask() {
+                if (!this.newTask.title.trim()) { this.addTaskError = 'צריך שם משימה'; return; }
+                this.addingTask = true;
+                this.addTaskError = '';
+                try {
+                    const body = {
+                        title: this.newTask.title.trim(),
+                        deadline: this.newTask.deadline ? this.newTask.deadline : null,
+                        reminder_after_days: Number(this.newTask.reminder_after_days) || 0,
+                    };
+                    const r = await fetch(this.api('/tasks'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                    });
+                    if (!r.ok) { const e = await r.json().catch(() => ({})); this.addTaskError = e.detail || 'שגיאה'; return; }
+                    this.newTask = { title: '', deadline: '', reminder_after_days: 3 };
+                    this.showAddTask = false;
+                    await this.loadTasks();
+                } catch (e) { this.addTaskError = 'שגיאת רשת'; }
+                finally { this.addingTask = false; }
+            },
+
+            async markDone(task) {
+                try {
+                    const r = await fetch(this.api('/tasks/' + task._id), {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ is_done: true }),
+                    });
+                    if (r.ok) this.tasks = this.tasks.filter(t => t._id !== task._id);
+                } catch (e) { alert('שגיאת רשת'); }
+            },
+
+            startEditTaskNote(task) { this.editingTaskId = task._id; this.taskNoteDraft = task.progress_note || ''; },
+            cancelEditTaskNote() { this.editingTaskId = null; this.taskNoteDraft = ''; },
+            async saveTaskNote(task) {
+                this.savingTaskNote = true;
+                try {
+                    const r = await fetch(this.api('/tasks/' + task._id), {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ progress_note: this.taskNoteDraft }),
+                    });
+                    if (r.ok) {
+                        const updated = await r.json();
+                        task.progress_note = updated.progress_note;
+                        this.editingTaskId = null;
+                        this.taskNoteDraft = '';
+                    }
+                } catch (e) { alert('שגיאת רשת'); }
+                finally { this.savingTaskNote = false; }
+            },
+
+            async addNote() {
+                if (!this.newNoteContent.trim()) { this.addNoteError = 'הפתק ריק'; return; }
+                this.addingNote = true;
+                this.addNoteError = '';
+                try {
+                    const r = await fetch(this.api('/notes'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: this.newNoteContent }),
+                    });
+                    if (!r.ok) { const e = await r.json().catch(() => ({})); this.addNoteError = e.detail || 'שגיאה'; return; }
+                    this.newNoteContent = '';
+                    this.showAddNote = false;
+                    await this.loadNotes();
+                } catch (e) { this.addNoteError = 'שגיאת רשת'; }
+                finally { this.addingNote = false; }
+            },
+
+            startEditNote(note) { this.editingNoteId = note._id; this.noteDraft = note.content || ''; },
+            cancelEditNote() { this.editingNoteId = null; this.noteDraft = ''; },
+            async saveNote(note) {
+                if (!this.noteDraft.trim()) return;
+                this.savingNote = true;
+                try {
+                    const r = await fetch(this.api('/notes/' + note._id), {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: this.noteDraft }),
+                    });
+                    if (r.ok) { await this.loadNotes(); this.editingNoteId = null; this.noteDraft = ''; }
+                } catch (e) { alert('שגיאת רשת'); }
+                finally { this.savingNote = false; }
+            },
+
+            async deleteNote(note) {
+                if (!confirm('למחוק את הפתק?')) return;
+                try {
+                    const r = await fetch(this.api('/notes/' + note._id), { method: 'DELETE' });
+                    if (r.ok || r.status === 204) this.notes = this.notes.filter(n => n._id !== note._id);
+                } catch (e) { alert('שגיאת רשת'); }
+            },
+        };
+    }
+    </script>
 </body>
 </html>

@@ -18,6 +18,8 @@ class PartnerTaskBase(BaseModel):
     consequence: str = Field(default="", max_length=1000)
     # אחרי כמה ימים מרגע יצירת המשימה תתחיל התזכורת היומית
     reminder_after_days: int = Field(default=3, ge=0, le=3650)
+    # הערת התקדמות חופשית שהשותף כותב ועורך מהמסך שלו (לא נקבע ע"י אמיר)
+    progress_note: str = Field(default="", max_length=2000)
 
 
 class PartnerTaskCreate(PartnerTaskBase):
@@ -30,6 +32,7 @@ class PartnerTaskUpdate(BaseModel):
     deadline: Optional[datetime] = None
     consequence: Optional[str] = Field(default=None, max_length=1000)
     reminder_after_days: Optional[int] = Field(default=None, ge=0, le=3650)
+    progress_note: Optional[str] = Field(default=None, max_length=2000)
     is_done: Optional[bool] = None
 
 

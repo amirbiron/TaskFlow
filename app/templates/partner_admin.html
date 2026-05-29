@@ -71,6 +71,7 @@
                             <div x-show="task.deadline">📅 דדליין: <span x-text="formatDate(task.deadline)"></span></div>
                             <div x-show="task.consequence" class="text-amber-700 dark:text-sf-amber">⚠️ <span x-text="task.consequence"></span></div>
                             <div>⏱️ תזכורת אחרי <span x-text="task.reminder_after_days"></span> ימים</div>
+                            <div x-show="task.progress_note" class="text-sky-700 dark:text-sf-blue">📝 הערת השותף: <span class="whitespace-pre-wrap" x-text="task.progress_note"></span></div>
                         </div>
                     </div>
                     <div class="text-center flex-shrink-0" :class="stuckColor(task.stuck_days)" title="ימים מאז היצירה">
