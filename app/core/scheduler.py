@@ -8,9 +8,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from html import escape as html_escape
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -29,6 +30,7 @@ _scheduler: Optional[AsyncIOScheduler] = None
 
 BACKUP_JOB_ID = "mongodb_backup_daily"
 TELEGRAM_REMINDERS_JOB_ID = "telegram_reminders"
+PARTNER_REMINDERS_JOB_ID = "partner_reminders"
 
 
 async def _backup_job() -> None:
@@ -133,6 +135,98 @@ async def _telegram_reminders_job() -> None:
         logger.exception("חריגה לא צפויה ב-job של תזכורות טלגרם")
 
 
+def _format_partner_reminder_message(task: dict, days: int) -> str:
+    """בונה את הודעת התזכורת לשותף (HTML parse_mode), לפי ה-spec."""
+    title = html_escape(task.get("title") or "(ללא כותרת)")
+    parts = [f'⏰ תזכורת: "{title}" ממתינה לך — תקוע {days} ימים.']
+    deadline = task.get("deadline")
+    if isinstance(deadline, datetime):
+        parts.append(f"דדליין: {deadline.strftime('%Y-%m-%d')}.")
+    consequence = (task.get("consequence") or "").strip()
+    if consequence:
+        parts.append(f"אם לא עד אז → {html_escape(consequence)}")
+    return " ".join(parts)
+
+
+async def _partner_reminders_job() -> None:
+    """תזכורת יומית לשותף (לוח mriox).
+
+    עובר על המשימות הפתוחות בלוח השותף ושולח תזכורת טלגרם לכל משימה
+    שעברה את סף הימים שלה ושעוד לא קיבלה תזכורת היום.
+
+    - מונה הימים נספר מ-created_at לפי שעון partner_timezone.
+    - claim אטומי על last_reminded_date כדי לא לשלוח פעמיים באותו יום.
+    - כשל בשליחה משחרר את ה-claim כדי לאפשר ניסיון חוזר בריצה הבאה.
+    """
+    if not telegram.partner_is_enabled():
+        return
+
+    settings = get_settings()
+    try:
+        tz = ZoneInfo(settings.partner_timezone)
+    except Exception:  # noqa: BLE001
+        tz = ZoneInfo("UTC")
+
+    try:
+        db = get_database()
+        today = datetime.now(tz).date()
+        today_str = today.isoformat()
+
+        cursor = db.partner_tasks.find({"is_done": {"$ne": True}}).limit(500)
+        tasks = await cursor.to_list(length=500)
+        if not tasks:
+            return
+
+        for task in tasks:
+            created = task.get("created_at")
+            if not isinstance(created, datetime):
+                continue
+            # created_at נשמר ב-UTC נאיבי (datetime.utcnow). נמיר לשעון השותף.
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            stuck_days = (today - created.astimezone(tz).date()).days
+            if stuck_days < 0:
+                stuck_days = 0
+
+            threshold = int(task.get("reminder_after_days", 0) or 0)
+            if stuck_days < threshold:
+                continue
+            if task.get("last_reminded_date") == today_str:
+                continue
+
+            # claim אטומי: רק עדכון יחיד יצליח לתפוס את היום הנוכחי.
+            prev = task.get("last_reminded_date")
+            claim = await db.partner_tasks.update_one(
+                {
+                    "_id": task["_id"],
+                    "is_done": {"$ne": True},
+                    "last_reminded_date": {"$ne": today_str},
+                },
+                {"$set": {"last_reminded_date": today_str, "updated_at": datetime.utcnow()}},
+            )
+            if claim.modified_count == 0:
+                continue
+
+            message = _format_partner_reminder_message(task, stuck_days)
+            sent = await telegram.send_message(
+                message, chat_id=settings.partner_telegram_chat_id
+            )
+            if sent:
+                logger.info("Partner reminder sent for task %s", task["_id"])
+            else:
+                # שחרור ה-claim כדי לאפשר retry בריצה הבאה.
+                logger.warning(
+                    "Partner reminder send failed for task %s - releasing claim",
+                    task["_id"],
+                )
+                await db.partner_tasks.update_one(
+                    {"_id": task["_id"]},
+                    {"$set": {"last_reminded_date": prev, "updated_at": datetime.utcnow()}},
+                )
+    except Exception:  # noqa: BLE001
+        logger.exception("חריגה לא צפויה ב-job של תזכורות השותף")
+
+
 def start_scheduler() -> None:
     """מאתחל ומריץ את ה-scheduler. נקרא מ-lifespan של FastAPI."""
     global _scheduler
@@ -146,8 +240,9 @@ def start_scheduler() -> None:
     # מתחילים scheduler רק אם יש לפחות job אחד שצריך לרוץ
     backup_active = settings.backup_enabled
     telegram_active = telegram.is_enabled()
+    partner_active = telegram.partner_is_enabled()
 
-    if not backup_active and not telegram_active:
+    if not backup_active and not telegram_active and not partner_active:
         logger.info("אין jobs פעילים (גיבוי + טלגרם מושבתים) - לא מתזמן")
         return
 
@@ -188,6 +283,28 @@ def start_scheduler() -> None:
             max_instances=1,
         )
         logger.info("scheduler: תזכורות טלגרם כל %d דקות", minutes)
+
+    if partner_active:
+        _scheduler.add_job(
+            _partner_reminders_job,
+            trigger=CronTrigger(
+                hour=settings.partner_reminder_hour,
+                minute=settings.partner_reminder_minute,
+                timezone=settings.partner_timezone,
+            ),
+            id=PARTNER_REMINDERS_JOB_ID,
+            name="תזכורת יומית לשותף",
+            replace_existing=True,
+            misfire_grace_time=3600,
+            coalesce=True,
+            max_instances=1,
+        )
+        logger.info(
+            "scheduler: תזכורת שותף יומית ב-%02d:%02d %s",
+            settings.partner_reminder_hour,
+            settings.partner_reminder_minute,
+            settings.partner_timezone,
+        )
 
     _scheduler.start()
 

@@ -20,31 +20,47 @@ _REQUEST_TIMEOUT_SECONDS = 10.0
 
 
 def is_enabled() -> bool:
-    """האם שליחה לטלגרם מאופשרת ומוגדרת תקין."""
+    """האם שליחה לטלגרם מאופשרת ומוגדרת תקין (צ'אט ברירת המחדל)."""
     settings = get_settings()
     if not settings.telegram_enabled:
         return False
     return bool(settings.telegram_bot_token and settings.telegram_chat_id)
 
 
+def partner_is_enabled() -> bool:
+    """האם תזכורות לשותף מאופשרות - אותו בוט קיים + chat_id של השותף."""
+    settings = get_settings()
+    if not settings.telegram_enabled:
+        return False
+    return bool(settings.telegram_bot_token and settings.partner_telegram_chat_id)
+
+
 async def send_message(
     text: str,
     *,
+    chat_id: Optional[str] = None,
     parse_mode: Optional[str] = "HTML",
     disable_web_page_preview: bool = True,
 ) -> bool:
-    """שולח הודעת טקסט לצ'אט המוגדר.
+    """שולח הודעת טקסט לצ'אט.
+
+    chat_id - יעד אופציונלי. אם לא סופק, נשלח לצ'אט ברירת המחדל
+    (settings.telegram_chat_id). מאפשר שימוש חוזר באותו בוט לשליחה
+    לצ'אט השותף בלי חיבור/בוט נוסף.
 
     מחזיר True בהצלחה, False בכישלון / כשהמודול מושבת.
     לא זורק חריגות - השליחה לא קריטית לזרימת האפליקציה.
     """
-    if not is_enabled():
+    settings = get_settings()
+    target_chat = chat_id or settings.telegram_chat_id
+    # שער כניסה: kill-switch כללי + טוקן + יעד כלשהו. כשמועבר chat_id מפורש
+    # אין תלות בצ'אט ברירת המחדל (telegram_chat_id יכול להישאר ריק).
+    if not settings.telegram_enabled or not settings.telegram_bot_token or not target_chat:
         return False
 
-    settings = get_settings()
     url = f"{_TELEGRAM_API_BASE}/bot{settings.telegram_bot_token}/sendMessage"
     payload = {
-        "chat_id": settings.telegram_chat_id,
+        "chat_id": target_chat,
         "text": text,
         "disable_web_page_preview": disable_web_page_preview,
     }

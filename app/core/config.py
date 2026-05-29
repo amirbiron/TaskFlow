@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     # כל כמה דקות לבדוק תזכורות שהבשילו (reminder_date <= now)
     telegram_reminder_check_minutes: int = 5
 
+    # לוח משימות שותף (mriox) - תוספת מבודדת. ראו docs/taskflow-partner-spec.md
+    # ה-secret שמופיע בכתובת הציבורית: /m/<partner_board_secret>. ריק => המסך כבוי.
+    partner_board_secret: str = ""
+    # chat_id נפרד של השותף בטלגרם (אותו בוט קיים). ריק => אין תזכורות לשותף.
+    partner_telegram_chat_id: str = ""
+    # שעת התזכורת היומית לשותף, לפי partner_timezone
+    partner_reminder_hour: int = 20
+    partner_reminder_minute: int = 0
+    # אזור זמן לחישוב מונה-הימים, "היום" ושעת התזכורת (ברירת מחדל: ישראל)
+    partner_timezone: str = "Asia/Jerusalem"
+
     # Cloudflare R2 (לשלבים הבאים)
     r2_account_id: str = ""
     r2_access_key_id: str = ""

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+  מסך השותף (mriox) - תבנית עצמאית ומבודדת.
+  בכוונה אינה יורשת מ-base.html: אין ניווט, אין קישורים לשאר TaskFlow.
+-->
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="robots" content="noindex, nofollow">
+    <title>אצלך עכשיו</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Heebo', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased">
+    <div class="max-w-xl mx-auto px-4 py-8">
+        <header class="mb-6">
+            <h1 class="text-3xl font-extrabold tracking-tight">אצלך עכשיו</h1>
+            <p class="text-slate-400 text-sm mt-1">
+                {% if tasks %}{{ tasks|length }} משימות פתוחות{% else %}אין משימות פתוחות 🎉{% endif %}
+            </p>
+        </header>
+
+        {% if not tasks %}
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
+            הכל סגור. אין כרגע משימות שממתינות לך.
+        </div>
+        {% endif %}
+
+        <div class="space-y-3">
+            {% for task in tasks %}
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-lg font-bold text-slate-50 break-words">{{ task.title }}</h2>
+                        {% if task.deadline_display %}
+                        <div class="text-sm text-slate-400 mt-1">📅 דדליין: {{ task.deadline_display }}</div>
+                        {% endif %}
+                        {% if task.consequence %}
+                        <div class="text-sm text-amber-300/90 mt-1">⚠️ אם עובר: {{ task.consequence }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="flex flex-col items-center flex-shrink-0 px-1
+                        {% if task.stuck_level == 'high' %}text-rose-400{% elif task.stuck_level == 'mid' %}text-amber-400{% else %}text-slate-500{% endif %}">
+                        <span class="text-3xl font-extrabold leading-none {% if task.stuck_level == 'high' %}animate-pulse{% endif %}">{{ task.stuck_days }}</span>
+                        <span class="text-[10px] uppercase tracking-wide mt-1">ימים תקוע</span>
+                    </div>
+                </div>
+                <form method="POST" action="/m/{{ secret }}/done/{{ task.id }}" class="mt-3"
+                      onsubmit="this.querySelector('button').disabled = true;">
+                    <button type="submit"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-60">
+                        ✓ סיימתי
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
