@@ -121,8 +121,7 @@
                             <template x-if="editingTaskId === task._id">
                                 <div class="space-y-2">
                                     <textarea x-model="taskNoteDraft" rows="2" maxlength="2000"
-                                              class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
-                                              placeholder="עדכון התקדמות: התחלתי / תקוע כי… / מחכה לאישור מאמיר"></textarea>
+                                              class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"></textarea>
                                     <div class="flex gap-2">
                                         <button @click="saveTaskNote(task)" :disabled="savingTaskNote"
                                                 class="bg-sky-600 hover:bg-sky-500 rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-60">שמור הערה</button>
