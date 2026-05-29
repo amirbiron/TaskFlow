@@ -33,6 +33,36 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 logger = logging.getLogger(__name__)
 
+# מסמך מטא יחיד למעקב פעילות השותף (לסימון בדשבורד של אמיר)
+PARTNER_META_ID = "state"
+
+
+async def _record_partner_activity(db, label: str) -> None:
+    """רושם פעולה של השותף לצורך הסימון בדשבורד. לא קריטי - בולע חריגות."""
+    try:
+        await db.partner_meta.update_one(
+            {"_id": PARTNER_META_ID},
+            {
+                "$inc": {"unseen_count": 1},
+                "$set": {"last_activity_at": datetime.utcnow(), "last_action": label},
+            },
+            upsert=True,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("Failed to record partner activity", exc_info=True)
+
+
+async def _mark_partner_seen(db) -> None:
+    """מאפס את מונה הפעילות כשאמיר פותח את מסך הניהול."""
+    try:
+        await db.partner_meta.update_one(
+            {"_id": PARTNER_META_ID},
+            {"$set": {"unseen_count": 0, "last_seen_at": datetime.utcnow()}},
+            upsert=True,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("Failed to mark partner activity seen", exc_info=True)
+
 
 # ---------- עזרי זמן / בידוד ----------
 
@@ -164,6 +194,8 @@ async def partner_admin_page(request: Request):
     """דף ניהול לוח השותף."""
     if not is_authenticated(request):
         return RedirectResponse(url="/login", status_code=302)
+    # אמיר פתח את הלוח - מאפסים את סימון הפעילות בדשבורד
+    await _mark_partner_seen(get_database())
     settings = get_settings()
     secret = (settings.partner_board_secret or "").strip()
     return templates.TemplateResponse(
@@ -283,6 +315,7 @@ async def board_create_task(request: Request, secret: str, data: BoardTaskCreate
     }
     result = await db.partner_tasks.insert_one(doc)
     doc["_id"] = result.inserted_id
+    await _record_partner_activity(db, "הוספת משימה")
     return _board_task(doc)
 
 
@@ -310,6 +343,10 @@ async def board_patch_task(request: Request, secret: str, task_id: str, data: Bo
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="משימה לא נמצאה"
         )
+    if update_doc.get("is_done") is True:
+        await _record_partner_activity(db, "סימון משימה כבוצעה")
+    elif "progress_note" in update_doc:
+        await _record_partner_activity(db, "עדכון התקדמות")
     return _board_task(result)
 
 
@@ -336,6 +373,7 @@ async def board_create_note(request: Request, secret: str, data: PartnerNoteCrea
     }
     result = await db.partner_notes.insert_one(doc)
     doc["_id"] = result.inserted_id
+    await _record_partner_activity(db, "פתק חדש")
     return _serialize_note(doc)
 
 
@@ -365,6 +403,7 @@ async def board_update_note(request: Request, secret: str, note_id: str, data: P
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="פתק לא נמצא"
         )
+    await _record_partner_activity(db, "עריכת פתק")
     return _serialize_note(result)
 
 
@@ -379,4 +418,5 @@ async def board_delete_note(request: Request, secret: str, note_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="פתק לא נמצא"
         )
+    await _record_partner_activity(db, "מחיקת פתק")
     return None
