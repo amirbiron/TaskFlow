@@ -8,7 +8,7 @@ from pymongo.errors import PyMongoError
 from fastapi import APIRouter, HTTPException, Request, status, Query
 from app.core.database import get_database
 from app.core.auth import require_api_auth
-from app.core.markdown_renderer import markdown_to_html
+from app.core.markdown_renderer import markdown_to_html, toggle_task_in_markdown
 from app.models.task import (
     Task,
     TaskCreate,
@@ -496,6 +496,60 @@ async def update_task_order(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="משימה לא נמצאה"
+        )
+
+    return _serialize(result)
+
+
+class TaskToggleRequest(BaseModel):
+    """טוגל של checkbox ב-task list בתוך תיאור המשימה."""
+    index: int = Field(..., ge=0)
+    checked: bool
+
+
+@router.patch("/{task_id}/toggle-task", response_model=Task)
+async def toggle_task_checkbox(request: Request, task_id: str, payload: TaskToggleRequest):
+    """הפיכת מצב ה-checkbox ה-N בתיאור המשימה - שמירה ל-DB ורינדור מחדש.
+
+    מאפשר שמירת מצב רשימת-המשימות (- [ ] / - [x]) בתיאור, בדיוק כמו
+    שכבר קיים במסמכי פרויקט ובהערות.
+    """
+    require_api_auth(request)
+    db = get_database()
+
+    obj_id = _validate_object_id(task_id)
+    existing = await db.tasks.find_one({"_id": obj_id}, {"description": 1})
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="משימה לא נמצאה",
+        )
+
+    try:
+        new_md = toggle_task_in_markdown(
+            existing.get("description") or "", payload.index, payload.checked
+        )
+    except IndexError:
+        # מספר ה-checkboxes השתנה בין הטעינה ללחיצה (מישהו ערך את התיאור)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="המשימה השתנתה בינתיים - רענן ונסה שוב",
+        )
+
+    result = await db.tasks.find_one_and_update(
+        {"_id": obj_id},
+        {"$set": {
+            "description": new_md,
+            "description_html": _render_description(new_md),
+            "updated_at": datetime.utcnow(),
+        }},
+        return_document=True,
+    )
+    if not result:
+        # המשימה נמחקה בין ה-find_one ל-find_one_and_update
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="משימה לא נמצאה",
         )
 
     return _serialize(result)
