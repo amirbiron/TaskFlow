@@ -83,6 +83,59 @@ _TYPE_MAP = {
 }
 
 
+# ---------- Preprocess: רווח-שורה אוטומטי לפני טבלאות ----------
+# מנוע ה-Markdown מזהה טבלה רק כשהיא בלוק נפרד (עם שורה ריקה לפניה). בלי זה
+# הטבלה "נדבקת" לפסקה שמעליה ומרונדרת כטקסט רגיל. כאן מוסיפים אוטומטית שורה
+# ריקה לפני טבלה שצמודה לטקסט, כדי שתמיד תרונדר כטבלה.
+
+_TABLE_DELIM_CELL_RE = re.compile(r":?-+:?")
+
+
+def _table_cell_count(line: str) -> int:
+    """מספר העמודות בשורת טבלה (אחרי הסרת pipe מוביל/סוגר)."""
+    return len(line.strip().strip("|").split("|"))
+
+
+def _is_table_delimiter_row(line: str) -> bool:
+    """האם השורה היא שורת המפריד של טבלה (למשל '| --- | :--: |').
+
+    דורש '|' אחד לפחות ו'-' אחד לפחות, וכל תא תואם ל-:?-+:? — כדי לא
+    לבלבל עם קו אופקי (---) או כותרת setext.
+    """
+    s = line.strip()
+    if "|" not in s or "-" not in s:
+        return False
+    cells = [c.strip() for c in s.strip("|").split("|")]
+    return bool(cells) and all(bool(c) and _TABLE_DELIM_CELL_RE.fullmatch(c) for c in cells)
+
+
+def _ensure_table_blank_lines(text: str) -> str:
+    """מוסיף שורה ריקה לפני טבלה שצמודה לטקסט שמעליה.
+
+    מזהה זוג שורות 'כותרת + מפריד' (header ואז |---|---|). אם הכותרת
+    מודבקת לשורת טקסט לא-ריקה מעליה - מוסיפים שורה ריקה ביניהן.
+    מריצים על טקסט שבו בלוקי קוד כבר הוצאו (placeholders) כדי לא לגעת בהם.
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    for idx, line in enumerate(lines):
+        if idx >= 1 and _is_table_delimiter_row(line):
+            header = out[-1] if out else ""
+            # כותרת חוקית: לא ריקה, מכילה '|', ובאותו מספר עמודות כמו המפריד.
+            # ואם השורה שלפני הכותרת לא-ריקה - מפרידים בשורה ריקה.
+            if (
+                header.strip()
+                and "|" in header
+                and _table_cell_count(line) >= 2
+                and _table_cell_count(header) == _table_cell_count(line)
+                and len(out) >= 2
+                and out[-2].strip() != ""
+            ):
+                out.insert(len(out) - 1, "")
+        out.append(line)
+    return "\n".join(out)
+
+
 def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
     """ממיר בלוקי `::: type ... :::` ל-<div class='alert alert-*'>.
 
@@ -113,6 +166,9 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
 
     # שלב 1: שמור בלוקי קוד עטופים מחוץ לטקסט.
     stashed = _FENCED_CODE_RE.sub(_stash, text)
+
+    # שלב 1.5: רווח-שורה אוטומטי לפני טבלאות (מחוץ לבלוקי הקוד שכבר הוצאו).
+    stashed = _ensure_table_blank_lines(stashed)
 
     # שלב 2: עיבוד admonitions על הטקסט הנקי מבלוקי קוד.
     def _replace(match: re.Match) -> str:
