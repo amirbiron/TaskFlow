@@ -38,3 +38,14 @@ services:
         value: 3
       - key: BACKUP_MINUTE
         value: 0
+      # לוח משימות שותף (mriox) - הערכים הסודיים מוגדרים ב-Dashboard (sync:false)
+      - key: PARTNER_BOARD_SECRET
+        sync: false
+      - key: PARTNER_TELEGRAM_CHAT_ID
+        sync: false
+      - key: PARTNER_REMINDER_HOUR
+        value: 20
+      - key: PARTNER_REMINDER_MINUTE
+        value: 0
+      - key: PARTNER_TIMEZONE
+        value: Asia/Jerusalem

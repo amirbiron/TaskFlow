@@ -39,6 +39,8 @@ async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     await database.projects.create_index("tags")
     # אינדקס לקבצים מצורפים - שליפת כל הקבצים של משימה
     await database.attachments.create_index("task_id")
+    # לוח השותף - שליפת משימות פתוחות ממוינות לפי דדליין
+    await database.partner_tasks.create_index([("is_done", 1), ("deadline", 1)])
 
 
 async def close_mongo_connection():
