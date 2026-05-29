@@ -81,9 +81,15 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-sf-text-primary mb-1">לוח השותף</h3>
-                    <p class="text-slate-600 dark:text-sf-text-secondary text-sm">משימות mriox ותזכורות</p>
+                    <p class="text-sm">
+                        <span x-show="!(stats.partner_unseen > 0)" class="text-slate-600 dark:text-sf-text-secondary">משימות mriox ותזכורות</span>
+                        <span x-show="stats.partner_unseen > 0" x-cloak class="text-red-600 dark:text-sf-red font-medium">השותף: <span x-text="stats.partner_last_action || 'עדכון חדש'"></span></span>
+                    </p>
                 </div>
-                <div class="w-12 h-12 bg-teal-100 dark:bg-sf-teal/20 rounded-lg flex items-center justify-center">
+                <div class="relative w-12 h-12 bg-teal-100 dark:bg-sf-teal/20 rounded-lg flex items-center justify-center">
+                    <span x-show="stats.partner_unseen > 0" x-cloak
+                          class="absolute -top-2 -left-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center shadow"
+                          x-text="stats.partner_unseen"></span>
                     <svg class="w-6 h-6 text-teal-600 dark:text-sf-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
@@ -95,6 +101,7 @@
 
 <style>
     a.no-underline { text-decoration: none; color: inherit; }
+    [x-cloak] { display: none !important; }
 </style>
 
 <script>
@@ -103,6 +110,8 @@ function dashboardApp() {
         stats: {
             open_tasks: null,
             urgent_tasks: null,
+            partner_unseen: 0,
+            partner_last_action: null,
         },
 
         async init() {
