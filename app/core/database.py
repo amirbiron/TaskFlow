@@ -41,6 +41,8 @@ async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     await database.attachments.create_index("task_id")
     # לוח השותף - שליפת משימות פתוחות ממוינות לפי דדליין
     await database.partner_tasks.create_index([("is_done", 1), ("deadline", 1)])
+    # פתקים/טיוטות של השותף - ממוינים לפי עדכון אחרון
+    await database.partner_notes.create_index([("updated_at", -1)])
 
 
 async def close_mongo_connection():
