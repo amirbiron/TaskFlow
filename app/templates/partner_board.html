@@ -37,7 +37,7 @@
         .note-md table { border-collapse: collapse; } .note-md th, .note-md td { border: 1px solid #1e293b; padding: 0.3rem 0.5rem; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased" x-data="partnerBoard('{{ secret }}')" x-cloak>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased" x-data='partnerBoard({{ secret | tojson }})' x-cloak>
     <div class="max-w-xl mx-auto px-4 py-6">
 
         <!-- מתגי טאבים -->
