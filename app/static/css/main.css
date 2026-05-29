@@ -657,7 +657,6 @@ html.dark .markdown-body mark {
 .markdown-body pre.rtl-code code {
     direction: rtl;
     text-align: right;
-    unicode-bidi: plaintext;
 }
 
 /* ====== כפתור העתק (markdown_enhance.js) ====== */
