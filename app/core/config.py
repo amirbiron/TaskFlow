@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     backup_hour: int = 3  # שעת ריצה יומית (0-23)
     backup_minute: int = 0  # דקה (0-59)
 
+    # Serendipity Review - סקירת משימות
+    # כמה ימים משימה לא תוצג שוב בסקירה אחרי בחירת סטטוס (cooldown)
+    serendipity_cooldown_days: int = 30
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

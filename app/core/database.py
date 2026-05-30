@@ -34,6 +34,8 @@ async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     await database.clients.create_index([("name", 1)])
     await database.projects.create_index([("client_id", 1), ("status", 1)])
     await database.tasks.create_index([("client_id", 1), ("status", 1), ("archived", 1)])
+    # סקירת משימות (serendipity) - שליפת המשימות הזמינות לסקירה
+    await database.tasks.create_index([("status", 1), ("archived", 1), ("last_reviewed_at", 1)])
     # אינדקסים לעמוד התגיות (multikey על מערך tags)
     await database.tasks.create_index("tags")
     await database.projects.create_index("tags")

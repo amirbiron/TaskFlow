@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}סקירת משימות - TaskFlow{% endblock %}
+
+{% block body %}
+<main x-data="serendipityReview()" x-init="loadNext()"
+      class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10 fade-in">
+
+    <!-- כותרת -->
+    <div class="mb-6 md:mb-8 text-center">
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-sf-text-primary">סקירת משימות</h2>
+        <p class="text-slate-600 dark:text-sf-text-secondary mt-1 text-sm md:text-base">משימה אחת בכל פעם — עדכנו סטטוס במהירות</p>
+    </div>
+
+    <!-- טעינה -->
+    <div x-show="loading" class="flex flex-col items-center justify-center py-24 text-slate-500 dark:text-sf-text-secondary">
+        <svg class="animate-spin w-8 h-8 mb-3" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <span class="text-sm">טוען…</span>
+    </div>
+
+    <!-- שגיאה -->
+    <template x-if="!loading && error">
+        <div class="text-center py-20">
+            <div class="text-4xl mb-4">😕</div>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-sf-text-primary mb-2">משהו השתבש</h3>
+            <p class="text-slate-600 dark:text-sf-text-secondary text-sm mb-6">לא הצלחנו לטעון משימה לסקירה.</p>
+            <button @click="loadNext()" class="btn btn-primary">נסו שוב</button>
+        </div>
+    </template>
+
+    <!-- כרטיס משימה -->
+    <template x-if="!loading && !error && task">
+        <div>
+            <div class="review-card relative overflow-hidden rounded-2xl shadow-lg border border-slate-200 dark:border-sf-border p-7 md:p-10 min-h-[240px] flex flex-col justify-center">
+                <!-- רקע דקורטיבי ב-CSS בלבד (גרדיאנט) - ללא תמונות חיצוניות -->
+                <div class="review-card-bg" aria-hidden="true"></div>
+
+                <div class="relative z-10">
+                    <h3 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-4 break-words" x-text="task.title"></h3>
+
+                    <!-- תיאור: רינדור Markdown מהשרת, fallback ל-plaintext למשימות ישנות.
+                         אם אין תיאור כלל - שום בלוק לא מוצג (רק הכותרת). -->
+                    <div
+                        x-show="task.description_html"
+                        class="markdown-body text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-100"
+                        x-html="task.description_html"
+                    ></div>
+                    <p
+                        x-show="!task.description_html && task.description"
+                        class="whitespace-pre-wrap text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-100"
+                        x-text="task.description"
+                    ></p>
+                </div>
+            </div>
+
+            <!-- שלושת כפתורי הבחירה: פתוח / בתהליך / הושלם -->
+            <div class="grid grid-cols-3 gap-3 mt-6">
+                <button @click="choose('open')" :disabled="submitting"
+                        class="review-choice review-choice-open">
+                    <svg class="w-6 h-6 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                    </svg>
+                    <span>פתוח</span>
+                </button>
+                <button @click="choose('in_progress')" :disabled="submitting"
+                        class="review-choice review-choice-progress">
+                    <svg class="w-6 h-6 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>בתהליך</span>
+                </button>
+                <button @click="choose('completed')" :disabled="submitting"
+                        class="review-choice review-choice-done">
+                    <svg class="w-6 h-6 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>הושלם</span>
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <!-- מצב ריק: אין משימות זמינות לסקירה -->
+    <template x-if="!loading && !error && !task">
+        <div class="text-center py-20">
+            <div class="text-5xl mb-4">🌤️</div>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-sf-text-primary mb-2">אין מה לסקור כרגע</h3>
+            <p class="text-slate-600 dark:text-sf-text-secondary text-sm mb-6">כל המשימות מעודכנות. אפשר לחזור מאוחר יותר.</p>
+            <a href="/" class="btn btn-secondary inline-block">חזרה לדשבורד</a>
+        </div>
+    </template>
+
+</main>
+
+<style>
+    [x-cloak] { display: none !important; }
+
+    /* רקע דקורטיבי לכרטיס - גרדיאנט CSS בלבד (אין תמונות) */
+    .review-card-bg {
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 18% 22%, rgba(124, 91, 245, 0.18), transparent 42%),
+            radial-gradient(circle at 82% 80%, rgba(45, 212, 191, 0.16), transparent 45%),
+            linear-gradient(135deg, #eef2ff 0%, #faf5ff 55%, #eff6ff 100%);
+    }
+    html.dark .review-card-bg {
+        background:
+            radial-gradient(circle at 18% 22%, rgba(124, 91, 245, 0.32), transparent 45%),
+            radial-gradient(circle at 82% 80%, rgba(45, 212, 191, 0.18), transparent 48%),
+            linear-gradient(135deg, #1a1e38 0%, #1e2240 55%, #161a30 100%);
+    }
+
+    /* כפתורי הבחירה */
+    .review-choice {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.9rem 0.5rem;
+        border-radius: 0.85rem;
+        border: 2px solid var(--border, #e2e8f0);
+        background: #ffffff;
+        color: #334155;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: transform 0.12s ease, border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+    }
+    html.dark .review-choice {
+        background: #1a1e38;
+        color: #c4dcff;
+        border-color: rgba(255, 255, 255, 0.10);
+    }
+    .review-choice:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); }
+    .review-choice:active:not(:disabled) { transform: translateY(0); }
+    .review-choice:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .review-choice-open:hover:not(:disabled)     { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+    .review-choice-progress:hover:not(:disabled) { border-color: #f59e0b; background: #fffbeb; color: #b45309; }
+    .review-choice-done:hover:not(:disabled)     { border-color: #34d399; background: #ecfdf5; color: #047857; }
+    html.dark .review-choice-open:hover:not(:disabled)     { border-color: #3b82f6; background: rgba(59, 130, 246, 0.12); color: #93c5fd; }
+    html.dark .review-choice-progress:hover:not(:disabled) { border-color: #d4a020; background: rgba(212, 160, 32, 0.12); color: #fcd34d; }
+    html.dark .review-choice-done:hover:not(:disabled)     { border-color: #34d399; background: rgba(52, 211, 153, 0.12); color: #6ee7b7; }
+</style>
+
+<script>
+function serendipityReview() {
+    return {
+        task: null,
+        loading: true,
+        submitting: false,
+        error: false,
+
+        async loadNext() {
+            this.loading = true;
+            this.error = false;
+            try {
+                const res = await fetch('/api/review/next');
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) { this.error = true; this.task = null; return; }
+                const data = await res.json();
+                this.task = data.task;
+            } catch (e) {
+                console.error(e);
+                this.error = true;
+                this.task = null;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async choose(newStatus) {
+            if (!this.task || this.submitting) return;
+            this.submitting = true;
+            try {
+                const res = await fetch('/api/review/' + this.task._id, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus }),
+                });
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) { this.error = true; return; }
+                // מעבר מיידי למשימה הבאה
+                await this.loadNext();
+            } catch (e) {
+                console.error(e);
+                this.error = true;
+            } finally {
+                this.submitting = false;
+            }
+        },
+    };
+}
+</script>
+{% endblock %}

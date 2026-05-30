@@ -82,6 +82,8 @@ class TaskOrderUpdate(BaseModel):
 class Task(MongoBaseModel, TaskBase):
     completed_at: Optional[datetime] = None
     description_html: Optional[str] = None  # רינדור Markdown של description (תוצרת שרת)
+    # חותמת "נסקר עכשיו" מסקירת המשימות (Serendipity Review). ריק = מעולם לא נסקרה
+    last_reviewed_at: Optional[datetime] = None
 
 
 class TaskWithContext(Task):
