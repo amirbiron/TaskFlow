@@ -133,6 +133,19 @@ async def tags_page(request: Request):
     )
 
 
+@router.get("/review", response_class=HTMLResponse)
+async def review_page(request: Request):
+    """עמוד סקירת משימות (Serendipity Review)"""
+    redirect = _require_auth_or_redirect(request)
+    if redirect:
+        return redirect
+
+    return templates.TemplateResponse(
+        "serendipity_review.html",
+        {"request": request, "current_page": "review"},
+    )
+
+
 @router.get("/health")
 async def health_check():
     """בדיקת תקינות לשירות (Render משתמש בזה)"""

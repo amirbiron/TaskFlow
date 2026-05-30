@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import get_settings
 from app.core.database import connect_to_mongo, close_mongo_connection
 from app.core.scheduler import start_scheduler, stop_scheduler
-from app.routers import auth, pages, clients, projects, tasks, tags, dashboard, documents, comments, backups, attachments, partner
+from app.routers import auth, pages, clients, projects, tasks, tags, dashboard, documents, comments, backups, attachments, partner, review
 
 
 @asynccontextmanager
@@ -46,6 +46,7 @@ app.include_router(comments.router, prefix="/api", tags=["comments"])
 app.include_router(attachments.router, prefix="/api", tags=["attachments"])
 app.include_router(backups.router, tags=["backups"])
 app.include_router(partner.router, tags=["partner"])
+app.include_router(review.router, prefix="/api/review", tags=["review"])
 
 
 if __name__ == "__main__":
