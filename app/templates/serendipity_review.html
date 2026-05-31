@@ -97,6 +97,16 @@
                     <span>הושלם</span>
                 </button>
             </div>
+
+            <!-- דילוג: מעבר למשימה הבאה בלי לשנות סטטוס / cooldown -->
+            <div class="mt-4 text-center">
+                <button @click="skip()" :disabled="submitting" class="review-skip">
+                    <span>דלג</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </template>
 
@@ -104,9 +114,25 @@
     <template x-if="!loading && !error && !task">
         <div class="text-center py-20">
             <div class="text-5xl mb-4">🌤️</div>
-            <h3 class="text-xl font-semibold text-slate-900 dark:text-sf-text-primary mb-2">אין מה לסקור כרגע</h3>
-            <p class="text-slate-600 dark:text-sf-text-secondary text-sm mb-6">כל המשימות מעודכנות. אפשר לחזור מאוחר יותר.</p>
-            <a href="/" class="btn btn-secondary inline-block">חזרה לדשבורד</a>
+            <!-- דילגת על כל הזמינות בסבב הנוכחי -->
+            <template x-if="skippedIds.length > 0">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-sf-text-primary mb-2">סיימת את הסבב</h3>
+                    <p class="text-slate-600 dark:text-sf-text-secondary text-sm mb-6">דילגת על כל המשימות הזמינות. אפשר להתחיל סבב חדש.</p>
+                    <div class="flex items-center justify-center gap-3">
+                        <button @click="restartRound()" class="btn btn-primary">התחל סבב חדש</button>
+                        <a href="/" class="btn btn-secondary inline-block">חזרה לדשבורד</a>
+                    </div>
+                </div>
+            </template>
+            <!-- באמת אין מה לסקור -->
+            <template x-if="skippedIds.length === 0">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-sf-text-primary mb-2">אין מה לסקור כרגע</h3>
+                    <p class="text-slate-600 dark:text-sf-text-secondary text-sm mb-6">כל המשימות מעודכנות. אפשר לחזור מאוחר יותר.</p>
+                    <a href="/" class="btn btn-secondary inline-block">חזרה לדשבורד</a>
+                </div>
+            </template>
         </div>
     </template>
 
@@ -236,6 +262,26 @@
     html.dark .review-choice-open:hover:not(:disabled)     { border-color: #3b82f6; background: rgba(59, 130, 246, 0.12); color: #93c5fd; }
     html.dark .review-choice-progress:hover:not(:disabled) { border-color: #d4a020; background: rgba(212, 160, 32, 0.12); color: #fcd34d; }
     html.dark .review-choice-done:hover:not(:disabled)     { border-color: #34d399; background: rgba(52, 211, 153, 0.12); color: #6ee7b7; }
+
+    /* כפתור דילוג (ghost) */
+    .review-skip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.6rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #64748b;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: background-color 0.12s ease, color 0.12s ease;
+    }
+    .review-skip:hover:not(:disabled) { background: #f1f5f9; color: #334155; }
+    .review-skip:disabled { opacity: 0.5; cursor: not-allowed; }
+    html.dark .review-skip { color: #8b90a8; }
+    html.dark .review-skip:hover:not(:disabled) { background: #2a2f50; color: #c4dcff; }
 </style>
 
 <script>
@@ -245,6 +291,7 @@ function serendipityReview() {
         loading: true,
         submitting: false,
         error: false,
+        skippedIds: [],  // מזהי משימות שדילגו עליהן בסבב הנוכחי (בזיכרון בלבד)
         // מצב מודאל התזכורת
         reminderOpen: false,
         reminderValue: '',
@@ -256,11 +303,25 @@ function serendipityReview() {
             return { open: 'פתוח', in_progress: 'בתהליך', completed: 'הושלם' }[s] || s;
         },
 
+        // דילוג: לא משנה סטטוס ולא נכנס ל-cooldown - רק עובר למשימה אחרת בסבב
+        skip() {
+            if (!this.task || this.submitting) return;
+            this.skippedIds.push(this.task._id);
+            this.loadNext();
+        },
+
+        // התחלת סבב חדש: ניקוי הדילוגים וטעינה מחדש
+        restartRound() {
+            this.skippedIds = [];
+            this.loadNext();
+        },
+
         async loadNext() {
             this.loading = true;
             this.error = false;
             try {
-                const res = await fetch('/api/review/next');
+                const qs = this.skippedIds.length ? ('?exclude=' + this.skippedIds.join(',')) : '';
+                const res = await fetch('/api/review/next' + qs);
                 if (res.status === 401) { window.location = '/login'; return; }
                 if (!res.ok) { this.error = true; this.task = null; return; }
                 const data = await res.json();

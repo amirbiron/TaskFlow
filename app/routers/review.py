@@ -6,7 +6,8 @@
 import logging
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, Request, status
+from bson import ObjectId
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from app.core.auth import require_api_auth
@@ -26,11 +27,16 @@ class ReviewActionRequest(BaseModel):
 
 
 @router.get("/next")
-async def get_next_review_task(request: Request):
+async def get_next_review_task(
+    request: Request,
+    exclude: str = Query("", description="מזהי משימות לדילוג (מופרדים בפסיק) - לא יוחזרו"),
+):
     """החזרת משימה אקראית אחת הזמינה לסקירה, או null אם אין.
 
     משימה זמינה לסקירה אם: הסטטוס אינו "הושלם", היא לא בארכיון, והיא לא נסקרה
     ב-X הימים האחרונים (cooldown). משימה שמעולם לא נסקרה (שדה ריק/חסר) - זמינה.
+
+    `exclude` מאפשר לדלג על משימות בסבב הנוכחי (לא יוחזרו) בלי לשנות אותן.
     """
     require_api_auth(request)
     db = get_database()
@@ -46,6 +52,11 @@ async def get_next_review_task(request: Request):
             {"last_reviewed_at": {"$lt": cutoff}},
         ],
     }
+
+    # החרגת משימות שדילגו עליהן בסבב הנוכחי (מזהים לא תקינים פשוט מתעלמים מהם)
+    exclude_ids = [ObjectId(x) for x in exclude.split(",") if x and ObjectId.is_valid(x)]
+    if exclude_ids:
+        query["_id"] = {"$nin": exclude_ids}
 
     # בחירה אקראית של מסמך אחד מתוך הזמינים
     docs = await db.tasks.aggregate([
