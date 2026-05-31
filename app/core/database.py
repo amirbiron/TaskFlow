@@ -30,6 +30,8 @@ async def _ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     await database.tasks.create_index([("project_id", 1), ("status", 1), ("archived", 1)])
     # אינדקס לסינון רשימת הפרויקטים לפי סטטוס
     await database.projects.create_index([("status", 1), ("name", 1)])
+    # אינדקס לשליפת פרויקטים נעוצים (סיידבר הקיצורים)
+    await database.projects.create_index("pinned")
     # אינדקסים לעמוד הלקוחות (ספירת פרויקטים ומשימות פתוחות לכל לקוח)
     await database.clients.create_index([("name", 1)])
     await database.projects.create_index([("client_id", 1), ("status", 1)])

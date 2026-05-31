@@ -231,6 +231,55 @@ async def create_project(request: Request, project_data: ProjectCreate):
     return doc
 
 
+@router.get("/pinned")
+async def list_pinned_projects(request: Request):
+    """החזרת הפרויקטים הנעוצים (לסיידבר) - רשימה קלה: id, שם, וצבע הלקוח.
+
+    מוגדר לפני /{project_id} כדי ש-"pinned" לא ייתפס כמזהה פרויקט.
+    מחזיר את כל הנעוצים ללא תלות בסטטוס, ממוין לפי שם.
+    """
+    require_api_auth(request)
+    db = get_database()
+
+    cursor = db.projects.find(
+        {"pinned": True},
+        {"name": 1, "client_id": 1},
+    ).sort("name", 1)
+    projects = await cursor.to_list(length=1000)
+
+    if not projects:
+        return []
+
+    # פתרון bulk של צבעי הלקוחות (בדומה ל-list_projects)
+    client_obj_ids: List[ObjectId] = []
+    seen = set()
+    for p in projects:
+        cid = p.get("client_id")
+        if cid and cid not in seen:
+            try:
+                client_obj_ids.append(ObjectId(cid))
+                seen.add(cid)
+            except (InvalidId, TypeError):
+                pass
+
+    colors_by_client: dict[str, str] = {}
+    if client_obj_ids:
+        async for c in db.clients.find(
+            {"_id": {"$in": client_obj_ids}},
+            {"color": 1},
+        ):
+            colors_by_client[str(c["_id"])] = c.get("color")
+
+    return [
+        {
+            "_id": str(p["_id"]),
+            "name": p.get("name"),
+            "client_color": colors_by_client.get(p.get("client_id") or ""),
+        }
+        for p in projects
+    ]
+
+
 @router.get("/{project_id}", response_model=ProjectWithStats)
 async def get_project(request: Request, project_id: str):
     """החזרת פרויקט לפי ID עם פרטים מלאים"""
