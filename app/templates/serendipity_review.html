@@ -39,12 +39,22 @@
                 <div class="review-card-bg" aria-hidden="true"></div>
 
                 <div class="relative z-10">
-                    <!-- הסטטוס הנוכחי של המשימה (פתוח/בתהליך) -->
-                    <div class="mb-3">
+                    <!-- שורה עליונה: סטטוס נוכחי + באדג תזכורת -->
+                    <div class="mb-3 flex items-center justify-between gap-2 flex-wrap">
+                        <!-- הסטטוס הנוכחי של המשימה (פתוח/בתהליך) -->
                         <span class="review-status-badge" :class="'review-status-' + task.status">
                             <span class="review-status-dot" aria-hidden="true"></span>
                             <span x-text="statusLabel(task.status)"></span>
                         </span>
+                        <!-- באדג תזכורת: מציג מועד אם קיים, אחרת "צור תזכורת" -->
+                        <button type="button" @click="openReminder()"
+                                class="reminder-badge" :class="task.reminder_date ? 'reminder-badge-active' : ''"
+                                :title="task.reminder_date ? 'שינוי/הסרת תזכורת' : 'צור תזכורת'">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                            </svg>
+                            <span x-text="task.reminder_date ? ('תזכורת: ' + formatReminder(task.reminder_date)) : 'צור תזכורת'"></span>
+                        </button>
                     </div>
                     <h3 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-4 break-words" x-text="task.title"></h3>
 
@@ -100,6 +110,40 @@
         </div>
     </template>
 
+    <!-- מודאל תזכורת: בחירת מועד (datetime-local), שמירה דרך PUT /api/tasks/{id} -->
+    <div x-show="reminderOpen" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         @keydown.escape.window="closeReminder()">
+        <div class="absolute inset-0 bg-black/40" @click="closeReminder()"></div>
+        <div class="relative bg-white dark:bg-sf-bg-card rounded-2xl shadow-xl border border-slate-200 dark:border-sf-border w-full max-w-sm p-6">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-sf-text-primary mb-1">תזכורת</h3>
+            <p class="text-xs text-slate-500 dark:text-sf-text-secondary mb-4">תישלח התראה בטלגרם במועד שתבחרו.</p>
+
+            <label class="form-label">מועד התזכורת</label>
+            <input type="datetime-local" x-model="reminderValue" class="form-input" :disabled="reminderSaving">
+
+            <p x-show="reminderError" x-cloak class="text-sm text-red-600 dark:text-sf-red mt-2" x-text="reminderError"></p>
+
+            <div class="flex items-center justify-between gap-2 mt-5">
+                <!-- הסר תזכורת - רק כשקיימת -->
+                <button type="button" x-show="task && task.reminder_date" x-cloak
+                        @click="clearReminder()" :disabled="reminderSaving"
+                        class="text-sm text-red-600 dark:text-sf-red hover:underline disabled:opacity-50">
+                    הסר תזכורת
+                </button>
+                <span x-show="!(task && task.reminder_date)" aria-hidden="true"></span>
+
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="closeReminder()" :disabled="reminderSaving" class="btn btn-secondary">ביטול</button>
+                    <button type="button" @click="saveReminder()" :disabled="reminderSaving || !reminderValue" class="btn btn-primary">
+                        <span x-show="!reminderSaving">שמירה</span>
+                        <span x-show="reminderSaving" x-cloak>שומר…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </main>
 
 <style>
@@ -139,6 +183,27 @@
     html.dark .review-status-open        { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-color: rgba(59, 130, 246, 0.35); }
     html.dark .review-status-in_progress { background: rgba(212, 160, 32, 0.15); color: #fcd34d; border-color: rgba(212, 160, 32, 0.35); }
     html.dark .review-status-completed   { background: rgba(52, 211, 153, 0.15); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.35); }
+
+    /* באדג תזכורת */
+    .reminder-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.7rem;
+        border-radius: 9999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: #ffffff;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    }
+    .reminder-badge:hover { border-color: #7c5bf5; color: #6b4ae0; background: #f5f3ff; }
+    .reminder-badge-active { background: #f5f3ff; color: #6b4ae0; border-color: #ddd6fe; }
+    html.dark .reminder-badge { background: #1a1e38; color: #8b90a8; border-color: rgba(255, 255, 255, 0.10); }
+    html.dark .reminder-badge:hover { border-color: #7c5bf5; color: #9b7ffc; background: rgba(124, 91, 245, 0.12); }
+    html.dark .reminder-badge-active { background: rgba(124, 91, 245, 0.15); color: #9b7ffc; border-color: rgba(124, 91, 245, 0.35); }
 
     /* כפתורי הבחירה */
     .review-choice {
@@ -180,6 +245,12 @@ function serendipityReview() {
         loading: true,
         submitting: false,
         error: false,
+        // מצב מודאל התזכורת
+        reminderOpen: false,
+        reminderValue: '',
+        reminderSaving: false,
+        reminderError: '',
+        reminderOriginal: null,  // התאריך המקורי (ISO מנורמל) לזיהוי שינוי אמיתי
 
         statusLabel(s) {
             return { open: 'פתוח', in_progress: 'בתהליך', completed: 'הושלם' }[s] || s;
@@ -221,6 +292,95 @@ function serendipityReview() {
                 this.error = true;
             } finally {
                 this.submitting = false;
+            }
+        },
+
+        // === תזכורת (שימוש חוזר באותו חוזה של המודאל הראשי) ===
+
+        // השרת מחזיר naive UTC (ללא "Z"); מוסיפים Z כדי לא להיסחף ב-offset המקומי
+        parseServerDate(s) {
+            if (!s) return null;
+            const hasTz = /(Z|[+-]\d{2}:?\d{2})$/.test(s);
+            return new Date(hasTz ? s : s + 'Z');
+        },
+
+        // המרה לפורמט של <input type="datetime-local"> בזמן מקומי
+        toDatetimeLocal(isoStr) {
+            const d = this.parseServerDate(isoStr);
+            if (!d) return '';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        },
+
+        // תצוגת מועד התזכורת על הבאדג
+        formatReminder(isoStr) {
+            const d = this.parseServerDate(isoStr);
+            if (!d) return '';
+            return d.toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        },
+
+        openReminder() {
+            if (!this.task) return;
+            this.reminderValue = this.task.reminder_date ? this.toDatetimeLocal(this.task.reminder_date) : '';
+            // נרמול לאותו פורמט שבו נשלח reminder_date, כדי לזהות שינוי אמיתי
+            const orig = this.parseServerDate(this.task.reminder_date);
+            this.reminderOriginal = orig ? orig.toISOString() : null;
+            this.reminderError = '';
+            this.reminderOpen = true;
+        },
+
+        closeReminder() {
+            // לא לסגור באמצע שמירה - אחרת שגיאה שתתקבל אחרי הסגירה תוסתר
+            if (this.reminderSaving) return;
+            this.reminderOpen = false;
+            this.reminderError = '';
+        },
+
+        async clearReminder() {
+            await this._saveReminder(null);
+        },
+
+        async saveReminder() {
+            if (!this.reminderValue) return;
+            await this._saveReminder(new Date(this.reminderValue).toISOString());
+        },
+
+        // שמירה דרך אותו חוזה כמו המודאל הראשי: PUT /api/tasks/{id}
+        async _saveReminder(isoOrNull) {
+            if (!this.task || this.reminderSaving) return;
+            const targetId = this.task._id;  // נועלים את המשימה שעליה פועלים
+            this.reminderSaving = true;
+            this.reminderError = '';
+            try {
+                // מאפסים reminder_sent רק כשהתאריך באמת השתנה, כדי לא "להחיות"
+                // תזכורת שכבר נשלחה (עקבי עם מודאל העריכה הראשי).
+                const payload = { reminder_date: isoOrNull };
+                if (isoOrNull !== this.reminderOriginal) {
+                    payload.reminder_sent = false;
+                }
+                const res = await fetch('/api/tasks/' + targetId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.reminderError = err.detail || 'שגיאה בשמירת התזכורת';
+                    return;
+                }
+                const updated = await res.json();
+                // מחילים על התצוגה רק אם עדיין מוצגת אותה משימה (מונע תגובה ישנה
+                // שתוחל על משימה שהתחלפה בינתיים). השרת עודכן נכון בכל מקרה.
+                if (this.task && this.task._id === targetId) {
+                    this.task.reminder_date = updated.reminder_date || null;
+                }
+                this.reminderOpen = false;
+            } catch (e) {
+                console.error(e);
+                this.reminderError = 'שגיאה בשמירת התזכורת';
+            } finally {
+                this.reminderSaving = false;
             }
         },
     };
