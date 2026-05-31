@@ -34,6 +34,7 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/main.css">
+    <style>[x-cloak]{display:none !important;}</style>
 
     <!-- highlight.js — syntax highlighting בצד-לקוח לבלוקי קוד.
          theme: atom-one-dark (תואם לרקע הכהה של בלוקי קוד אצלנו).
@@ -105,6 +106,7 @@
 </head>
 <body class="font-sans bg-slate-50 dark:bg-sf-bg-deep text-slate-900 dark:text-sf-text-primary min-h-screen pb-20 md:pb-0 transition-colors">
     {% if request.url.path != '/login' %}
+    <div x-data="pinnedSidebar()" x-init="init()">
     <!-- ניווט עליון - טאבלט/דסקטופ -->
     <nav class="hidden md:block bg-white dark:bg-sf-bg-card shadow-sm border-b border-slate-200 dark:border-sf-border sticky top-0 z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -162,6 +164,17 @@
 
                 <!-- כפתור Dark Mode + התנתקות -->
                 <div class="flex items-center gap-1">
+                    <!-- טוגל סיידבר פרויקטים נעוצים -->
+                    <button type="button"
+                            @click="toggle()"
+                            class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-colors"
+                            :class="open ? 'text-primary-600 dark:text-sf-primary-light' : 'text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary'"
+                            title="פרויקטים נעוצים"
+                            aria-label="פרויקטים נעוצים">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                        </svg>
+                    </button>
                     <button type="button"
                             onclick="window.toggleTheme()"
                             class="theme-toggle text-slate-600 dark:text-sf-text-secondary hover:text-slate-900 dark:hover:text-sf-text-primary p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-colors"
@@ -278,6 +291,70 @@
             </div>
         </div>
     </header>
+
+    <!-- ===== סיידבר פרויקטים נעוצים (טאבלט/דסקטופ בלבד) ===== -->
+    <div x-show="open" x-cloak x-transition.opacity class="fixed inset-0 bg-black/30 z-30" @click="close()"></div>
+    <aside x-show="open" x-cloak
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+           class="fixed top-0 left-0 h-full w-60 bg-white dark:bg-sf-bg-card border-r border-slate-200 dark:border-sf-border shadow-xl z-40 flex flex-col">
+        <div class="flex items-center justify-between px-4 h-16 border-b border-slate-200 dark:border-sf-border flex-shrink-0">
+            <h2 class="font-bold text-slate-900 dark:text-sf-text-primary">פרויקטים נעוצים</h2>
+            <button @click="close()" class="p-1.5 rounded-lg text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover" aria-label="סגור">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-3">
+            <div class="grid grid-cols-2 gap-3">
+                <template x-for="p in pinned" :key="p._id">
+                    <a :href="`/projects/${p._id}`" :title="p.name" class="no-underline text-inherit flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-sf-bg-hover transition-colors">
+                        <span class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold border"
+                              :style="`background-color: ${(p.client_color||'#94A3B8')}22; color: ${(p.client_color||'#94A3B8')}; border-color: ${(p.client_color||'#94A3B8')}55`"
+                              x-text="initial(p.name)"></span>
+                        <span class="text-xs text-center text-slate-700 dark:text-sf-text-secondary w-full truncate" x-text="p.name"></span>
+                    </a>
+                </template>
+                <!-- ריבוע הוספה (+) -->
+                <button @click="openModal()" type="button" class="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-sf-bg-hover transition-colors">
+                    <span class="w-14 h-14 rounded-2xl flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-sf-border text-slate-400 dark:text-sf-text-muted">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    </span>
+                    <span class="text-xs text-center text-slate-500 dark:text-sf-text-secondary">הוסף</span>
+                </button>
+            </div>
+            <p x-show="pinned.length === 0" class="text-xs text-slate-400 dark:text-sf-text-muted text-center mt-4">אין פרויקטים נעוצים.<br>הוסיפו עם +</p>
+        </div>
+    </aside>
+
+    <!-- ===== מודאל ניהול נעיצות ===== -->
+    <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.escape.window="closeModal()">
+        <div class="absolute inset-0 bg-black/40" @click="closeModal()"></div>
+        <div class="relative bg-white dark:bg-sf-bg-card rounded-2xl shadow-xl border border-slate-200 dark:border-sf-border w-full max-w-md p-5 flex flex-col" style="max-height: 80vh;">
+            <div class="flex items-center justify-between mb-1 flex-shrink-0">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-sf-text-primary">ניהול פרויקטים נעוצים</h3>
+                <button @click="closeModal()" class="p-1.5 rounded-lg text-slate-500 dark:text-sf-text-secondary hover:bg-slate-100 dark:hover:bg-sf-bg-hover" aria-label="סגור">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-sf-text-secondary mb-3 flex-shrink-0">סמנו פרויקטים כדי שיופיעו ב-sidebar.</p>
+            <div x-show="loadingAll" class="text-center py-8 text-slate-500 dark:text-sf-text-secondary text-sm">טוען…</div>
+            <div x-show="!loadingAll" class="overflow-y-auto -mx-1 px-1 space-y-1">
+                <p x-show="allProjects.length === 0" class="text-center py-8 text-slate-500 dark:text-sf-text-secondary text-sm">אין פרויקטים.</p>
+                <template x-for="p in allProjects" :key="p._id">
+                    <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-sf-bg-hover cursor-pointer">
+                        <input type="checkbox" :checked="p.pinned" @change="togglePin(p)" :disabled="savingId === p._id" class="w-4 h-4 accent-primary-600 cursor-pointer">
+                        <span class="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 border"
+                              :style="`background-color: ${(p.client_color||'#94A3B8')}22; color: ${(p.client_color||'#94A3B8')}; border-color: ${(p.client_color||'#94A3B8')}55`"
+                              x-text="initial(p.name)"></span>
+                        <span class="flex-1 truncate text-sm text-slate-800 dark:text-sf-text-primary" x-text="p.name"></span>
+                    </label>
+                </template>
+            </div>
+        </div>
+    </div>
+    </div>
     {% endif %}
 
     {% block body %}{% endblock %}
@@ -293,6 +370,89 @@
             var meta = document.querySelector('meta[name="theme-color"]');
             if (meta) meta.setAttribute('content', isDark ? '#111428' : '#f8fafc');
         };
+    </script>
+
+    <!-- רכיב Alpine לסיידבר הפרויקטים הנעוצים (זמין בכל העמודים) -->
+    <script>
+        function pinnedSidebar() {
+            return {
+                open: false,
+                modalOpen: false,
+                pinned: [],          // נעוצים לסיידבר: [{_id, name, client_color}]
+                allProjects: [],     // כל הפרויקטים (במודאל)
+                loadingAll: false,
+                savingId: null,
+
+                init() {
+                    // טאבלט/דסקטופ בלבד - לא טוענים במובייל
+                    if (window.matchMedia && window.matchMedia('(min-width: 768px)').matches) {
+                        this.loadPinned();
+                    }
+                },
+
+                async loadPinned() {
+                    try {
+                        const res = await fetch('/api/projects/pinned');
+                        if (!res.ok) return;
+                        this.pinned = await res.json();
+                    } catch (e) { console.error(e); }
+                },
+
+                toggle() {
+                    if (window.innerWidth < 768) return;  // לא במובייל
+                    this.open = !this.open;
+                },
+                close() { this.open = false; },
+
+                async openModal() {
+                    this.modalOpen = true;
+                    await this.loadAll();
+                },
+                closeModal() { this.modalOpen = false; },
+
+                async loadAll() {
+                    this.loadingAll = true;
+                    try {
+                        const res = await fetch('/api/projects?include_inactive=true');
+                        if (res.status === 401) { window.location = '/login'; return; }
+                        if (!res.ok) return;
+                        this.allProjects = await res.json();
+                    } catch (e) { console.error(e); }
+                    finally { this.loadingAll = false; }
+                },
+
+                // נעיצה/ביטול - שמירה מיידית דרך ה-PUT הקיים
+                async togglePin(p) {
+                    if (this.savingId) return;
+                    const newVal = !p.pinned;
+                    this.savingId = p._id;
+                    try {
+                        const res = await fetch('/api/projects/' + p._id, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ pinned: newVal }),
+                        });
+                        if (res.status === 401) { window.location = '/login'; return; }
+                        if (!res.ok) return;
+                        p.pinned = newVal;  // עדכון אופטימי במודאל
+                        // עדכון רשימת הסיידבר בהתאם
+                        if (newVal) {
+                            if (!this.pinned.some(x => x._id === p._id)) {
+                                this.pinned.push({ _id: p._id, name: p.name, client_color: p.client_color });
+                                this.pinned.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'he'));
+                            }
+                        } else {
+                            this.pinned = this.pinned.filter(x => x._id !== p._id);
+                        }
+                    } catch (e) { console.error(e); }
+                    finally { this.savingId = null; }
+                },
+
+                initial(name) {
+                    return (name || '?').trim().charAt(0).toUpperCase();
+                },
+            };
+        }
     </script>
 </body>
 </html>
