@@ -330,6 +330,8 @@ function serendipityReview() {
         },
 
         closeReminder() {
+            // לא לסגור באמצע שמירה - אחרת שגיאה שתתקבל אחרי הסגירה תוסתר
+            if (this.reminderSaving) return;
             this.reminderOpen = false;
             this.reminderError = '';
         },
