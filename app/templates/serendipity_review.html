@@ -250,6 +250,7 @@ function serendipityReview() {
         reminderValue: '',
         reminderSaving: false,
         reminderError: '',
+        reminderOriginal: null,  // התאריך המקורי (ISO מנורמל) לזיהוי שינוי אמיתי
 
         statusLabel(s) {
             return { open: 'פתוח', in_progress: 'בתהליך', completed: 'הושלם' }[s] || s;
@@ -321,6 +322,9 @@ function serendipityReview() {
         openReminder() {
             if (!this.task) return;
             this.reminderValue = this.task.reminder_date ? this.toDatetimeLocal(this.task.reminder_date) : '';
+            // נרמול לאותו פורמט שבו נשלח reminder_date, כדי לזהות שינוי אמיתי
+            const orig = this.parseServerDate(this.task.reminder_date);
+            this.reminderOriginal = orig ? orig.toISOString() : null;
             this.reminderError = '';
             this.reminderOpen = true;
         },
@@ -342,13 +346,20 @@ function serendipityReview() {
         // שמירה דרך אותו חוזה כמו המודאל הראשי: PUT /api/tasks/{id}
         async _saveReminder(isoOrNull) {
             if (!this.task || this.reminderSaving) return;
+            const targetId = this.task._id;  // נועלים את המשימה שעליה פועלים
             this.reminderSaving = true;
             this.reminderError = '';
             try {
-                const res = await fetch('/api/tasks/' + this.task._id, {
+                // מאפסים reminder_sent רק כשהתאריך באמת השתנה, כדי לא "להחיות"
+                // תזכורת שכבר נשלחה (עקבי עם מודאל העריכה הראשי).
+                const payload = { reminder_date: isoOrNull };
+                if (isoOrNull !== this.reminderOriginal) {
+                    payload.reminder_sent = false;
+                }
+                const res = await fetch('/api/tasks/' + targetId, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ reminder_date: isoOrNull, reminder_sent: false }),
+                    body: JSON.stringify(payload),
                 });
                 if (res.status === 401) { window.location = '/login'; return; }
                 if (!res.ok) {
@@ -357,8 +368,11 @@ function serendipityReview() {
                     return;
                 }
                 const updated = await res.json();
-                // עדכון מצב הכרטיס מהתשובה (reminder_date מנורמל מהשרת)
-                this.task.reminder_date = updated.reminder_date || null;
+                // מחילים על התצוגה רק אם עדיין מוצגת אותה משימה (מונע תגובה ישנה
+                // שתוחל על משימה שהתחלפה בינתיים). השרת עודכן נכון בכל מקרה.
+                if (this.task && this.task._id === targetId) {
+                    this.task.reminder_date = updated.reminder_date || null;
+                }
                 this.reminderOpen = false;
             } catch (e) {
                 console.error(e);
