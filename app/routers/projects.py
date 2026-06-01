@@ -318,6 +318,10 @@ async def update_project(
     # אם מעדכנים client_id - לוודא תקינות
     update_doc = {k: v for k, v in update_data.model_dump(exclude_unset=True).items()}
 
+    # pinned הוא bool במודל - לא לכתוב null (ישבור ולידציית תשובה ב-GET/PUT)
+    if update_doc.get("pinned") is None:
+        update_doc.pop("pinned", None)
+
     if "client_id" in update_doc and update_doc["client_id"]:
         try:
             client = await db.clients.find_one({"_id": ObjectId(update_doc["client_id"])})

@@ -344,7 +344,7 @@
                 <p x-show="allProjects.length === 0" class="text-center py-8 text-slate-500 dark:text-sf-text-secondary text-sm">אין פרויקטים.</p>
                 <template x-for="p in allProjects" :key="p._id">
                     <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-sf-bg-hover cursor-pointer">
-                        <input type="checkbox" :checked="p.pinned" @change="togglePin(p)" :disabled="savingId === p._id" class="w-4 h-4 accent-primary-600 cursor-pointer">
+                        <input type="checkbox" :checked="p.pinned" @change="togglePin(p)" :disabled="savingIds.includes(p._id)" class="w-4 h-4 accent-primary-600 cursor-pointer">
                         <span class="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 border"
                               :style="`background-color: ${(p.client_color||'#94A3B8')}22; color: ${(p.client_color||'#94A3B8')}; border-color: ${(p.client_color||'#94A3B8')}55`"
                               x-text="initial(p.name)"></span>
@@ -381,7 +381,8 @@
                 pinned: [],          // נעוצים לסיידבר: [{_id, name, client_color}]
                 allProjects: [],     // כל הפרויקטים (במודאל)
                 loadingAll: false,
-                savingId: null,
+                savingIds: [],       // מזהי פרויקטים שכרגע בשמירה (נעילה פר-פרויקט)
+                pinnedLoaded: false, // האם loadPinned כבר הושלם בהצלחה
 
                 init() {
                     // טאבלט/דסקטופ בלבד - לא טוענים במובייל
@@ -395,12 +396,17 @@
                         const res = await fetch('/api/projects/pinned');
                         if (!res.ok) return;
                         this.pinned = await res.json();
+                        this.pinnedLoaded = true;
                     } catch (e) { console.error(e); }
                 },
 
                 toggle() {
                     if (window.innerWidth < 768) return;  // לא במובייל
                     this.open = !this.open;
+                    // אם נפתח בלי שהנעוצים נטענו (למשל הדף נטען צר והורחב) - לטעון כעת
+                    if (this.open && !this.pinnedLoaded) {
+                        this.loadPinned();
+                    }
                 },
                 close() { this.open = false; },
 
@@ -421,11 +427,13 @@
                     finally { this.loadingAll = false; }
                 },
 
-                // נעיצה/ביטול - שמירה מיידית דרך ה-PUT הקיים
+                // נעיצה/ביטול - שמירה מיידית דרך ה-PUT הקיים.
+                // נעילה פר-פרויקט (לא גלובלית) כדי שסימון מהיר של כמה פרויקטים
+                // ברצף לא יבלע בקשות.
                 async togglePin(p) {
-                    if (this.savingId) return;
+                    if (this.savingIds.includes(p._id)) return;
                     const newVal = !p.pinned;
-                    this.savingId = p._id;
+                    this.savingIds.push(p._id);
                     try {
                         const res = await fetch('/api/projects/' + p._id, {
                             method: 'PUT',
@@ -445,7 +453,7 @@
                             this.pinned = this.pinned.filter(x => x._id !== p._id);
                         }
                     } catch (e) { console.error(e); }
-                    finally { this.savingId = null; }
+                    finally { this.savingIds = this.savingIds.filter(id => id !== p._id); }
                 },
 
                 initial(name) {
