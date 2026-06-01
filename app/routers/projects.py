@@ -81,6 +81,7 @@ async def _enrich_project(project: dict, db) -> dict:
 async def list_projects(
     request: Request,
     include_inactive: bool = Query(False, description="האם לכלול פרויקטים שהושלמו או בארכיון"),
+    exclude_archived: bool = Query(False, description="כשמשולב עם include_inactive: לכלול הושלמו אך לא ארכיון"),
 ):
     """החזרת פרויקטים עם סטטיסטיקות ופרטי לקוח"""
     require_api_auth(request)
@@ -90,6 +91,9 @@ async def list_projects(
     query = {}
     if not include_inactive:
         query["status"] = {"$in": ["active", "pending"]}
+    elif exclude_archived:
+        # פעילים + בהמתנה + הושלמו, אך ללא ארכיון (למשל מודאל הנעיצות)
+        query["status"] = {"$ne": "archived"}
 
     cursor = db.projects.find(query).sort([("status", 1), ("name", 1)])
     projects = await cursor.to_list(length=1000)
@@ -241,8 +245,9 @@ async def list_pinned_projects(request: Request):
     require_api_auth(request)
     db = get_database()
 
+    # פרויקטים בארכיון לא מוצגים בסיידבר (הנעיצה נשמרת; אם יוחזר מארכיון יופיע שוב)
     cursor = db.projects.find(
-        {"pinned": True},
+        {"pinned": True, "status": {"$ne": "archived"}},
         {"name": 1, "client_id": 1},
     ).sort("name", 1)
     projects = await cursor.to_list(length=1000)

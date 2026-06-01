@@ -413,7 +413,7 @@
                 async loadAll() {
                     this.loadingAll = true;
                     try {
-                        const res = await fetch('/api/projects?include_inactive=true');
+                        const res = await fetch('/api/projects?include_inactive=true&exclude_archived=true');
                         if (res.status === 401) { window.location = '/login'; return; }
                         if (!res.ok) return;
                         this.allProjects = await res.json();
