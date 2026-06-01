@@ -5,8 +5,10 @@
 """
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
@@ -24,6 +26,25 @@ logger = logging.getLogger(__name__)
 class ReviewActionRequest(BaseModel):
     """בחירת סטטוס בסקירה. הערך מוגבל לשלושת ערכי הסטטוס הקיימים."""
     status: TaskStatus
+
+
+async def _project_name(db, project_id) -> Optional[str]:
+    """שליפת שם הפרויקט של המשימה לתצוגה בראש כרטיס הסקירה.
+
+    מחזיר None אם אין project_id, אם המזהה לא תקין, או אם הפרויקט לא נמצא
+    (למשל נמחק) - כך שהתצוגה פשוט לא תציג תווית, בלי לשבור את הסקירה.
+    שולף את שדה השם בלבד, בדומה לחלק הפרויקט ב-tasks._enrich_task.
+    """
+    if not project_id:
+        return None
+    try:
+        project = await db.projects.find_one(
+            {"_id": ObjectId(project_id)},
+            {"name": 1},
+        )
+    except (InvalidId, TypeError):
+        return None
+    return project.get("name") if project else None
 
 
 @router.get("/next")
@@ -67,7 +88,10 @@ async def get_next_review_task(
     if not docs:
         return {"task": None}
 
-    return {"task": _serialize(docs[0])}
+    task = _serialize(docs[0])
+    # העשרה מינימלית: שם הפרויקט לתצוגה בראש כרטיס הסקירה
+    task["project_name"] = await _project_name(db, task.get("project_id"))
+    return {"task": task}
 
 
 @router.post("/{task_id}")

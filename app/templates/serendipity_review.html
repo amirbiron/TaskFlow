@@ -39,6 +39,15 @@
                 <div class="review-card-bg" aria-hidden="true"></div>
 
                 <div class="relative z-10">
+                    <!-- שם הפרויקט של המשימה (בראש הכרטיס). אותו דפוס אייקון+סגנון
+                         כמו בקאנבן ובארכיון. מוסתר אם אין פרויקט (למשל נמחק). -->
+                    <div x-show="task.project_name"
+                         class="mb-2 flex items-center text-xs font-medium text-slate-500 dark:text-sf-text-secondary">
+                        <svg class="w-3.5 h-3.5 ml-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2"/>
+                        </svg>
+                        <span class="truncate" x-text="task.project_name"></span>
+                    </div>
                     <!-- שורה עליונה: סטטוס נוכחי + באדג תזכורת -->
                     <div class="mb-3 flex items-center justify-between gap-2 flex-wrap">
                         <!-- הסטטוס הנוכחי של המשימה (פתוח/בתהליך) -->
