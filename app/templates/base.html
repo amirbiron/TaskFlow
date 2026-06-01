@@ -389,6 +389,7 @@
                 savingIds: [],       // מזהי פרויקטים שכרגע בשמירה (נעילה פר-פרויקט)
                 pinnedLoaded: false, // האם loadPinned כבר הושלם בהצלחה
                 _pinSeq: 0,          // מונה דורות: מבטל תוצאת loadPinned שאיחרה
+                _allSeq: 0,          // מונה דורות: מבטל תוצאת loadAll שאיחרה
 
                 init() {
                     // טאבלט/דסקטופ בלבד - לא טוענים במובייל
@@ -429,16 +430,25 @@
                 closeModal() { this.modalOpen = false; },
 
                 async loadAll() {
+                    const seq = ++this._allSeq;  // כל קריאה מקבלת דור עדכני
                     this.loadingAll = true;
                     this.loadAllError = false;
                     this.allProjects = [];  // לא להציג רשימה ישנה בזמן טעינה/כשל
                     try {
                         const res = await fetch('/api/projects?include_inactive=true&exclude_archived=true');
+                        // אם בינתיים נפתח המודאל שוב (קריאה חדשה יותר) - להתעלם מהתוצאה הישנה
+                        if (seq !== this._allSeq) return;
                         if (res.status === 401) { window.location = '/login'; return; }
                         if (!res.ok) { this.loadAllError = true; return; }
-                        this.allProjects = await res.json();
-                    } catch (e) { console.error(e); this.loadAllError = true; }
-                    finally { this.loadingAll = false; }
+                        const data = await res.json();
+                        if (seq !== this._allSeq) return;
+                        this.allProjects = data;
+                    } catch (e) {
+                        console.error(e);
+                        if (seq === this._allSeq) this.loadAllError = true;
+                    } finally {
+                        if (seq === this._allSeq) this.loadingAll = false;
+                    }
                 },
 
                 // נעיצה/ביטול - שמירה מיידית דרך ה-PUT הקיים.
