@@ -34,6 +34,7 @@ class ProjectBase(BaseModel):
     status: ProjectStatus = ProjectStatus.ACTIVE
     tags: List[str] = Field(default_factory=list)
     links: List[ProjectLink] = Field(default_factory=list)
+    pinned: bool = False  # נעוץ בסיידבר הקיצורים (טאבלט/דסקטופ)
 
 
 class ProjectCreate(ProjectBase):
@@ -47,6 +48,7 @@ class ProjectUpdate(BaseModel):
     status: Optional[ProjectStatus] = None
     tags: Optional[List[str]] = None
     links: Optional[List[ProjectLink]] = None
+    pinned: Optional[bool] = None
 
 
 class Project(MongoBaseModel, ProjectBase):

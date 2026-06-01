@@ -81,6 +81,7 @@ async def _enrich_project(project: dict, db) -> dict:
 async def list_projects(
     request: Request,
     include_inactive: bool = Query(False, description="האם לכלול פרויקטים שהושלמו או בארכיון"),
+    exclude_archived: bool = Query(False, description="כשמשולב עם include_inactive: לכלול הושלמו אך לא ארכיון"),
 ):
     """החזרת פרויקטים עם סטטיסטיקות ופרטי לקוח"""
     require_api_auth(request)
@@ -90,6 +91,9 @@ async def list_projects(
     query = {}
     if not include_inactive:
         query["status"] = {"$in": ["active", "pending"]}
+    elif exclude_archived:
+        # פעילים + בהמתנה + הושלמו, אך ללא ארכיון (למשל מודאל הנעיצות)
+        query["status"] = {"$ne": "archived"}
 
     cursor = db.projects.find(query).sort([("status", 1), ("name", 1)])
     projects = await cursor.to_list(length=1000)
@@ -231,6 +235,56 @@ async def create_project(request: Request, project_data: ProjectCreate):
     return doc
 
 
+@router.get("/pinned")
+async def list_pinned_projects(request: Request):
+    """החזרת הפרויקטים הנעוצים (לסיידבר) - רשימה קלה: id, שם, וצבע הלקוח.
+
+    מוגדר לפני /{project_id} כדי ש-"pinned" לא ייתפס כמזהה פרויקט.
+    מחזיר את כל הנעוצים ללא תלות בסטטוס, ממוין לפי שם.
+    """
+    require_api_auth(request)
+    db = get_database()
+
+    # פרויקטים בארכיון לא מוצגים בסיידבר (הנעיצה נשמרת; אם יוחזר מארכיון יופיע שוב)
+    cursor = db.projects.find(
+        {"pinned": True, "status": {"$ne": "archived"}},
+        {"name": 1, "client_id": 1},
+    ).sort("name", 1)
+    projects = await cursor.to_list(length=1000)
+
+    if not projects:
+        return []
+
+    # פתרון bulk של צבעי הלקוחות (בדומה ל-list_projects)
+    client_obj_ids: List[ObjectId] = []
+    seen = set()
+    for p in projects:
+        cid = p.get("client_id")
+        if cid and cid not in seen:
+            try:
+                client_obj_ids.append(ObjectId(cid))
+                seen.add(cid)
+            except (InvalidId, TypeError):
+                pass
+
+    colors_by_client: dict[str, str] = {}
+    if client_obj_ids:
+        async for c in db.clients.find(
+            {"_id": {"$in": client_obj_ids}},
+            {"color": 1},
+        ):
+            colors_by_client[str(c["_id"])] = c.get("color")
+
+    return [
+        {
+            "_id": str(p["_id"]),
+            "name": p.get("name"),
+            "client_color": colors_by_client.get(p.get("client_id") or ""),
+        }
+        for p in projects
+    ]
+
+
 @router.get("/{project_id}", response_model=ProjectWithStats)
 async def get_project(request: Request, project_id: str):
     """החזרת פרויקט לפי ID עם פרטים מלאים"""
@@ -263,6 +317,10 @@ async def update_project(
 
     # אם מעדכנים client_id - לוודא תקינות
     update_doc = {k: v for k, v in update_data.model_dump(exclude_unset=True).items()}
+
+    # pinned הוא bool במודל - לא לכתוב null (ישבור ולידציית תשובה ב-GET/PUT)
+    if update_doc.get("pinned") is None:
+        update_doc.pop("pinned", None)
 
     if "client_id" in update_doc and update_doc["client_id"]:
         try:

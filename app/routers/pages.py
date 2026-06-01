@@ -1,5 +1,6 @@
 """ראוטר לדפים הראשיים של האפליקציה"""
-from fastapi import APIRouter, Request
+from bson import ObjectId
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.core.auth import is_authenticated
@@ -66,6 +67,11 @@ async def project_detail_page(request: Request, project_id: str):
     redirect = _require_auth_or_redirect(request)
     if redirect:
         return redirect
+
+    # מזהה פרויקט חייב להיות ObjectId תקין. מונע גם התנגשות עם נתיב
+    # API כמו /projects/pinned שאינו מזהה אמיתי.
+    if not ObjectId.is_valid(project_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="פרויקט לא נמצא")
 
     return templates.TemplateResponse(
         "project_detail.html",
