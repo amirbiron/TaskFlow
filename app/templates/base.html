@@ -340,7 +340,11 @@
             </div>
             <p class="text-xs text-slate-500 dark:text-sf-text-secondary mb-3 flex-shrink-0">סמנו פרויקטים כדי שיופיעו ב-sidebar.</p>
             <div x-show="loadingAll" class="text-center py-8 text-slate-500 dark:text-sf-text-secondary text-sm">טוען…</div>
-            <div x-show="!loadingAll" class="overflow-y-auto -mx-1 px-1 space-y-1">
+            <div x-show="!loadingAll && loadAllError" x-cloak class="text-center py-8 text-sm">
+                <p class="text-red-600 dark:text-sf-red mb-3">לא הצלחנו לטעון את הפרויקטים.</p>
+                <button @click="loadAll()" class="btn btn-secondary">נסו שוב</button>
+            </div>
+            <div x-show="!loadingAll && !loadAllError" class="overflow-y-auto -mx-1 px-1 space-y-1">
                 <p x-show="allProjects.length === 0" class="text-center py-8 text-slate-500 dark:text-sf-text-secondary text-sm">אין פרויקטים.</p>
                 <template x-for="p in allProjects" :key="p._id">
                     <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-sf-bg-hover cursor-pointer">
@@ -381,8 +385,10 @@
                 pinned: [],          // נעוצים לסיידבר: [{_id, name, client_color}]
                 allProjects: [],     // כל הפרויקטים (במודאל)
                 loadingAll: false,
+                loadAllError: false, // כשל בטעינת רשימת הפרויקטים למודאל
                 savingIds: [],       // מזהי פרויקטים שכרגע בשמירה (נעילה פר-פרויקט)
                 pinnedLoaded: false, // האם loadPinned כבר הושלם בהצלחה
+                _pinSeq: 0,          // מונה דורות: מבטל תוצאת loadPinned שאיחרה
 
                 init() {
                     // טאבלט/דסקטופ בלבד - לא טוענים במובייל
@@ -392,10 +398,16 @@
                 },
 
                 async loadPinned() {
+                    const seq = ++this._pinSeq;  // כל קריאה מקבלת דור עדכני
                     try {
                         const res = await fetch('/api/projects/pinned');
+                        if (res.status === 401) { window.location = '/login'; return; }
                         if (!res.ok) return;
-                        this.pinned = await res.json();
+                        const data = await res.json();
+                        // לא לדרוס אם בינתיים יצאה קריאה חדשה יותר או שבוצעה
+                        // שמירה (togglePin) שעדכנה את הרשימה - מונע מצב מרוץ.
+                        if (seq !== this._pinSeq) return;
+                        this.pinned = data;
                         this.pinnedLoaded = true;
                     } catch (e) { console.error(e); }
                 },
@@ -418,12 +430,14 @@
 
                 async loadAll() {
                     this.loadingAll = true;
+                    this.loadAllError = false;
+                    this.allProjects = [];  // לא להציג רשימה ישנה בזמן טעינה/כשל
                     try {
                         const res = await fetch('/api/projects?include_inactive=true&exclude_archived=true');
                         if (res.status === 401) { window.location = '/login'; return; }
-                        if (!res.ok) return;
+                        if (!res.ok) { this.loadAllError = true; return; }
                         this.allProjects = await res.json();
-                    } catch (e) { console.error(e); }
+                    } catch (e) { console.error(e); this.loadAllError = true; }
                     finally { this.loadingAll = false; }
                 },
 
@@ -443,6 +457,10 @@
                         if (res.status === 401) { window.location = '/login'; return; }
                         if (!res.ok) return;
                         p.pinned = newVal;  // עדכון אופטימי במודאל
+                        // סימון דור חדש: תוצאת loadPinned שיצאה לפני העדכון הזה
+                        // ותחזור באיחור לא תדרוס את השינוי.
+                        this._pinSeq++;
+                        this.pinnedLoaded = true;
                         // עדכון רשימת הסיידבר בהתאם
                         if (newVal) {
                             if (!this.pinned.some(x => x._id === p._id)) {
