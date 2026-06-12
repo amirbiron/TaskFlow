@@ -2,12 +2,12 @@
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from app.core.auth import is_authenticated
 from app.core.config import get_settings
+from app.core.templating import create_templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 
 
 def _require_auth_or_redirect(request: Request):

@@ -19,18 +19,18 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from app.core.auth import is_authenticated, require_api_auth
 from app.core.config import get_settings
 from app.core.database import get_database
 from app.core.markdown_renderer import markdown_to_html
+from app.core.templating import create_templates
 from app.models.partner_task import PartnerTaskCreate, PartnerTaskUpdate
 from app.models.partner_note import PartnerNoteCreate, PartnerNoteUpdate
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 logger = logging.getLogger(__name__)
 
 # מסמך מטא יחיד למעקב פעילות השותף (לסימון בדשבורד של אמיר)

@@ -1,7 +1,6 @@
 """ראוטר להזדהות - login, logout"""
 from fastapi import APIRouter, Request, Form, Response
 from fastapi.responses import RedirectResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
 from app.core.auth import (
     verify_password,
     create_session_token,
@@ -9,9 +8,10 @@ from app.core.auth import (
     SESSION_COOKIE_NAME,
 )
 from app.core.config import get_settings
+from app.core.templating import create_templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 
 
 @router.get("/login", response_class=HTMLResponse)

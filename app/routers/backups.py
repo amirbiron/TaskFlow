@@ -10,7 +10,6 @@
 """
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.core.auth import is_authenticated, require_api_auth
 from app.core.backup import (
@@ -23,9 +22,10 @@ from app.core.backup import (
 )
 from app.core.config import get_settings
 from app.core.scheduler import get_next_run_time
+from app.core.templating import create_templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 
 
 @router.get("/admin/backups", response_class=HTMLResponse)
