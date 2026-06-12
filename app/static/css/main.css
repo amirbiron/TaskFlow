@@ -563,16 +563,86 @@ html.dark .markdown-body pre {
     margin: 0.8em 0;
     border-radius: 6px;
 }
-.markdown-body .alert-info    { border-color: #3b82f6; background: rgba(59, 130, 246, 0.08); }
-.markdown-body .alert-warning { border-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
-.markdown-body .alert-danger  { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
-.markdown-body .alert-success { border-color: #10b981; background: rgba(16, 185, 129, 0.08); }
 
-/* בכהה: אדמוניציות מקבלות רקע חזק יותר ושימוש בצבעי SyncFlow */
-html.dark .markdown-body .alert-info    { border-color: #3b82f6; background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
-html.dark .markdown-body .alert-warning { border-color: #d4a020; background: rgba(212, 160, 32, 0.18);  color: #fcd34d; }
-html.dark .markdown-body .alert-danger  { border-color: #f43f5e; background: rgba(244, 63, 94, 0.18);   color: #fca5a5; }
-html.dark .markdown-body .alert-success { border-color: #34d399; background: rgba(52, 211, 153, 0.18);  color: #6ee7b7; }
+/* שורת כותרת: שם הסוג + אייקון, בצבע הסוג */
+.markdown-body .alert-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font-weight: 600;
+    margin-bottom: 0.4em;
+}
+.markdown-body .alert-icon { font-size: 1.1em; line-height: 1; }
+.markdown-body .alert-content > :first-child { margin-top: 0; }
+.markdown-body .alert-content > :last-child  { margin-bottom: 0; }
+
+/* ---- צבעי הסוגים: מצב בהיר ---- */
+.markdown-body .alert-note     { border-color: #64748b; background: rgba(100, 116, 139, 0.08); }
+.markdown-body .alert-note     .alert-header { color: #475569; }
+.markdown-body .alert-info,
+.markdown-body .alert-todo     { border-color: #3b82f6; background: rgba(59, 130, 246, 0.08); }
+.markdown-body .alert-info     .alert-header,
+.markdown-body .alert-todo     .alert-header { color: #2563eb; }
+.markdown-body .alert-tip,
+.markdown-body .alert-success  { border-color: #10b981; background: rgba(16, 185, 129, 0.08); }
+.markdown-body .alert-tip      .alert-header,
+.markdown-body .alert-success  .alert-header { color: #059669; }
+.markdown-body .alert-warning  { border-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
+.markdown-body .alert-warning  .alert-header { color: #d97706; }
+.markdown-body .alert-important { border-color: #f97316; background: rgba(249, 115, 22, 0.08); }
+.markdown-body .alert-important .alert-header { color: #ea580c; }
+.markdown-body .alert-danger   { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
+.markdown-body .alert-danger   .alert-header { color: #dc2626; }
+.markdown-body .alert-question { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.08); }
+.markdown-body .alert-question .alert-header { color: #7c3aed; }
+.markdown-body .alert-example  { border-color: #6366f1; background: rgba(99, 102, 241, 0.08); }
+.markdown-body .alert-example  .alert-header { color: #4f46e5; }
+.markdown-body .alert-quote,
+.markdown-body .alert-abstract { border-color: #64748b; background: rgba(100, 116, 139, 0.06); }
+.markdown-body .alert-quote    .alert-header,
+.markdown-body .alert-abstract .alert-header { color: #475569; }
+.markdown-body .alert-experimental {
+    border-color: #f59e0b;
+    border-inline-start-style: dashed;
+    background: rgba(245, 158, 11, 0.06);
+}
+.markdown-body .alert-experimental .alert-header { color: #d97706; }
+.markdown-body .alert-deprecated {
+    border-color: #9ca3af;
+    background: rgba(156, 163, 175, 0.08);
+    opacity: 0.8;
+}
+.markdown-body .alert-deprecated .alert-header { color: #6b7280; }
+
+/* ---- צבעי הסוגים: מצב כהה (רקע חזק יותר, כותרת בגוון בהיר) ---- */
+html.dark .markdown-body .alert-note     { border-color: #64748b; background: rgba(100, 116, 139, 0.16); }
+html.dark .markdown-body .alert-note     .alert-header { color: #cbd5e1; }
+html.dark .markdown-body .alert-info,
+html.dark .markdown-body .alert-todo     { border-color: #3b82f6; background: rgba(59, 130, 246, 0.18); }
+html.dark .markdown-body .alert-info     .alert-header,
+html.dark .markdown-body .alert-todo     .alert-header { color: #93c5fd; }
+html.dark .markdown-body .alert-tip,
+html.dark .markdown-body .alert-success  { border-color: #34d399; background: rgba(52, 211, 153, 0.18); }
+html.dark .markdown-body .alert-tip      .alert-header,
+html.dark .markdown-body .alert-success  .alert-header { color: #6ee7b7; }
+html.dark .markdown-body .alert-warning  { border-color: #d4a020; background: rgba(212, 160, 32, 0.18); }
+html.dark .markdown-body .alert-warning  .alert-header { color: #fcd34d; }
+html.dark .markdown-body .alert-important { border-color: #fb923c; background: rgba(249, 115, 22, 0.18); }
+html.dark .markdown-body .alert-important .alert-header { color: #fdba74; }
+html.dark .markdown-body .alert-danger   { border-color: #f43f5e; background: rgba(244, 63, 94, 0.18); }
+html.dark .markdown-body .alert-danger   .alert-header { color: #fca5a5; }
+html.dark .markdown-body .alert-question { border-color: #a78bfa; background: rgba(139, 92, 246, 0.18); }
+html.dark .markdown-body .alert-question .alert-header { color: #c4b5fd; }
+html.dark .markdown-body .alert-example  { border-color: #818cf8; background: rgba(99, 102, 241, 0.18); }
+html.dark .markdown-body .alert-example  .alert-header { color: #a5b4fc; }
+html.dark .markdown-body .alert-quote,
+html.dark .markdown-body .alert-abstract { border-color: #64748b; background: rgba(100, 116, 139, 0.14); }
+html.dark .markdown-body .alert-quote    .alert-header,
+html.dark .markdown-body .alert-abstract .alert-header { color: #cbd5e1; }
+html.dark .markdown-body .alert-experimental { border-color: #d4a020; background: rgba(212, 160, 32, 0.14); }
+html.dark .markdown-body .alert-experimental .alert-header { color: #fcd34d; }
+html.dark .markdown-body .alert-deprecated { border-color: #9ca3af; background: rgba(156, 163, 175, 0.16); }
+html.dark .markdown-body .alert-deprecated .alert-header { color: #d1d5db; }
 
 .markdown-body .alert > :first-child { margin-top: 0; }
 .markdown-body .alert > :last-child  { margin-bottom: 0; }
