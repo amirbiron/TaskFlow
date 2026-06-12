@@ -66,7 +66,7 @@ async def list_documents(request: Request, project_id: str):
     cursor = db.project_documents.find(
         {"project_id": project_id},
         {"content_md": 0},  # לא מחזירים תוכן ברשימה
-    ).sort("updated_at", -1)
+    ).sort("created_at", -1)
     docs = await cursor.to_list(length=1000)
     return [_summary(d) for d in docs]
 
