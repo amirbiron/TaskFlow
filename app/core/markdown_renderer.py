@@ -59,7 +59,11 @@ ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 # ---------- Preprocess: ::: note / warning / ... ----------
 
 _ADMONITION_RE = re.compile(
-    r"^:::\s*(note|info|warning|important|danger|success|tip)\b[^\n]*\n(.*?)\n:::$",
+    r"^:::[ \t]*"
+    r"(?P<kind>note|info|tip|success|warning|important|danger|"
+    r"question|example|quote|experimental|deprecated|todo|abstract)\b"
+    r"(?P<title>[^\n]*)\n"
+    r"(?P<body>.*?)\n:::[ \t]*$",
     flags=re.DOTALL | re.MULTILINE,
 )
 
@@ -77,9 +81,24 @@ _FENCED_CODE_RE = re.compile(
     flags=re.DOTALL | re.MULTILINE,
 )
 
-_TYPE_MAP = {
-    "note": "info", "info": "info", "tip": "success", "success": "success",
-    "warning": "warning", "important": "warning", "danger": "danger",
+# לכל סוג בלוק: (מחלקת CSS, כותרת ברירת-מחדל בעברית, אייקון).
+# הכותרת והאייקון מוצגים בראש הבלוק; אפשר לדרוס את הכותרת ע"י טקסט
+# אחרי שם הסוג בשורת ה-::: (כמו ב-details).
+_ADMONITION_TYPES = {
+    "note":         ("note",         "הערה",          "📝"),
+    "info":         ("info",         "מידע",          "ℹ️"),
+    "tip":          ("tip",          "טיפ",           "💡"),
+    "success":      ("success",      "הצלחה",         "✅"),
+    "warning":      ("warning",      "אזהרה",         "⚠️"),
+    "important":    ("important",    "חשוב",          "❗"),
+    "danger":       ("danger",       "סכנה",          "🚨"),
+    "question":     ("question",     "שאלה",          "❓"),
+    "example":      ("example",      "דוגמה",         "🧩"),
+    "quote":        ("quote",        "ציטוט",         "❝"),
+    "experimental": ("experimental", "ניסוי",         "🧪"),
+    "deprecated":   ("deprecated",   "לא מומלץ",      "🚫"),
+    "todo":         ("todo",         "משימות לביצוע", "📋"),
+    "abstract":     ("abstract",     "תקציר",         "📄"),
 }
 
 
@@ -172,12 +191,17 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
 
     # שלב 2: עיבוד admonitions על הטקסט הנקי מבלוקי קוד.
     def _replace(match: re.Match) -> str:
-        kind = match.group(1).lower()
-        body = match.group(2).strip()
+        kind = match.group("kind").lower()
+        custom_title = (match.group("title") or "").strip()
+        body = match.group("body").strip()
         # אם בגוף ה-admonition יש בלוקי קוד שנשמרו - מחזירים אותם
         # לפני הרינדור הפנימי, כדי שמנוע ה-Markdown יוכל לעבד אותם.
         body = placeholder_re.sub(_restore_placeholder, body)
-        css_class = _TYPE_MAP.get(kind, "info")
+        css_class, default_title, icon = _ADMONITION_TYPES.get(
+            kind, ("info", "מידע", "ℹ️")
+        )
+        # כותרת מותאמת אם סופקה בשורת ה-:::, אחרת ברירת-המחדל לסוג.
+        title = custom_title or default_title
         # אותן יכולות שתומכות ב-task lists גם בתוך admonitions, כדי
         # שמספר ה-checkboxes ב-HTML יתאים לסדר ההתאמות ב-_TASK_RE על המקור.
         inner = markdown.markdown(
@@ -204,9 +228,21 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
             protocols=ALLOWED_PROTOCOLS,
             strip=True,
         )
+        # escape לכותרת כדי למנוע XSS דרך טקסט הכותרת שבשורת ה-:::.
+        safe_title = (title.replace("&", "&amp;").replace("<", "&lt;")
+                           .replace(">", "&gt;").replace('"', "&quot;"))
         # עוטפים בשורות ריקות מסביב כדי ש-Python-Markdown יזהה את ה-div
         # כבלוק-HTML עצמאי ולא יבלע פסקאות שמופיעות אחריו ללא שורה ריקה.
-        return f'\n\n<div class="alert alert-{css_class}">{clean_inner}</div>\n\n'
+        # הכותרת מופיעה ראשונה (מימין ב-RTL) ואחריה האייקון, כמו בעיצוב.
+        return (
+            f'\n\n<div class="alert alert-{css_class}">'
+            f'<div class="alert-header">'
+            f'<span class="alert-title">{safe_title}</span>'
+            f'<span class="alert-icon">{icon}</span>'
+            f'</div>'
+            f'<div class="alert-content">{clean_inner}</div>'
+            f'</div>\n\n'
+        )
 
     processed = _ADMONITION_RE.sub(_replace, stashed)
 
