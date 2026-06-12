@@ -233,12 +233,12 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
                            .replace(">", "&gt;").replace('"', "&quot;"))
         # עוטפים בשורות ריקות מסביב כדי ש-Python-Markdown יזהה את ה-div
         # כבלוק-HTML עצמאי ולא יבלע פסקאות שמופיעות אחריו ללא שורה ריקה.
-        # הכותרת מופיעה ראשונה (מימין ב-RTL) ואחריה האייקון, כמו בעיצוב.
+        # האייקון מופיע ראשון (לפני הטקסט - מימין ב-RTL) ואחריו הכותרת.
         return (
             f'\n\n<div class="alert alert-{css_class}">'
             f'<div class="alert-header">'
-            f'<span class="alert-title">{safe_title}</span>'
             f'<span class="alert-icon">{icon}</span>'
+            f'<span class="alert-title">{safe_title}</span>'
             f'</div>'
             f'<div class="alert-content">{clean_inner}</div>'
             f'</div>\n\n'
