@@ -81,24 +81,25 @@ _FENCED_CODE_RE = re.compile(
     flags=re.DOTALL | re.MULTILINE,
 )
 
-# לכל סוג בלוק: (מחלקת CSS, כותרת ברירת-מחדל בעברית, אייקון).
-# הכותרת והאייקון מוצגים בראש הבלוק; אפשר לדרוס את הכותרת ע"י טקסט
+# לכל סוג בלוק: (מחלקת CSS, כותרת ברירת-מחדל בעברית).
+# האייקון מצויר ב-CSS לפי המחלקה (mask-image עם SVG), כדי שלא יעבור
+# סניטציה ויקבל אוטומטית את צבע הכותרת. הכותרת ניתנת לדריסה ע"י טקסט
 # אחרי שם הסוג בשורת ה-::: (כמו ב-details).
 _ADMONITION_TYPES = {
-    "note":         ("note",         "הערה",          "📝"),
-    "info":         ("info",         "מידע",          "ℹ️"),
-    "tip":          ("tip",          "טיפ",           "💡"),
-    "success":      ("success",      "הצלחה",         "✅"),
-    "warning":      ("warning",      "אזהרה",         "⚠️"),
-    "important":    ("important",    "חשוב",          "❗"),
-    "danger":       ("danger",       "סכנה",          "🚨"),
-    "question":     ("question",     "שאלה",          "❓"),
-    "example":      ("example",      "דוגמה",         "🧩"),
-    "quote":        ("quote",        "ציטוט",         "❝"),
-    "experimental": ("experimental", "ניסוי",         "🧪"),
-    "deprecated":   ("deprecated",   "לא מומלץ",      "🚫"),
-    "todo":         ("todo",         "משימות לביצוע", "📋"),
-    "abstract":     ("abstract",     "תקציר",         "📄"),
+    "note":         ("note",         "הערה"),
+    "info":         ("info",         "מידע"),
+    "tip":          ("tip",          "טיפ"),
+    "success":      ("success",      "הצלחה"),
+    "warning":      ("warning",      "אזהרה"),
+    "important":    ("important",    "חשוב"),
+    "danger":       ("danger",       "סכנה"),
+    "question":     ("question",     "שאלה"),
+    "example":      ("example",      "דוגמה"),
+    "quote":        ("quote",        "ציטוט"),
+    "experimental": ("experimental", "ניסוי"),
+    "deprecated":   ("deprecated",   "לא מומלץ"),
+    "todo":         ("todo",         "משימות לביצוע"),
+    "abstract":     ("abstract",     "תקציר"),
 }
 
 
@@ -197,9 +198,7 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
         # אם בגוף ה-admonition יש בלוקי קוד שנשמרו - מחזירים אותם
         # לפני הרינדור הפנימי, כדי שמנוע ה-Markdown יוכל לעבד אותם.
         body = placeholder_re.sub(_restore_placeholder, body)
-        css_class, default_title, icon = _ADMONITION_TYPES.get(
-            kind, ("info", "מידע", "ℹ️")
-        )
+        css_class, default_title = _ADMONITION_TYPES.get(kind, ("info", "מידע"))
         # כותרת מותאמת אם סופקה בשורת ה-:::, אחרת ברירת-המחדל לסוג.
         title = custom_title or default_title
         # אותן יכולות שתומכות ב-task lists גם בתוך admonitions, כדי
@@ -233,11 +232,11 @@ def _preprocess_markdown(text: str, clickable_tasks: bool = True) -> str:
                            .replace(">", "&gt;").replace('"', "&quot;"))
         # עוטפים בשורות ריקות מסביב כדי ש-Python-Markdown יזהה את ה-div
         # כבלוק-HTML עצמאי ולא יבלע פסקאות שמופיעות אחריו ללא שורה ריקה.
-        # האייקון מופיע ראשון (לפני הטקסט - מימין ב-RTL) ואחריו הכותרת.
+        # האייקון (span ריק) מצויר ב-CSS לפי המחלקה ומופיע לפני הטקסט.
         return (
             f'\n\n<div class="alert alert-{css_class}">'
             f'<div class="alert-header">'
-            f'<span class="alert-icon">{icon}</span>'
+            f'<span class="alert-icon"></span>'
             f'<span class="alert-title">{safe_title}</span>'
             f'</div>'
             f'<div class="alert-content">{clean_inner}</div>'
