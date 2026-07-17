@@ -22,6 +22,8 @@ class ProjectDocumentBase(BaseModel):
     project_id: str
     title: str = Field(..., min_length=1, max_length=200)
     content_md: str = Field(default="", max_length=MAX_DOCUMENT_CONTENT)
+    # נעיצה - מסמכים נעוצים מוצגים בראש הרשימה
+    pinned: bool = False
 
 
 class ProjectDocumentCreate(BaseModel):
