@@ -40,6 +40,7 @@ def _summary(doc: dict) -> dict:
         "_id": str(doc["_id"]),
         "project_id": doc.get("project_id"),
         "title": doc.get("title", ""),
+        "pinned": bool(doc.get("pinned", False)),
         "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else None,
         "updated_at": doc.get("updated_at").isoformat() if doc.get("updated_at") else None,
     }
@@ -63,10 +64,16 @@ async def list_documents(request: Request, project_id: str):
     db = get_database()
     await _ensure_project_exists(db, project_id)
 
-    cursor = db.project_documents.find(
-        {"project_id": project_id},
-        {"content_md": 0},  # לא מחזירים תוכן ברשימה
-    ).sort("created_at", -1)
+    # מיון: מסמכים נעוצים תחילה, ובתוך כל קבוצה לפי created_at יורד.
+    # $ifNull מנרמל מסמכים ישנים שאין להם עדיין את השדה pinned (=false),
+    # כך שהם ממוינים יחד עם שאר הלא-נעוצים בלי צורך במיגרציה.
+    cursor = db.project_documents.aggregate([
+        {"$match": {"project_id": project_id}},
+        {"$project": {"content_md": 0}},  # לא מחזירים תוכן ברשימה
+        {"$addFields": {"_pinned_sort": {"$ifNull": ["$pinned", False]}}},
+        {"$sort": {"_pinned_sort": -1, "created_at": -1}},
+        {"$project": {"_pinned_sort": 0}},
+    ])
     docs = await cursor.to_list(length=1000)
     return [_summary(d) for d in docs]
 
@@ -83,6 +90,7 @@ async def create_document(request: Request, project_id: str, doc_data: ProjectDo
         "project_id": project_id,
         "title": doc_data.title,  # ה-validator כבר ניקה רווחים ואימת לא-ריק
         "content_md": doc_data.content_md or "",
+        "pinned": False,  # מסמך חדש נוצר לא-נעוץ
         "created_at": now,
         "updated_at": now,
     }
@@ -117,6 +125,7 @@ async def get_document(request: Request, project_id: str, doc_id: str):
         "title": doc.get("title", ""),
         "content_md": doc.get("content_md", ""),
         "content_html": html,
+        "pinned": bool(doc.get("pinned", False)),
         "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else None,
         "updated_at": doc.get("updated_at").isoformat() if doc.get("updated_at") else None,
     }
@@ -167,6 +176,7 @@ async def update_document(
             "title": existing.get("title", ""),
             "content_md": existing.get("content_md", ""),
             "content_html": html,
+            "pinned": bool(existing.get("pinned", False)),
             "created_at": existing.get("created_at").isoformat() if existing.get("created_at") else None,
             "updated_at": existing.get("updated_at").isoformat() if existing.get("updated_at") else None,
         }
@@ -191,6 +201,7 @@ async def update_document(
         "title": result.get("title", ""),
         "content_md": result.get("content_md", ""),
         "content_html": html,
+        "pinned": bool(result.get("pinned", False)),
         "created_at": result.get("created_at").isoformat() if result.get("created_at") else None,
         "updated_at": result.get("updated_at").isoformat() if result.get("updated_at") else None,
     }
@@ -254,6 +265,39 @@ async def toggle_document_task(
         "content_html": html,
         "updated_at": result.get("updated_at").isoformat() if result.get("updated_at") else None,
     }
+
+
+class PinRequest(BaseModel):
+    """נעיצה / ביטול נעיצה של מסמך."""
+    pinned: bool
+
+
+@router.patch("/{doc_id}/pin")
+async def set_document_pin(
+    request: Request,
+    project_id: str,
+    doc_id: str,
+    payload: PinRequest,
+):
+    """נעיצה או ביטול נעיצה של מסמך - נעוצים מוצגים בראש הרשימה."""
+    require_api_auth(request)
+    db = get_database()
+    await _ensure_project_exists(db, project_id)
+
+    obj_id = validate_object_id(doc_id)
+    # נעיצה היא מטא-דאטה בלבד - לא מעדכנים updated_at כדי לא לזייף "עודכן לאחרונה"
+    result = await db.project_documents.find_one_and_update(
+        {"_id": obj_id, "project_id": project_id},
+        {"$set": {"pinned": payload.pinned}},
+        projection={"content_md": 0},
+        return_document=True,
+    )
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="מסמך לא נמצא",
+        )
+    return _summary(result)
 
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
