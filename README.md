@@ -64,6 +64,8 @@
 ומסובבת אותם אוטומטית לפי `BACKUP_RETENTION_DAYS`. **אין תלות בכלים חיצוניים**
 (לא צריך להתקין `mongodb-database-tools`).
 
+הסבר מלא על התכנון, הקוד והמלכודות: [`docs/backup-restore-guide.md`](docs/backup-restore-guide.md).
+
 ### מבנה הגיבוי
 
 קובץ zip סטנדרטי - אפשר לפתוח בקליק כפול:
@@ -123,7 +125,6 @@ python scripts/restore_backup.py backup_YYYY-MM-DD_HH-MM-SS.zip \
 | `BACKUP_RETENTION_DAYS` | `7` | כמה ימים לשמור |
 | `BACKUP_HOUR` | `3` | שעת ריצה (UTC) |
 | `BACKUP_MINUTE` | `0` | דקה |
-| `MONGODUMP_PATH` | `mongodump` | נתיב לכלי |
 
 ### API חדש
 
