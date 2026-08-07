@@ -176,7 +176,8 @@
                                     <button
                                         type="button"
                                         @click="startRename(d)"
-                                        class="flex-shrink-0 px-2.5 text-slate-400 dark:text-sf-text-muted hover:text-slate-700 dark:hover:text-sf-text-primary hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-all md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+                                        :disabled="renameSaving"
+                                        class="flex-shrink-0 px-2.5 text-slate-400 dark:text-sf-text-muted hover:text-slate-700 dark:hover:text-sf-text-primary hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-all md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 disabled:cursor-not-allowed"
                                         title="שנה שם"
                                     >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -883,6 +884,9 @@ function projectDetailPage(projectId) {
         // מסלול נפרד מהעורך המלא: לא טוען את תוכן המסמך ולא שולח אותו חזרה.
 
         startRename(doc) {
+            // בזמן שמירה אין לפתוח עריכה על מסמך אחר: סיום הבקשה קורא
+            // ל-cancelRename ומאפס את הטיוטה החדשה בלי שהמשתמש ביקש.
+            if (this.renameSaving) return;
             this.renamingDocId = doc._id;
             this.renameDraft = doc.title || '';
             this.renameError = null;
