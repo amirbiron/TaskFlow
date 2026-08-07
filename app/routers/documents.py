@@ -11,7 +11,6 @@ from app.core.db_utils import validate_object_id
 from app.core.markdown_renderer import markdown_to_html, toggle_task_in_markdown
 from app.models.project_document import (
     ProjectDocumentCreate,
-    ProjectDocumentRename,
     ProjectDocumentUpdate,
     MAX_DOCUMENT_CONTENT,
 )
@@ -206,40 +205,6 @@ async def update_document(
         "created_at": result.get("created_at").isoformat() if result.get("created_at") else None,
         "updated_at": result.get("updated_at").isoformat() if result.get("updated_at") else None,
     }
-
-
-@router.patch("/{doc_id}/rename")
-async def rename_document(
-    request: Request,
-    project_id: str,
-    doc_id: str,
-    payload: ProjectDocumentRename,
-):
-    """שינוי שם מסמך בלבד.
-
-    נפרד מ-PUT כדי שהמסלול המהיר לא יצטרך לשלוח את התוכן חזרה - שליחת
-    content_md שנטען לפני רגע עלולה לדרוס עריכה שנעשתה במקביל, וגם מיותרת.
-    כמו בנעיצה, updated_at לא מתעדכן: השם הוא מטא-דאטה, ו"עודכן לאחרונה"
-    אמור להישאר תאריך השינוי האחרון בתוכן.
-    """
-    require_api_auth(request)
-    db = get_database()
-    await _ensure_project_exists(db, project_id)
-
-    obj_id = validate_object_id(doc_id)
-    # title כבר עבר trim+אימות ב-validator של Pydantic
-    result = await db.project_documents.find_one_and_update(
-        {"_id": obj_id, "project_id": project_id},
-        {"$set": {"title": payload.title}},
-        projection={"content_md": 0},
-        return_document=True,
-    )
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="מסמך לא נמצא",
-        )
-    return _summary(result)
 
 
 class TaskToggleRequest(BaseModel):
