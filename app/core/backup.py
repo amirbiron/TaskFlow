@@ -17,6 +17,11 @@
 פורמט הרשומות: BSON Extended JSON v2 (canonical) - תומך ב-ObjectId,
 datetime וכל סוגי BSON. ניתן לטעון חזרה דרך bson.json_util.
 
+עותק חיצוני:
+    אם BACKUP_R2_ENABLED דלוק ומוגדר BACKUP_R2_BUCKET, כל גיבוי מוצלח מועלה
+    גם לבאקט R2 פרטי. כשל בהעלאה לא מפיל את הגיבוי - הקובץ המקומי תקין -
+    אבל נרשם ב-BackupResult ומוצג במסך הניהול.
+
 שחזור:
     python scripts/restore_backup.py /path/to/backup.zip
 """
@@ -28,12 +33,13 @@ import logging
 import re
 import zipfile
 from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
 from bson import json_util
 
+from app.core import r2
 from app.core.config import get_settings
 from app.core.database import get_database
 
@@ -83,6 +89,12 @@ class BackupResult:
     finished_at: Optional[datetime] = None
     collections_count: int = 0
     documents_count: int = 0
+    # מצב העותק החיצוני. success למעלה מתייחס לגיבוי המקומי בלבד -
+    # העלאה שנכשלה לא הופכת גיבוי תקין לכושל, אבל חייבת להיות גלויה.
+    r2_enabled: bool = False
+    r2_uploaded: bool = False
+    r2_key: Optional[str] = None
+    r2_error: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -94,6 +106,10 @@ class BackupResult:
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "collections_count": self.collections_count,
             "documents_count": self.documents_count,
+            "r2_enabled": self.r2_enabled,
+            "r2_uploaded": self.r2_uploaded,
+            "r2_key": self.r2_key,
+            "r2_error": self.r2_error,
         }
 
 
@@ -191,6 +207,76 @@ async def _write_backup_zip(target_path: Path) -> tuple[int, int]:
     return len(collections), total_docs
 
 
+# ---------------------------------------------------------------------------
+# עותק חיצוני ב-R2
+# ---------------------------------------------------------------------------
+
+def r2_backup_enabled() -> bool:
+    """האם להעלות עותק ל-R2. דורש גם דגל דלוק וגם באקט מפורש.
+
+    הבאקט חייב להיות מפורש בכוונה: ברירת מחדל לבאקט של הקבצים המצורפים
+    הייתה שמה את כל המסד בבאקט עם גישה ציבורית.
+    """
+    settings = get_settings()
+    return bool(settings.backup_r2_enabled and settings.backup_r2_bucket)
+
+
+def _r2_prefix() -> str:
+    """ה-prefix בבאקט, מנורמל בלי לוכסנים מיותרים. ריק => שורש הבאקט."""
+    return (get_settings().backup_r2_prefix or "").strip("/")
+
+
+def _r2_key_for(filename: str) -> str:
+    prefix = _r2_prefix()
+    return f"{prefix}/{filename}" if prefix else filename
+
+
+async def _upload_backup_to_r2(path: Path, filename: str) -> str:
+    """מעלה קובץ גיבוי לבאקט ה-R2 ומחזיר את ה-key שנכתב."""
+    settings = get_settings()
+    return await r2.upload_file(
+        str(path),
+        _r2_key_for(filename),
+        bucket=settings.backup_r2_bucket,
+        content_type="application/zip",
+    )
+
+
+async def rotate_r2_backups(retention_days: int) -> list[str]:
+    """
+    מוחק גיבויים ישנים מהבאקט. מחזיר רשימת keys שנמחקו.
+
+    מוחק רק אובייקטים ששם הקובץ שלהם תואם את פורמט הגיבוי שלנו - כך שקובץ
+    זר שהונח באותו prefix לא נמחק בטעות. הגיל נקבע לפי LastModified של
+    האובייקט, לא לפי שם הקובץ, מאותו נימוק כמו ברוטציה המקומית.
+    """
+    if retention_days <= 0:
+        return []
+
+    settings = get_settings()
+    prefix = _r2_prefix()
+    objects = await r2.list_objects(
+        f"{prefix}/" if prefix else "", bucket=settings.backup_r2_bucket
+    )
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    deleted: list[str] = []
+
+    for obj in objects:
+        if not is_safe_backup_filename(obj["key"].rsplit("/", 1)[-1]):
+            continue
+        last_modified = obj.get("last_modified")
+        if not isinstance(last_modified, datetime) or last_modified >= cutoff:
+            continue
+        try:
+            await r2.delete_object(obj["key"], bucket=settings.backup_r2_bucket)
+            deleted.append(obj["key"])
+        except r2.R2Error as exc:
+            logger.warning("לא ניתן למחוק מ-R2 את %s: %s", obj["key"], exc)
+
+    return deleted
+
+
 async def run_backup() -> BackupResult:
     """
     מריץ גיבוי Python נטו לתיקיית הגיבויים, מסובב גיבויים ישנים, ושומר תוצאה.
@@ -254,13 +340,12 @@ async def _run_backup_locked() -> BackupResult:
         _last_result = result
         return result
 
-    duration = asyncio.get_event_loop().time() - started_monotonic
-    finished_at = datetime.now(timezone.utc)
+    dump_duration = asyncio.get_event_loop().time() - started_monotonic
     size_bytes = target_path.stat().st_size if target_path.exists() else 0
 
     logger.info(
         "גיבוי הושלם: %s (%d collections, %d docs, %d bytes, %.2fs)",
-        filename, collections_count, documents_count, size_bytes, duration,
+        filename, collections_count, documents_count, size_bytes, dump_duration,
     )
 
     # רוטציה - מוחק קבצים מעבר ל-retention. לא נחשב לכישלון אם נופל.
@@ -271,14 +356,49 @@ async def _run_backup_locked() -> BackupResult:
     except Exception:  # noqa: BLE001
         logger.exception("שגיאה ברוטציית גיבויים")
 
+    # העלאת עותק חיצוני. הגיבוי המקומי כבר תקין בשלב הזה, ולכן כשל כאן
+    # מתועד אבל לא הופך את התוצאה לכושלת.
+    r2_enabled = r2_backup_enabled()
+    r2_uploaded = False
+    r2_key: Optional[str] = None
+    r2_error: Optional[str] = None
+
+    if r2_enabled:
+        try:
+            r2_key = await _upload_backup_to_r2(target_path, filename)
+            r2_uploaded = True
+            logger.info("גיבוי הועלה ל-R2: %s", r2_key)
+        except Exception as exc:  # noqa: BLE001
+            r2_error = f"העלאה ל-R2 נכשלה: {exc!r}"
+            logger.exception(r2_error)
+
+        # רוטציה בבאקט רק אחרי העלאה מוצלחת - אותו נימוק כמו מקומית:
+        # לא מוחקים עותקים ישנים כשלא הצלחנו ליצור חדש.
+        if r2_uploaded:
+            try:
+                deleted_keys = await rotate_r2_backups(settings.backup_r2_retention_days)
+                if deleted_keys:
+                    logger.info(
+                        "נמחקו %d גיבויים ישנים מ-R2: %s", len(deleted_keys), deleted_keys
+                    )
+            except Exception:  # noqa: BLE001
+                logger.exception("שגיאה ברוטציית גיבויים ב-R2")
+
+    # נמדד בסוף ולא אחרי כתיבת ה-zip, כדי שההעלאה ל-R2 תיכלל במשך הריצה
+    duration = asyncio.get_event_loop().time() - started_monotonic
+
     result = BackupResult(
         success=True,
         filename=filename,
         size_bytes=size_bytes,
         duration_seconds=duration,
-        finished_at=finished_at,
+        finished_at=datetime.now(timezone.utc),
         collections_count=collections_count,
         documents_count=documents_count,
+        r2_enabled=r2_enabled,
+        r2_uploaded=r2_uploaded,
+        r2_key=r2_key,
+        r2_error=r2_error,
     )
     _last_result = result
     return result

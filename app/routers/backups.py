@@ -18,6 +18,7 @@ from app.core.backup import (
     get_backup_path,
     get_last_result,
     list_backups,
+    r2_backup_enabled,
     run_backup,
 )
 from app.core.config import get_settings
@@ -44,6 +45,8 @@ async def backups_page(request: Request):
             "retention_days": settings.backup_retention_days,
             "backup_hour": settings.backup_hour,
             "backup_minute": settings.backup_minute,
+            "r2_enabled": r2_backup_enabled(),
+            "r2_retention_days": settings.backup_r2_retention_days,
         },
     )
 
@@ -60,6 +63,8 @@ async def api_list_backups(request: Request):
         "last_run": last.to_dict() if last else None,
         "next_run_at": get_next_run_time(),
         "total_size_bytes": sum(b.size_bytes for b in backups),
+        # מצב העותק החיצוני כרגע - לא רק כפי שהיה בריצה האחרונה
+        "r2_enabled": r2_backup_enabled(),
     }
 
 

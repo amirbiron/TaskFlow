@@ -154,19 +154,59 @@
                 <aside x-show="documentsList.length > 0" class="border-b md:border-b-0 border-slate-200 dark:border-sf-border max-h-96 md:max-h-[40rem] overflow-y-auto">
                     <ul class="divide-y divide-slate-100">
                         <template x-for="d in documentsList" :key="d._id">
-                            <li>
-                                <button
-                                    type="button"
-                                    @click="openDocument(d._id)"
-                                    class="w-full text-right px-4 py-3 hover:bg-slate-50 dark:hover:bg-sf-bg-hover transition-colors"
-                                    :class="selectedDocument && selectedDocument._id === d._id ? 'bg-primary-50 dark:bg-sf-primary/15 border-r-4 border-primary-500' : ''"
-                                >
-                                    <div class="flex items-center gap-1 min-w-0">
-                                        <span x-show="d.pinned" class="flex-shrink-0 text-xs leading-none" title="מסמך נעוץ">📌</span>
-                                        <span class="text-sm font-medium text-slate-900 dark:text-sf-text-primary truncate" x-text="d.title || 'ללא שם'"></span>
+                            <li class="group">
+                                <!-- מצב תצוגה: פתיחת המסמך + שינוי שם מהיר.
+                                     כפתור השינוי הוא אח של כפתור הפתיחה ולא
+                                     בתוכו - כפתור בתוך כפתור אינו HTML תקין. -->
+                                <div x-show="renamingDocId !== d._id" class="flex items-stretch"
+                                     :class="selectedDocument && selectedDocument._id === d._id ? 'bg-primary-50 dark:bg-sf-primary/15 border-r-4 border-primary-500' : ''">
+                                    <button
+                                        type="button"
+                                        @click="openDocument(d._id)"
+                                        class="flex-1 min-w-0 text-right px-4 py-3 hover:bg-slate-50 dark:hover:bg-sf-bg-hover transition-colors"
+                                    >
+                                        <div class="flex items-center gap-1 min-w-0">
+                                            <span x-show="d.pinned" class="flex-shrink-0 text-xs leading-none" title="מסמך נעוץ">📌</span>
+                                            <span class="text-sm font-medium text-slate-900 dark:text-sf-text-primary truncate" x-text="d.title || 'ללא שם'"></span>
+                                        </div>
+                                        <div class="text-xs text-slate-500 dark:text-sf-text-secondary mt-0.5" x-text="formatDocDate(d.updated_at)"></div>
+                                    </button>
+                                    <!-- במובייל תמיד גלוי (אין hover); בדסקטופ מופיע
+                                         ב-hover על השורה או בפוקוס מהמקלדת. -->
+                                    <button
+                                        type="button"
+                                        @click="startRename(d)"
+                                        class="flex-shrink-0 px-2.5 text-slate-400 dark:text-sf-text-muted hover:text-slate-700 dark:hover:text-sf-text-primary hover:bg-slate-100 dark:hover:bg-sf-bg-hover transition-all md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+                                        title="שנה שם"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <!-- מצב שינוי שם inline -->
+                                <div x-show="renamingDocId === d._id" x-cloak class="px-3 py-2 bg-slate-50 dark:bg-sf-bg-raised">
+                                    <input
+                                        type="text"
+                                        :id="'rename-input-' + d._id"
+                                        x-model="renameDraft"
+                                        maxlength="200"
+                                        @keydown.enter.prevent="submitRename(d)"
+                                        @keydown.escape.prevent="cancelRename()"
+                                        class="w-full px-2 py-1.5 text-sm border border-slate-300 dark:border-sf-border rounded-lg bg-white dark:bg-sf-bg-input text-slate-900 dark:text-sf-text-primary focus:ring-2 focus:ring-primary-400 focus:outline-none"
+                                    >
+                                    <div x-show="renameError" x-cloak class="text-xs text-red-600 dark:text-sf-red mt-1" x-text="renameError"></div>
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <button type="button" @click="submitRename(d)" :disabled="renameSaving"
+                                                class="btn btn-primary text-xs py-1 px-2.5">
+                                            <span x-show="!renameSaving">שמור</span>
+                                            <span x-show="renameSaving" x-cloak>שומר...</span>
+                                        </button>
+                                        <button type="button" @click="cancelRename()"
+                                                class="btn btn-secondary text-xs py-1 px-2.5">ביטול</button>
                                     </div>
-                                    <div class="text-xs text-slate-500 dark:text-sf-text-secondary mt-0.5" x-text="formatDocDate(d.updated_at)"></div>
-                                </button>
+                                </div>
                             </li>
                         </template>
                     </ul>
@@ -586,6 +626,10 @@ function projectDetailPage(projectId) {
         documentCopied: false,
         docImageUploading: false,
         docDragOver: false,
+        renamingDocId: null,          // _id של המסמך שנמצא כרגע בשינוי שם
+        renameDraft: '',
+        renameSaving: false,
+        renameError: null,
         _docPreviewSeq: 0,
         _docCopiedTimer: null,
 
@@ -778,6 +822,8 @@ function projectDetailPage(projectId) {
         },
 
         async openDocument(docId) {
+            // מעבר למסמך אחר סוגר שינוי שם פתוח על מסמך קודם
+            this.cancelRename();
             this.documentEditing = false;
             this.documentError = null;
             this.documentCopied = false;
@@ -798,6 +844,7 @@ function projectDetailPage(projectId) {
         },
 
         newDocument() {
+            this.cancelRename();
             this.selectedDocument = null;
             this.documentError = null;
             this.documentDraft = { title: '', content_md: '' };
@@ -830,6 +877,72 @@ function projectDetailPage(projectId) {
             this.documentError = null;
             this.documentDraft = { title: '', content_md: '' };
             this.documentPreviewHtml = '';
+        },
+
+        // === שינוי שם מהיר מהרשימה ===
+        // מסלול נפרד מהעורך המלא: לא טוען את תוכן המסמך ולא שולח אותו חזרה.
+
+        startRename(doc) {
+            this.renamingDocId = doc._id;
+            this.renameDraft = doc.title || '';
+            this.renameError = null;
+            // ה-input נמצא בתוך x-for, ולכן x-ref היה מתנגש בין השורות.
+            // מזהה לפי id ייחודי אחרי שאלפיין סיים לרנדר את מצב העריכה.
+            this.$nextTick(() => {
+                const el = document.getElementById('rename-input-' + doc._id);
+                if (el) { el.focus(); el.select(); }
+            });
+        },
+
+        cancelRename() {
+            this.renamingDocId = null;
+            this.renameDraft = '';
+            this.renameError = null;
+        },
+
+        async submitRename(doc) {
+            if (this.renameSaving) return;
+            const title = (this.renameDraft || '').trim();
+            if (!title) {
+                this.renameError = 'חובה לתת שם למסמך';
+                return;
+            }
+            // אין שינוי - סוגרים בלי לפנות לשרת
+            if (title === (doc.title || '')) {
+                this.cancelRename();
+                return;
+            }
+            this.renameSaving = true;
+            this.renameError = null;
+            try {
+                const res = await fetch(
+                    `/api/projects/${projectId}/documents/${doc._id}/rename`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title }),
+                    }
+                );
+                if (res.status === 401) { window.location = '/login'; return; }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.renameError = err.detail || 'שגיאה בשינוי השם';
+                    return;
+                }
+                const updated = await res.json();
+                // עדכון מקומי במקום טעינה מחדש: המיון הוא לפי נעיצה ואז
+                // created_at, כך ששינוי שם לא מזיז את המסמך ברשימה.
+                const idx = this.documentsList.findIndex(d => d._id === updated._id);
+                if (idx !== -1) this.documentsList[idx] = updated;
+                if (this.selectedDocument && this.selectedDocument._id === updated._id) {
+                    this.selectedDocument.title = updated.title;
+                }
+                this.cancelRename();
+            } catch (e) {
+                this.renameError = 'שגיאת רשת';
+            } finally {
+                this.renameSaving = false;
+            }
         },
 
         async refreshDocPreview() {

@@ -53,6 +53,16 @@ class Settings(BaseSettings):
     backup_hour: int = 3  # שעת ריצה יומית (0-23)
     backup_minute: int = 0  # דקה (0-59)
 
+    # עותק חיצוני של הגיבויים ב-R2. הדיסק של Render מגן מפני טעות במסד,
+    # לא מפני אובדן השירות עצמו - העותק הזה הוא מה שמגן מפני זה.
+    backup_r2_enabled: bool = False
+    # באקט ייעודי ופרטי, נפרד מ-R2_BUCKET_NAME של הקבצים המצורפים (שהוא
+    # ציבורי). ריק => ההעלאה כבויה גם אם backup_r2_enabled=true.
+    backup_r2_bucket: str = ""
+    backup_r2_prefix: str = "backups"
+    # שמירה ארוכה יותר מהמקומי - זו כל הנקודה של עותק מחוץ לשרת
+    backup_r2_retention_days: int = 30
+
     # Serendipity Review - סקירת משימות
     # כמה ימים משימה לא תוצג שוב בסקירה אחרי בחירת סטטוס (cooldown)
     serendipity_cooldown_days: int = 30

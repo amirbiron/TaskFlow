@@ -41,6 +41,13 @@ class ProjectDocumentUpdate(BaseModel):
     _normalize_title = field_validator("title")(lambda cls, v: _normalize_title(v))
 
 
+class ProjectDocumentRename(BaseModel):
+    """שינוי שם בלבד - נפרד מ-Update כדי ש-title יהיה חובה ולא אופציונלי."""
+    title: str = Field(..., min_length=1, max_length=200)
+
+    _normalize_title = field_validator("title")(lambda cls, v: _normalize_title(v))
+
+
 class ProjectDocument(MongoBaseModel, ProjectDocumentBase):
     """מסמך פרויקט מלא, כולל התוכן."""
     pass
