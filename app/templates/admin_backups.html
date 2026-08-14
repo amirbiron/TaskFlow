@@ -51,6 +51,15 @@
             <div class="text-sm text-slate-500 dark:text-sf-text-secondary mt-1">
                 שמירה {{ retention_days }} ימים אחורה
             </div>
+            <!-- עותק חיצוני: מה שמגן על הגיבויים מאובדן השירות עצמו -->
+            <div class="text-sm mt-1 flex items-center gap-1.5">
+                <span class="text-slate-500 dark:text-sf-text-secondary">עותק חיצוני:</span>
+                {% if r2_enabled %}
+                <span class="text-slate-700 dark:text-sf-text-primary">R2, {{ r2_retention_days }} ימים</span>
+                {% else %}
+                <span class="text-amber-600 dark:text-sf-orange" title="הגיבויים קיימים רק על הדיסק של השירות">כבוי</span>
+                {% endif %}
+            </div>
         </div>
 
         <!-- ריצה אחרונה -->
@@ -69,6 +78,14 @@
                     <div x-show="!lastRun.success && lastRun.error"
                          class="text-xs text-red-600 dark:text-sf-red mt-2 break-all"
                          x-text="lastRun.error"></div>
+                    <!-- תוצאת ההעלאה לעותק החיצוני באותה ריצה. כשל כאן לא
+                         מפיל את הגיבוי המקומי, ולכן מוצג בנפרד מהסטטוס. -->
+                    <div x-show="lastRun.r2_enabled" class="text-xs mt-2 flex items-start gap-1.5">
+                        <span class="flex-shrink-0" :class="lastRun.r2_uploaded ? 'text-green-600 dark:text-sf-green' : 'text-red-600 dark:text-sf-red'"
+                              x-text="lastRun.r2_uploaded ? '✓' : '✕'"></span>
+                        <span class="text-slate-500 dark:text-sf-text-secondary break-all"
+                              x-text="lastRun.r2_uploaded ? `הועלה ל-R2: ${lastRun.r2_key || ''}` : (lastRun.r2_error || 'ההעלאה ל-R2 נכשלה')"></span>
+                    </div>
                 </div>
             </template>
             <div x-show="!lastRun" class="text-sm text-slate-500 dark:text-sf-text-secondary">עוד לא רץ מאז ההפעלה</div>

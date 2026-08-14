@@ -64,6 +64,8 @@
 ומסובבת אותם אוטומטית לפי `BACKUP_RETENTION_DAYS`. **אין תלות בכלים חיצוניים**
 (לא צריך להתקין `mongodb-database-tools`).
 
+הסבר מלא על התכנון, הקוד והמלכודות: [`docs/backup-restore-guide.md`](docs/backup-restore-guide.md).
+
 ### מבנה הגיבוי
 
 קובץ zip סטנדרטי - אפשר לפתוח בקליק כפול:
@@ -89,6 +91,18 @@ backup_2026-05-03_03-00-15.zip
    mountPath=`/var/data`, size=1GB).
 3. אין צורך ב-build command מותאם או ב-env vars נוספים.
 
+### עותק חיצוני ב-R2
+
+הדיסק של Render מגן מפני טעות במסד, לא מפני אובדן השירות עצמו. כשמוגדר
+`BACKUP_R2_BUCKET` ו-`BACKUP_R2_ENABLED=true`, כל גיבוי מוצלח מועלה גם
+לבאקט R2, ומסובב שם בנפרד לפי `BACKUP_R2_RETENTION_DAYS`.
+
+הבאקט חייב להיות **ייעודי ופרטי** - לא `R2_BUCKET_NAME` של הקבצים המצורפים,
+שהוא ציבורי. הגיבוי לא מקבל URL ציבורי, וההורדה ממנו נעשית דרך כלי S3
+(`aws s3 cp`, `rclone`, לוח Cloudflare).
+
+כשל בהעלאה **לא** מפיל את הגיבוי - הקובץ המקומי תקין - אבל מוצג במסך הניהול.
+
 ### דף ניהול
 
 זמין ב-`/admin/backups` (מאחורי auth):
@@ -96,6 +110,7 @@ backup_2026-05-03_03-00-15.zip
 - כפתור "גיבוי עכשיו" לטריגר ידני
 - הורדה / מחיקה ידנית
 - תצוגת ריצה אחרונה + ריצה הבאה
+- מצב העותק החיצוני ב-R2 (מוגדר/כבוי, והאם ההעלאה האחרונה הצליחה)
 
 ### שחזור גיבוי
 
@@ -123,7 +138,10 @@ python scripts/restore_backup.py backup_YYYY-MM-DD_HH-MM-SS.zip \
 | `BACKUP_RETENTION_DAYS` | `7` | כמה ימים לשמור |
 | `BACKUP_HOUR` | `3` | שעת ריצה (UTC) |
 | `BACKUP_MINUTE` | `0` | דקה |
-| `MONGODUMP_PATH` | `mongodump` | נתיב לכלי |
+| `BACKUP_R2_ENABLED` | `false` | האם להעלות עותק חיצוני ל-R2 |
+| `BACKUP_R2_BUCKET` | — | באקט ייעודי ופרטי. ריק => ההעלאה כבויה |
+| `BACKUP_R2_PREFIX` | `backups` | תיקייה בתוך הבאקט |
+| `BACKUP_R2_RETENTION_DAYS` | `30` | כמה ימים לשמור בבאקט |
 
 ### API חדש
 
