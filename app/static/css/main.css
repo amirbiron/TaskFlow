@@ -421,6 +421,18 @@ html.dark .empty-state-icon {
     transform: rotate(15deg);
 }
 
+/* שלושה אייקונים במתג (_theme_toggle_icons.html), כל אחד מראה את המצב הבא.
+   מוצג רק זה שמתאים למצב הנוכחי על <html>. הקובץ הזה נטען לפני הציור הראשון,
+   ולכן האייקון הנכון מופיע מיד, בלי רגע שבו מוצגים כמה אייקונים. */
+.theme-toggle .theme-icon {
+    display: none;
+}
+html:not(.dark) .theme-toggle .theme-icon-to-dark,
+html.dark:not([data-md-theme="githits"]) .theme-toggle .theme-icon-to-githits,
+html.dark[data-md-theme="githits"] .theme-toggle .theme-icon-to-light {
+    display: block;
+}
+
 /* ====== עיצוב מסמך Markdown מרונדר ====== */
 .markdown-body {
     color: var(--text-body);
@@ -855,4 +867,275 @@ html.dark .markdown-body mark {
     .markdown-body .md-copy-btn:active {
         opacity: 1;
     }
+}
+
+/* =====================================================================
+   מצב GitHits — עיצוב Markdown בהשראת אתר התיעוד של GitHits
+   ---------------------------------------------------------------------
+   מצב כהה בלבד: <html> מקבל את המחלקה dark כמו במצב הכהה, ובנוסף
+   data-md-theme="githits" (נקבע ב-TaskFlowTheme שב-base.html). כל הכללים
+   כאן תחת html.dark[data-md-theme="githits"] .markdown-body, ולכן חלים רק
+   על תוכן Markdown; שאר האפליקציה נשארת בדיוק כמו במצב הכהה.
+   אף כלל או משתנה קיים לא שונה: הכללים כאן מנצחים בזכות ספציפיות גבוהה
+   יותר. בבלוקי קוד לא נוגעים ב-direction, ב-white-space וב-pre.rtl-code,
+   כדי שה-RTL האוטומטי לעברית (markdown_enhance.js) ימשיך לעבוד.
+   ===================================================================== */
+
+/* ---- טקסט וכותרות ---- */
+html.dark[data-md-theme="githits"] .markdown-body {
+    color: #C4CAD3;
+    letter-spacing: -0.2px;
+}
+html.dark[data-md-theme="githits"] .markdown-body h1,
+html.dark[data-md-theme="githits"] .markdown-body h2,
+html.dark[data-md-theme="githits"] .markdown-body h3,
+html.dark[data-md-theme="githits"] .markdown-body h4,
+html.dark[data-md-theme="githits"] .markdown-body h5,
+html.dark[data-md-theme="githits"] .markdown-body h6 {
+    color: #FFFFFF;
+}
+html.dark[data-md-theme="githits"] .markdown-body h1 {
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    border-bottom-color: #FFFFFF1A;
+}
+html.dark[data-md-theme="githits"] .markdown-body h2 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    border-bottom-color: #FFFFFF1A;
+}
+
+/* ---- קישורים: קו ורוד מתחת במקום underline ---- */
+html.dark[data-md-theme="githits"] .markdown-body a {
+    color: #F8F4F6;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid #C03B83;
+}
+html.dark[data-md-theme="githits"] .markdown-body a:hover {
+    color: #E15B9F;
+    border-bottom-color: #E15B9F;
+}
+
+/* ---- inline code (code שאינו בתוך pre). direction ו-unicode-bidi נשארים מ-.markdown-body code ---- */
+html.dark[data-md-theme="githits"] .markdown-body :not(pre) > code {
+    color: #FFB8DE;
+    background: #21262D;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-weight: 500;
+    font-family: Consolas, "SF Mono", Menlo, Monaco, monospace;
+}
+
+/* ---- בלוק קוד ---- */
+html.dark[data-md-theme="githits"] .markdown-body pre {
+    background: #0B0C0E;
+    color: #D4D4D4;
+    border: 1px solid #FFFFFF1A;
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-family: Consolas, "SF Mono", Menlo, Monaco, monospace;
+    font-size: 12px;
+    line-height: 1.8;
+}
+/* ל-code שבתוך ה-pre יש היום פונט וגודל משלו (.markdown-body code / pre code), אז מיישרים אותו ל-pre */
+html.dark[data-md-theme="githits"] .markdown-body pre code {
+    font-family: inherit;
+    font-size: inherit;
+}
+/* .highlight הוא היום class על ה-pre עצמו, אבל בהערות ישנות שנשמרו לפני המעבר ל-hljs
+   הוא div שעוטף את ה-pre. לכן כאן רק הרדיוס: הרקע והמסגרת על ה-pre, אחרת
+   בעטיפה הישנה הייתה מסגרת כפולה. */
+html.dark[data-md-theme="githits"] .markdown-body .highlight {
+    border-radius: 16px;
+}
+
+/* ---- כפתור העתקה (markdown_enhance.js) ---- */
+html.dark[data-md-theme="githits"] .markdown-body .md-copy-btn {
+    background: transparent;
+    border: none;
+    color: #FFFFFF66;
+}
+html.dark[data-md-theme="githits"] .markdown-body .md-copy-btn:hover {
+    color: #FFFFFF99;
+}
+html.dark[data-md-theme="githits"] .markdown-body .md-copy-btn.copied {
+    color: #2AB673;
+}
+/* במגע הכלל הכללי נותן שקיפות 0.7, ויחד עם #FFFFFF66 הכפתור יוצא חיוור מדי
+   (בערך 28% לבן). כאן הוא במלוא העוצמה, כך שהצבע הנראה הוא בדיוק #FFFFFF66. */
+@media (hover: none), (pointer: coarse) {
+    html.dark[data-md-theme="githits"] .markdown-body .md-copy-btn {
+        opacity: 1;
+    }
+}
+
+/* ---- טבלאות: בלי גבולות אנכיים, רק קווים מתחת ---- */
+html.dark[data-md-theme="githits"] .markdown-body th {
+    border: 0;
+    border-bottom: 1px solid #44404280;
+    background: transparent;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+html.dark[data-md-theme="githits"] .markdown-body td {
+    border: 0;
+    border-bottom: 1px solid #2B272980;
+    color: #C4CAD3;
+}
+
+/* ---- details / summary ---- */
+html.dark[data-md-theme="githits"] .markdown-body details.markdown-details {
+    border-color: #FFFFFF1A;
+    border-radius: 12px;
+    background: transparent;
+}
+html.dark[data-md-theme="githits"] .markdown-body details.markdown-details > summary.markdown-summary {
+    font-size: 14px;
+    color: #D6D3D1;
+    /* רקע ה-hover בולט 8px לכל צד, בתוך הריפוד של ה-details (12px), בלי לשנות גובה */
+    margin-inline: -8px;
+    padding-inline: 8px;
+    border-radius: 8px;
+}
+html.dark[data-md-theme="githits"] .markdown-body details.markdown-details > summary.markdown-summary:hover {
+    background: #FFFFFF0D;
+    color: #E7E5E4;
+}
+
+/* ---- blockquote: רק הצבע של הפס משתנה, הרוחב נשאר 4px ---- */
+html.dark[data-md-theme="githits"] .markdown-body blockquote {
+    border-inline-start-color: #E15B9F;
+    background: #FFFFFF0D;
+    color: #A4A0A2;
+}
+
+/* ---- קו מפריד ---- */
+html.dark[data-md-theme="githits"] .markdown-body hr {
+    border-top: 1px solid #FFFFFF1A;
+}
+
+/* ---- checkbox ב-task list ---- */
+html.dark[data-md-theme="githits"] .markdown-body li.task-list-item input[type="checkbox"] {
+    accent-color: #E15B9F;
+}
+
+/* ---- Alerts: הצבעים נשארים כמו במצב הכהה, רק פינות מעוגלות יותר ---- */
+html.dark[data-md-theme="githits"] .markdown-body .alert {
+    border-radius: 12px;
+}
+
+/* ---- הדגשת תחביר: צבעי VS Code Dark+ על המחלקות של highlight.js ----
+   לא טוענים ערכת hljs נוספת: atom-one-dark נשארת טעונה, וכאן דורסים את הצבעים
+   שלה (html.dark[...] .markdown-body .hljs-x חזק מ-.hljs-x של הערכה).
+   רשימת המחלקות נבדקה מול הקובץ של גרסה 11.10.0 (זה שב-base.html), והצבעים
+   הנוספים לפי dark_vs.json ו-dark_plus.json בריפו microsoft/vscode. */
+
+/* טקסט ברירת מחדל ופיסוק */
+html.dark[data-md-theme="githits"] .markdown-body .hljs,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-punctuation,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-operator {
+    color: #D4D4D4;
+}
+/* מילות מפתח */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-keyword,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-selector-tag {
+    color: #C586C0;
+}
+/* ערכים קבועים. ב-JSON הערכים true/false/null יוצאים כ-keyword בתוך literal,
+   ובלי הכלל השני הם היו נצבעים כמו מילות מפתח */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-literal,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-literal .hljs-keyword,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-built_in,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-type {
+    color: #569CD6;
+}
+/* מחרוזות */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-string,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-regexp {
+    color: #CE9178;
+}
+/* מספרים */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-number {
+    color: #B5CEA8;
+}
+/* מפתחות JSON, מאפיינים ומשתנים */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-attr,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-property,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-variable,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-params,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-attribute,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-template-variable {
+    color: #9CDCFE;
+}
+/* this / self */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-variable.language_ {
+    color: #569CD6;
+}
+/* קבועים (MAX_SIZE ב-JS) */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-variable.constant_ {
+    color: #4FC1FF;
+}
+/* פונקציות */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-title,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-title.function_ {
+    color: #DCDCAA;
+}
+/* מחלקות. .hljs-class .hljs-title הוא המבנה הישן שעדיין יוצא ב-PHP וב-Objective-C */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-title.class_,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-class .hljs-title {
+    color: #4EC9B0;
+}
+/* תגיות HTML */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-tag,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-name {
+    color: #569CD6;
+}
+/* escape ושילוב ביטוי במחרוזת. char.escape_ לא נוצר ב-11.10.0 בשפות שבחבילה; נשאר למקרה של גרסה אחרת */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-char.escape_,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-subst {
+    color: #D7BA7D;
+}
+/* הערות */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-comment,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-quote {
+    color: #6A9955;
+    font-style: italic;
+}
+/* meta / preprocessor (decorator, shebang, #include) */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-meta {
+    color: #C586C0;
+}
+/* הוספות ומחיקות ב-diff */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-addition {
+    color: #B5CEA8;
+}
+html.dark[data-md-theme="githits"] .markdown-body .hljs-deletion {
+    color: #CE9178;
+}
+/* סלקטורים ב-CSS */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-selector-class,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-selector-id,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-selector-pseudo,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-selector-attr {
+    color: #D7BA7D;
+}
+/* סמלים (:sym ב-Ruby, ישויות HTML) ו-@param בהערות JSDoc */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-symbol,
+html.dark[data-md-theme="githits"] .markdown-body .hljs-doctag {
+    color: #569CD6;
+}
+/* בתוך בלוק Markdown: כותרת, תבליט, קוד וכתובת קישור */
+html.dark[data-md-theme="githits"] .markdown-body .hljs-section {
+    color: #569CD6;
+    font-weight: 700;
+}
+html.dark[data-md-theme="githits"] .markdown-body .hljs-bullet {
+    color: #6796E6;
+}
+html.dark[data-md-theme="githits"] .markdown-body .hljs-code {
+    color: #CE9178;
+}
+html.dark[data-md-theme="githits"] .markdown-body .hljs-link {
+    color: #D4D4D4;
 }
